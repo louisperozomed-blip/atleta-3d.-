@@ -18,8 +18,8 @@ import anatomy  # noqa: E402
 import meshutil as mu  # noqa: E402
 
 FPS = 30
-PONY = [(-0.010, 0.020, 1.700), (-0.020, 0.075, 1.730), (-0.040, 0.140, 1.690), (-0.060, 0.180, 1.610),
-        (-0.075, 0.172, 1.515), (-0.085, 0.165, 1.425), (-0.088, 0.160, 1.32)]
+PONY = [(-0.010, 0.020, 1.695), (-0.020, 0.070, 1.715), (-0.040, 0.130, 1.672), (-0.060, 0.172, 1.595),
+        (-0.075, 0.170, 1.500), (-0.085, 0.165, 1.415), (-0.090, 0.160, 1.28)]
 
 
 # ------------------------------------------------------------------- armadura
@@ -177,6 +177,20 @@ def fix_weights(body, arm_ob):
         wrong = co[:, 0] * s > 0.02
         for part in ('UpperLeg', 'LowerLeg', 'Foot', 'Toes', 'UpperArm', 'LowerArm', 'Hand', 'Shoulder'):
             W[wrong, idx[f'{other}{part}']] = 0
+    # axilas/dorsales: el brazo solo influye más allá del plano del hombro
+    for side, s in (('Left', 1), ('Right', -1)):
+        sh, el = anatomy.jl('shoulder', s), anatomy.jl('elbow', s)
+        d = (el - sh) / np.linalg.norm(el - sh)
+        t = (co - sh) @ d
+        fac = np.clip((t + 0.015) / 0.055, 0, 1)
+        for bn in ('UpperArm', 'LowerArm', 'Hand'):
+            j = idx[f'{side}{bn}']
+            lost = W[:, j] * (1 - fac)
+            W[:, j] *= fac
+            tgt = np.where(co[:, 2] > 1.30, idx[f'{side}Shoulder'], idx['Chest'])
+            np.add.at(W, (np.arange(len(W)), tgt), lost * np.where(co[:, 2] > 1.30, 1.0, 0.0))
+            W[:, idx['UpperChest']] += lost * np.where(co[:, 2] > 1.30, 0.0, 0.5)
+            W[:, idx['Chest']] += lost * np.where(co[:, 2] > 1.30, 0.0, 0.5)
     W = smooth_weights(body, names, W, iters=2, lam=0.4, mask=~head)
     write_weights(body, names, W)
 
@@ -250,7 +264,10 @@ def weight_hair(ob):
         m = d < best_d
         best_d[m] = d[m]
         best_s[m] = i + t[m]
-    on_tail = (best_d < 0.11) & (co[:, 1] > 0.045) | (co[:, 2] > 1.69) & (co[:, 1] > 0.02)
+    # fuera del volumen del cráneo (el casquete y el flequillo quedan rígidos a Head)
+    head_c = np.array([0.0, -0.072, 1.618])
+    outside_skull = np.linalg.norm((co - head_c) / np.array([0.125, 0.13, 0.12]), axis=1) > 1.0
+    on_tail = (best_d < 0.12) & outside_skull & (co[:, 1] > 0.03)
     for i in range(len(co)):
         if not on_tail[i]:
             W[i, 0] = 1
@@ -326,9 +343,10 @@ def arms_base(adduct=0.0):
 
 
 def pony(rots, phase, amp, lag=0.9, yaw_amp=0.0, base=(0, 0, 0)):
-    """Movimiento secundario de la coleta: onda amortiguada con retraso por hueso."""
+    """Movimiento secundario de la coleta: onda con retraso creciente por hueso.
+    Las rotaciones se acumulan en la cadena, así que la amplitud por hueso es pequeña."""
     for i in range(5):
-        a = amp * (0.5 + 0.35 * i)
+        a = amp * (0.6 + 0.1 * i)
         ph = phase - lag * (i + 1)
         rots[f'Ponytail{i + 1}'] = (base[0] + a * math.sin(ph), base[1] + yaw_amp * (0.5 + 0.3 * i) * math.sin(ph - 0.5), base[2])
 
@@ -402,7 +420,7 @@ def gait(arm_ob, name, n, hip_amp, knee_amp, arm_amp, elbow, lean, bob, stride_k
         r['Neck'] = (-lean * 0.5, 0, 2 * s)
         r['Head'] = (-lean * 0.3, 0, 2 * s)
         z = bob * math.cos(2 * ph) - bob * 0.5
-        pony(r, 2 * ph, pony_amp, lag=0.8, yaw_amp=pony_amp * 0.6, base=(-lean * 0.8, 0, 0))
+        pony(r, 2 * ph, pony_amp, lag=0.8, yaw_amp=pony_amp * 0.6, base=(lean * 0.25, 0, 0))
         a.key(f + 1, r, hips_loc=(0, 0, z))
     a.finish()
     return a.act
@@ -422,7 +440,7 @@ def make_jump(arm_ob):
             r[f'{side}UpperLeg'] = (-70 * c, 0, 0)
             r[f'{side}LowerLeg'] = (120 * c, 0, 0)
             r[f'{side}Foot'] = (-45 * c + (25 if 0 < h else 0), 0, 0)
-            r[f'{side}UpperArm'] = (-60 * up, -25 * up * sg, 0)
+            r[f'{side}UpperArm'] = (-105 * up, -20 * up * sg, 0)
             r[f'{side}LowerArm'] = (-25 - 20 * max(0, -up), 0, 0)
         r['Spine'] = (22 * c, 0, 0)
         r['Chest'] = (12 * c, 0, 0)
@@ -431,7 +449,7 @@ def make_jump(arm_ob):
         prev_h = h
         # la coleta se retrasa respecto al movimiento vertical
         for k in range(5):
-            r[f'Ponytail{k + 1}'] = (-(v * 90) * (0.6 + 0.3 * k) - 4 * c, 0, 0)
+            r[f'Ponytail{k + 1}'] = (float(np.clip(-(v * 40) * (0.6 + 0.15 * k) - 2 * c, -9, 9)), 0, 0)
         a.key(f, r, hips_loc=(0, 0.0, h - 0.29 * c * 0.3))
     a.finish()
     return a.act
@@ -470,9 +488,9 @@ def main():
     # acciones
     acts = [make_apose(arm_ob), make_idle(arm_ob),
             gait(arm_ob, 'Walk', 32, hip_amp=24, knee_amp=55, arm_amp=18, elbow=15, lean=4,
-                 bob=0.018, stride_knee_front=6, pony_amp=5, arm_add=22, foot_amp=12),
+                 bob=0.018, stride_knee_front=6, pony_amp=3, arm_add=22, foot_amp=12),
             gait(arm_ob, 'Run', 20, hip_amp=42, knee_amp=100, arm_amp=45, elbow=75, lean=14,
-                 bob=0.04, stride_knee_front=12, pony_amp=12, arm_add=28, foot_amp=22),
+                 bob=0.04, stride_knee_front=12, pony_amp=5, arm_add=28, foot_amp=22),
             make_jump(arm_ob)]
     # cada acción en su propia pista NLA (para exportar tomas separadas)
     ad = arm_ob.animation_data

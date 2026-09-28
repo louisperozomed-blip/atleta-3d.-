@@ -29,7 +29,7 @@ def render_frames(action, frames, tag, yaw=-35, size=(300, 420)):
     arm = bpy.data.objects['Armature']
     arm.animation_data.action = bpy.data.actions[action]
     sc = bpy.context.scene
-    RV.setup_render('BLENDER_WORKBENCH', *size)
+    RV.setup_render('BLENDER_EEVEE', *size)
     cam = cam_three_quarter(yaw=yaw)
     cam.data.ortho_scale = 2.3
     cam.location.z = 1.0
@@ -70,8 +70,6 @@ def sheet(paths, out, title, cols=8):
 def deform_tests():
     """Poses extremas para revisar hombros, codos, caderas y rodillas."""
     arm = bpy.data.objects['Armature']
-    act = bpy.data.actions.new('_DeformTest')
-    arm.animation_data.action = act
     poses = [
         {},
         {'LeftUpperArm': (0, -55, 0), 'RightUpperArm': (0, 55, 0)},                       # T-pose
@@ -90,10 +88,11 @@ def deform_tests():
     for i, (p, h) in enumerate(zip(poses, hips)):
         a.key(i + 1, p, hips_loc=h)
     paths = []
+    name = a.act.name
     for yaw in (0, -60):
-        paths += render_frames('_DeformTest', range(1, len(poses) + 1), f'deform{yaw}', yaw=yaw)
+        paths += render_frames(name, range(1, len(poses) + 1), f'deform{yaw}', yaw=yaw)
     sheet(paths, os.path.join(C.RENDERS, 'deform_poses.png'), 'deform', cols=len(poses))
-    bpy.data.actions.remove(bpy.data.actions['_DeformTest'])
+    bpy.data.actions.remove(a.act)
 
 
 def main():

@@ -152,7 +152,7 @@ def dress_body(body):
     def m_torso(P):
         lab = anatomy.part_labels(P)
         # los tirantes pasan por la zona del trapecio, que a veces se etiqueta como brazo
-        return np.isin(lab, list(torso_parts)) | ((np.abs(P[:, 0]) < 0.125) & (P[:, 2] > 1.28))
+        return np.isin(lab, list(torso_parts)) | ((np.abs(P[:, 0]) < 0.150) & (P[:, 2] > 1.15) & (P[:, 2] < 1.47))
 
     def m_shorts(P):
         lab = anatomy.part_labels(P)
@@ -184,7 +184,7 @@ def dress_body(body):
     lab = anatomy.part_labels(fc)
     keys = np.full(len(fc), K['skin'])
     off = np.zeros(len(fc))
-    torso = np.isin(lab, list(torso_parts)) | ((np.abs(fc[:, 0]) < 0.125) & (fc[:, 2] > 1.28))
+    torso = np.isin(lab, list(torso_parts)) | ((np.abs(fc[:, 0]) < 0.150) & (fc[:, 2] > 1.15) & (fc[:, 2] < 1.47))
     gt = g_top(fc)
     top = torso & (gt < 0) & (fc[:, 2] > TOP_Z0)
     keys[top] = K['teal']
@@ -312,8 +312,8 @@ def shoe(side, tag):
     d /= L
     lat = np.cross(d, [0, 0, 1.0])
     # (u, semiancho suela, altura empeine, elevación puntera)
-    prof = [(0.00, 0.048, 0.105, 0.010), (0.03, 0.064, 0.150, 0.003), (0.10, 0.072, 0.176, 0.0),
-            (0.20, 0.076, 0.182, 0.0), (0.30, 0.078, 0.170, 0.0), (0.40, 0.080, 0.140, 0.0),
+    prof = [(0.00, 0.048, 0.100, 0.010), (0.03, 0.064, 0.140, 0.003), (0.10, 0.072, 0.164, 0.0),
+            (0.20, 0.076, 0.168, 0.0), (0.30, 0.078, 0.158, 0.0), (0.40, 0.080, 0.134, 0.0),
             (0.50, 0.081, 0.122, 0.0), (0.60, 0.081, 0.106, 0.0), (0.70, 0.079, 0.092, 0.002),
             (0.79, 0.075, 0.080, 0.006), (0.87, 0.066, 0.070, 0.011), (0.94, 0.052, 0.060, 0.017),
             (1.00, 0.032, 0.048, 0.022)]
@@ -351,15 +351,15 @@ def shoe(side, tag):
     keys[sidep & (u > 0.22) & (u < 0.78) & (z > 0.045) & (band < 0.33)] = K['teal']   # franjas
     keys[sidep & (u > 0.18) & (u < 0.30) & (z > 0.05) & (z < 0.10)] = K['coral']
     keys[(u > 0.84) & (z > 0.048) & (lx < 0.05)] = K['coral']         # puntera
-    keys[(u > 0.08) & (u < 0.34) & (z > 0.165)] = K['teal']           # cuello acolchado
+    keys[(u > 0.08) & (u < 0.34) & (z > 0.150)] = K['teal']           # cuello acolchado
     keys[(u > 0.36) & (u < 0.74) & (lx < 0.028) & (z > 0.09)] = K['white']   # cordones
     set_face_keys(ob, keys)
     return ob
 
 
 # ---------------------------------------------------------------------- pelo
-PONY_PATH = [(-0.010, 0.020, 1.700), (-0.020, 0.075, 1.730), (-0.040, 0.140, 1.690),
-             (-0.060, 0.180, 1.610), (-0.075, 0.172, 1.515), (-0.085, 0.165, 1.425)]
+PONY_PATH = [(-0.010, 0.020, 1.695), (-0.020, 0.070, 1.715), (-0.040, 0.130, 1.672),
+             (-0.060, 0.172, 1.595), (-0.075, 0.170, 1.500), (-0.085, 0.165, 1.415)]
 def hair():
     rng = np.random.default_rng(11)
     parts = []
@@ -378,7 +378,7 @@ def hair():
     cap_v, cap_f = [], []
     nlat, nlon = 7, 14
     c = np.array([0.0, -0.072, 1.618])
-    R = np.array([0.106, 0.114, 0.104])
+    R = np.array([0.118, 0.116, 0.104])
     for ii in range(nlat + 1):
         th = np.pi * 0.66 * ii / nlat
         for jj in range(nlon):
@@ -402,12 +402,12 @@ def hair():
     add((cap_v, keep), K['hair'])
 
     # (b) flequillo en picos: cubre la frente hasta las cejas y sobresale hacia delante
-    for x, zt, lean, fwd in [(-0.072, 1.585, -0.35, 0.01), (-0.048, 1.598, -0.15, 0.03), (-0.024, 1.590, 0.05, 0.035),
-                             (0.000, 1.602, -0.05, 0.04), (0.024, 1.592, 0.12, 0.035), (0.048, 1.600, 0.20, 0.03),
-                             (0.072, 1.588, 0.35, 0.01)]:
+    for x, zt, lean, fwd in [(-0.078, 1.600, -0.35, 0.00), (-0.056, 1.622, -0.20, 0.02), (-0.034, 1.612, -0.05, 0.03),
+                             (-0.012, 1.628, 0.05, 0.035), (0.010, 1.614, -0.08, 0.035), (0.032, 1.626, 0.10, 0.03),
+                             (0.054, 1.616, 0.22, 0.02), (0.078, 1.602, 0.35, 0.00)]:
         root = (x * 0.8, -0.120, 1.708)
-        mid = (x * 1.08, -0.195 - fwd * 0.6, 1.665)
-        tip = (x * 1.12 + lean * 0.03, -0.185 - fwd, zt)
+        mid = (x * 1.08, -0.185 - fwd * 0.6, 1.672)
+        tip = (x * 1.12 + lean * 0.03, -0.172 - fwd * 0.8, zt)
         lock(root, mid, tip, 0.030, sides=4, flat=0.45, up=(0, -1, 0.3))
     # mechones de la coronilla: tumbados sobre el casquete hacia la coleta
     for k in range(8):
@@ -434,7 +434,7 @@ def hair():
     for k, (dx, dy, dz) in enumerate([(0.035, 0.02, -0.08), (-0.035, 0.035, -0.11), (0.0, -0.025, -0.12),
                                       (-0.05, -0.01, -0.07), (0.04, 0.05, -0.06), (-0.015, 0.06, -0.09)]):
         base = path[-1] + np.array([dx * 0.6, dy * 0.6, 0.03])
-        tipp = base + np.array([dx, dy, dz - 0.03])
+        tipp = base + np.array([dx, dy, dz - 0.07])
         add(S.strand([base, (base + tipp) / 2, tipp], [0.036, 0.028, 0.012], sides=5, rng=rng, up=(0, 1, 0)),
             K['hair_dark'] if k % 2 else K['hair'])
     for k in range(6):
@@ -480,12 +480,12 @@ def face_decals():
     anatomy.head_parts(field)
     polys = []  # (lista de (x,z), clave, desplazamiento)
     for sx in (1, -1):
-        cx, cz = 0.036 * sx, 1.570
-        eye = [(cx - 0.021 * sx, cz + 0.001), (cx - 0.009 * sx, cz + 0.013), (cx + 0.011 * sx, cz + 0.012),
-               (cx + 0.023 * sx, cz + 0.002), (cx + 0.013 * sx, cz - 0.012), (cx - 0.009 * sx, cz - 0.012)]
+        cx, cz = 0.040 * sx, 1.574
+        eye = [(cx - 0.024 * sx, cz + 0.001), (cx - 0.010 * sx, cz + 0.015), (cx + 0.012 * sx, cz + 0.014),
+               (cx + 0.025 * sx, cz + 0.002), (cx + 0.014 * sx, cz - 0.013), (cx - 0.010 * sx, cz - 0.013)]
         polys.append((eye, K['eye_white'], 0.0012))
         ix = cx - 0.001 * sx
-        iris = [(ix + 0.0115 * np.cos(a), cz - 0.001 + 0.0135 * np.sin(a)) for a in np.linspace(0, 2 * np.pi, 9)[:-1]]
+        iris = [(ix + 0.0125 * np.cos(a), cz - 0.001 + 0.0145 * np.sin(a)) for a in np.linspace(0, 2 * np.pi, 9)[:-1]]
         polys.append((iris, K['iris'], 0.0020))
         pupil = [(ix + 0.0045 * np.cos(a), cz + 0.001 + 0.006 * np.sin(a)) for a in np.linspace(0, 2 * np.pi, 7)[:-1]]
         polys.append((pupil, K['lash'], 0.0026))
@@ -498,10 +498,10 @@ def face_decals():
         low = [(cx - 0.004 * sx, cz - 0.011), (cx + 0.014 * sx, cz - 0.010), (cx + 0.013 * sx, cz - 0.008), (cx - 0.004 * sx, cz - 0.009)]
         polys.append((low, K['brow'], 0.0022))
         # ceja decidida: más baja en el interior
-        brow = [(0.012 * sx, 1.593), (0.030 * sx, 1.600), (0.050 * sx, 1.605), (0.066 * sx, 1.600),
-                (0.064 * sx, 1.596), (0.048 * sx, 1.598), (0.030 * sx, 1.593), (0.014 * sx, 1.586)]
+        brow = [(0.014 * sx, 1.597), (0.032 * sx, 1.605), (0.054 * sx, 1.610), (0.071 * sx, 1.604),
+                (0.069 * sx, 1.599), (0.052 * sx, 1.602), (0.032 * sx, 1.597), (0.016 * sx, 1.589)]
         polys.append((brow, K['brow'], 0.0022))
-    mouth = [(-0.014, 1.508), (0.0, 1.5095), (0.014, 1.508), (0.013, 1.5055), (0.0, 1.5065), (-0.013, 1.5055)]
+    mouth = [(-0.014, 1.514), (0.0, 1.5155), (0.014, 1.514), (0.013, 1.5115), (0.0, 1.5125), (-0.013, 1.5115)]
     polys.append((mouth, K['lips'], 0.0018))
     nose = [(-0.006, 1.536), (0.006, 1.536), (0.0, 1.531)]
     polys.append((nose, K['skin_shadow'], 0.0015))

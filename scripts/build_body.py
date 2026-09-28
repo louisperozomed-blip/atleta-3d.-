@@ -107,6 +107,37 @@ def decimate_hands(ob, ratio):
     ob.vertex_groups.remove(ob.vertex_groups['_hand'])
 
 
+def untangle(ob, field, rounds=12):
+    """Elimina pliegues: caras cuya normal se opone al gradiente del SDF (volteadas).
+
+    Sus vértices (y vecinos) se mueven a la media de sus vecinos y se reproyectan.
+    """
+    E = mu.edges_np(ob)
+    for r in range(rounds):
+        co = mu.get_co(ob)
+        fc = mu.face_centers(ob)
+        fn = mu.face_normals(ob)
+        g = field.grad(fc)
+        g /= np.maximum(np.linalg.norm(g, axis=1), 1e-9)[:, None]
+        bad = (fn * g).sum(1) < 0.2
+        if not bad.any():
+            break
+        verts = set()
+        for p in ob.data.polygons:
+            if bad[p.index]:
+                verts.update(p.vertices)
+        mask = np.zeros(len(co), bool)
+        mask[list(verts)] = True
+        # ampliar a los vecinos
+        m2 = mask.copy()
+        m2[E[mask[E[:, 0]], 1]] = True
+        m2[E[mask[E[:, 1]], 0]] = True
+        mean = mu.neighbor_mean(co, E)
+        co[m2] = field.project(mean[m2], iters=8, step=0.8)
+        mu.set_co(ob, co)
+        print('untangle round', r, 'bad faces', int(bad.sum()))
+
+
 def build_body(field=None):
     field = field or anatomy.build_field()
     ob = build_skin_mesh()
@@ -116,6 +147,7 @@ def build_body(field=None):
     co = shoot_mesh(ob, field)
     co = mu.relax_project(co, mu.edges_np(ob), field, rounds=1, lam=0.2)
     mu.set_co(ob, co)
+    untangle(ob, field)
     decimate_hands(ob, ratio=0.55)
     mu.set_flat(ob)
     return ob, field
