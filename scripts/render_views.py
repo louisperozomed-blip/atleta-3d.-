@@ -3,6 +3,8 @@ encuadre que los recortes de reference/ (560x940 px, 512 px = 1 m).
 
 Uso:  xvfb-run -a blender -b export/atleta.blend -P scripts/render_views.py -- <tag> [engine] [pose]
 """
+import os, sys  # noqa: E401
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bpy
 import math
 import os
@@ -16,7 +18,7 @@ VIEWS = {
 }
 
 
-def setup_render(engine='BLENDER_WORKBENCH', w=C.CROP_W, h=C.CROP_H):
+def setup_render(engine='BLENDER_EEVEE', w=C.CROP_W, h=C.CROP_H):
     sc = bpy.context.scene
     sc.render.engine = engine
     sc.render.resolution_x = w
@@ -67,7 +69,7 @@ def get_camera():
     return cam
 
 
-def render_views(tag, engine='BLENDER_WORKBENCH', views=('front', 'side', 'back'), outdir=None):
+def render_views(tag, engine='BLENDER_EEVEE', views=('front', 'side', 'back'), outdir=None):
     outdir = outdir or os.path.join(C.RENDERS, 'iter')
     os.makedirs(outdir, exist_ok=True)
     setup_render(engine)
@@ -88,5 +90,5 @@ def render_views(tag, engine='BLENDER_WORKBENCH', views=('front', 'side', 'back'
 if __name__ == '__main__':
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
     tag = argv[0] if argv else 'test'
-    engine = argv[1] if len(argv) > 1 else 'BLENDER_WORKBENCH'
+    engine = argv[1] if len(argv) > 1 else 'BLENDER_EEVEE'
     render_views(tag, engine)

@@ -6,6 +6,8 @@ proyección de cada vértice sobre el campo SDF anatómico (musculatura) ->
 relajación tangencial. La topología conserva los anillos del Skin en cada
 articulación (hombro, codo, cadera, rodilla...).
 """
+import os, sys  # noqa: E401
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bpy
 import bmesh
 import numpy as np
@@ -86,6 +88,25 @@ def shoot_mesh(ob, field):
     return co
 
 
+def decimate_hands(ob, ratio):
+    """Las manos (dedos) son muy densas tras la subdivisión: Decimate limitado a ellas."""
+    co = mu.get_co(ob)
+    hand = is_hand(co)
+    g = ob.vertex_groups.new(name='_hand')
+    g.add([int(i) for i in np.nonzero(hand)[0]], 1.0, 'REPLACE')
+    # el ratio de Decimate es global: se calcula para quitar solo (1-ratio) de las caras de las manos
+    nf = len(ob.data.polygons)
+    nh = sum(1 for p in ob.data.polygons if all(hand[v] for v in p.vertices))
+    dec = ob.modifiers.new('DecHand', 'DECIMATE')
+    dec.ratio = (nf - (1 - ratio) * nh) / nf
+    dec.vertex_group = '_hand'
+    dec.vertex_group_factor = 1.0
+    dec.use_symmetry = True
+    dec.symmetry_axis = 'X'
+    mu.apply_modifiers(ob)
+    ob.vertex_groups.remove(ob.vertex_groups['_hand'])
+
+
 def build_body(field=None):
     field = field or anatomy.build_field()
     ob = build_skin_mesh()
@@ -95,6 +116,7 @@ def build_body(field=None):
     co = shoot_mesh(ob, field)
     co = mu.relax_project(co, mu.edges_np(ob), field, rounds=1, lam=0.2)
     mu.set_co(ob, co)
+    decimate_hands(ob, ratio=0.55)
     mu.set_flat(ob)
     return ob, field
 

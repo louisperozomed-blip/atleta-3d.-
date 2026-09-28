@@ -5,7 +5,12 @@ import numpy as np
 
 
 def clear_scene():
-    bpy.ops.wm.read_factory_settings(use_empty=True)
+    """Vacía la escena sin recargar el archivo (recargar desde un script corrompe
+    los nombres de datablocks al guardar en Blender 4.0)."""
+    for coll in (bpy.data.objects, bpy.data.meshes, bpy.data.materials, bpy.data.images,
+                 bpy.data.armatures, bpy.data.actions, bpy.data.cameras, bpy.data.lights):
+        for idb in list(coll):
+            coll.remove(idb)
 
 
 def mesh_from_pydata(name, verts, faces, edges=(), collection=None):

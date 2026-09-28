@@ -40,8 +40,8 @@ def _hand_fingers():
     n = np.cross(d, w)                                # normal del dorso
     kn = wr + d * 0.088
     out = {}
-    spec = [('index', 0.026, 0.080, 0.0095, 0.10), ('middle', 0.008, 0.088, 0.0098, 0.03),
-            ('ring', -0.010, 0.082, 0.0092, -0.05), ('pinky', -0.026, 0.066, 0.0082, -0.14)]
+    spec = [('index', 0.026, 0.092, 0.0098, 0.10), ('middle', 0.008, 0.100, 0.0100, 0.03),
+            ('ring', -0.010, 0.094, 0.0095, -0.05), ('pinky', -0.026, 0.076, 0.0085, -0.14)]
     for name, off, ln, r, spread in spec:
         b = kn + w * off - d * abs(off) * 0.25
         dirf = d + w * spread - n * 0.18             # ligera flexión hacia la palma
@@ -115,8 +115,8 @@ def build_field():
         hip, knee, ankle = jl('hip', side), jl('knee', side), jl('ankle', side)
         F.add(Limb(hip + np.array([0, 0, 0.02]), knee, [
             (0.00, 0.112, 0.090, 0.128, 0.090),
-            (0.16, 0.114, 0.091, 0.132, 0.087),
-            (0.40, 0.097, 0.094, 0.127, 0.094),
+            (0.16, 0.108, 0.091, 0.132, 0.087),
+            (0.40, 0.090, 0.094, 0.127, 0.094),
             (0.63, 0.074, 0.076, 0.102, 0.081),
             (0.85, 0.058, 0.063, 0.073, 0.070),
             (1.00, 0.050, 0.047, 0.056, 0.055),
@@ -144,7 +144,7 @@ def build_field():
         F.add(Ellipsoid(P(0.098, -0.060, 0.670), knee - hip, (0.068, 0.040, 0.042), k=0.015, name='vmedialis'))
         F.add(Ellipsoid(P(0.190, -0.028, 0.760), knee - hip, (0.135, 0.040, 0.060), k=0.02, name='vlateralis'))
         F.add(Ellipsoid(P(0.128, -0.082, 0.780), knee - hip, (0.150, 0.052, 0.048), k=0.02, name='rectus'))
-        F.add(Ellipsoid(P(0.132, 0.072, 0.450), (0.05 * sx, 0.1, 1), (0.090, 0.036, 0.042), k=0.012, name='gastro_m'))
+        F.add(Ellipsoid(P(0.125, 0.070, 0.450), (0.05 * sx, 0.1, 1), (0.090, 0.044, 0.044), k=0.012, name='gastro_m'))
         F.add(Ellipsoid(P(0.215, 0.052, 0.460), (0.05 * sx, 0.1, 1), (0.085, 0.036, 0.042), k=0.012, name='gastro_l'))
 
         # ------------------------------------------------------------ brazo
@@ -174,7 +174,7 @@ def build_field():
         F.add(Ellipsoid(el, el - sh, (0.042, 0.042, 0.042), k=0.012, name='elbow'))
         # músculos del brazo / hombro
         arm = el - sh
-        F.add(Ellipsoid(sh + arm * 0.14 + np.array([0.004 * sx, 0, 0.0]), arm, (0.105, 0.056, 0.062), k=0.02, name='deltoid'))
+        F.add(Ellipsoid(sh + arm * 0.16 + np.array([0.0, 0, -0.008]), arm, (0.105, 0.056, 0.062), k=0.02, name='deltoid'))
         F.add(Ellipsoid(sh + arm * 0.52 + np.array([0, -0.026, 0]), arm, (0.085, 0.034, 0.034), k=0.012, name='biceps'))
         F.add(Ellipsoid(sh + arm * 0.40 + np.array([0, 0.030, 0]), arm, (0.105, 0.038, 0.034), k=0.012, name='triceps'))
         F.add(Ellipsoid(el + (wr - el) * 0.2 + np.array([0.006 * sx, -0.012, 0]), wr - el, (0.075, 0.042, 0.038), k=0.012, name='brachiorad'))
