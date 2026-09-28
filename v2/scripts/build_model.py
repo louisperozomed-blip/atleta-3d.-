@@ -486,25 +486,25 @@ def face_decals():
                (cx + 0.025 * sx, cz + 0.002), (cx + 0.014 * sx, cz - 0.013), (cx - 0.010 * sx, cz - 0.013)]
         polys.append((eye, K['eye_white'], 0.0012))
         ix = cx - 0.001 * sx
-        iris = [(ix + 0.0125 * np.cos(a), cz - 0.001 + 0.0145 * np.sin(a)) for a in np.linspace(0, 2 * np.pi, 9)[:-1]]
+        iris = [(ix + 0.0135 * np.cos(a), cz - 0.002 + 0.0160 * np.sin(a)) for a in np.linspace(0, 2 * np.pi, 9)[:-1]]
         polys.append((iris, K['iris'], 0.0020))
-        pupil = [(ix + 0.0045 * np.cos(a), cz + 0.001 + 0.006 * np.sin(a)) for a in np.linspace(0, 2 * np.pi, 7)[:-1]]
+        pupil = [(ix + 0.0060 * np.cos(a), cz + 0.000 + 0.0080 * np.sin(a)) for a in np.linspace(0, 2 * np.pi, 7)[:-1]]
         polys.append((pupil, K['lash'], 0.0026))
         hl = [(ix + 0.004 * sx, cz + 0.006), (ix + 0.0065 * sx, cz + 0.0035), (ix + 0.004 * sx, cz + 0.001), (ix + 0.0015 * sx, cz + 0.0035)]
         polys.append((hl, K['eye_white'], 0.0032))
-        lash = [(cx - 0.022 * sx, cz + 0.000), (cx - 0.009 * sx, cz + 0.013), (cx + 0.011 * sx, cz + 0.013),
-                (cx + 0.025 * sx, cz + 0.005), (cx + 0.021 * sx, cz + 0.001), (cx + 0.010 * sx, cz + 0.008),
-                (cx - 0.008 * sx, cz + 0.008), (cx - 0.018 * sx, cz - 0.002)]
+        lash = [(cx - 0.026 * sx, cz + 0.000), (cx - 0.010 * sx, cz + 0.017), (cx + 0.013 * sx, cz + 0.017),
+                (cx + 0.030 * sx, cz + 0.008), (cx + 0.024 * sx, cz + 0.002), (cx + 0.011 * sx, cz + 0.010),
+                (cx - 0.009 * sx, cz + 0.010), (cx - 0.020 * sx, cz - 0.003)]
         polys.append((lash, K['lash'], 0.0034))
         low = [(cx - 0.004 * sx, cz - 0.011), (cx + 0.014 * sx, cz - 0.010), (cx + 0.013 * sx, cz - 0.008), (cx - 0.004 * sx, cz - 0.009)]
         polys.append((low, K['brow'], 0.0022))
         # ceja decidida: más baja en el interior
-        brow = [(0.014 * sx, 1.597), (0.032 * sx, 1.605), (0.054 * sx, 1.610), (0.071 * sx, 1.604),
-                (0.069 * sx, 1.599), (0.052 * sx, 1.602), (0.032 * sx, 1.597), (0.016 * sx, 1.589)]
+        brow = [(0.013 * sx, 1.599), (0.032 * sx, 1.608), (0.054 * sx, 1.613), (0.073 * sx, 1.606),
+                (0.070 * sx, 1.599), (0.052 * sx, 1.602), (0.032 * sx, 1.596), (0.015 * sx, 1.587)]
         polys.append((brow, K['brow'], 0.0022))
-    mouth = [(-0.014, 1.514), (0.0, 1.5155), (0.014, 1.514), (0.013, 1.5115), (0.0, 1.5125), (-0.013, 1.5115)]
+    mouth = [(-0.016, 1.514), (0.0, 1.5165), (0.016, 1.514), (0.015, 1.511), (0.0, 1.5125), (-0.015, 1.511)]
     polys.append((mouth, K['lips'], 0.0018))
-    nose = [(-0.006, 1.536), (0.006, 1.536), (0.0, 1.531)]
+    nose = [(-0.008, 1.537), (0.0, 1.541), (0.008, 1.537), (0.0, 1.530)]
     polys.append((nose, K['skin_shadow'], 0.0015))
     V, F, keys = [], [], []
     for pts, key, off in polys:
