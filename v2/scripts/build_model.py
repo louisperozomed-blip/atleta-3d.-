@@ -498,6 +498,15 @@ def face_decals():
         polys.append((lash, K['lash'], 0.0034))
         low = [(cx - 0.004 * sx, cz - 0.011), (cx + 0.014 * sx, cz - 0.010), (cx + 0.013 * sx, cz - 0.008), (cx - 0.004 * sx, cz - 0.009)]
         polys.append((low, K['brow'], 0.0022))
+        # v2: pliegue del párpado, reflejo secundario y rubor
+        crease = [(cx - 0.016 * sx, cz + 0.021), (cx + 0.004 * sx, cz + 0.025), (cx + 0.022 * sx, cz + 0.019),
+                  (cx + 0.021 * sx, cz + 0.017), (cx + 0.004 * sx, cz + 0.022), (cx - 0.015 * sx, cz + 0.019)]
+        polys.append((crease, K['skin_shadow'], 0.0016))
+        hl2 = [(ix - 0.005 * sx, cz - 0.007), (ix - 0.003 * sx, cz - 0.009), (ix - 0.005 * sx, cz - 0.0105), (ix - 0.007 * sx, cz - 0.009)]
+        polys.append((hl2, K['eye_white'], 0.0032))
+        bx = 0.052 * sx
+        blush = [(bx - 0.012 * sx, 1.548), (bx + 0.004 * sx, 1.552), (bx + 0.014 * sx, 1.547),
+                 (bx + 0.006 * sx, 1.541), (bx - 0.010 * sx, 1.542)]
         # ceja decidida: más baja en el interior
         brow = [(0.013 * sx, 1.599), (0.032 * sx, 1.608), (0.054 * sx, 1.613), (0.073 * sx, 1.606),
                 (0.070 * sx, 1.599), (0.052 * sx, 1.602), (0.032 * sx, 1.596), (0.015 * sx, 1.587)]
@@ -506,6 +515,10 @@ def face_decals():
     polys.append((mouth, K['lips'], 0.0018))
     nose = [(-0.008, 1.537), (0.0, 1.541), (0.008, 1.537), (0.0, 1.530)]
     polys.append((nose, K['skin_shadow'], 0.0015))
+    # v2: sombra bajo la nariz, labio inferior y pliegue de la barbilla
+    polys.append(([(-0.005, 1.5285), (0.005, 1.5285), (0.0, 1.5255)], K['skin_shadow'], 0.0013))
+    polys.append(([(-0.009, 1.5085), (0.009, 1.5085), (0.006, 1.5035), (-0.006, 1.5035)], K['skin_shadow'], 0.0012))
+    polys.append(([(-0.010, 1.4965), (0.0, 1.4985), (0.010, 1.4965), (0.0, 1.4945)], K['skin_shadow'], 0.0012))
     V, F, keys = [], [], []
     for pts, key, off in polys:
         base = len(V)
