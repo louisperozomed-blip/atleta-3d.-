@@ -19,11 +19,11 @@ DEG = np.pi / 180
 T_ANG = np.radians([0, 12, 26, 44, 66, 88, 110, 130, 150, 166, 180])
 T_SLOTS = ['línea media', 'recto abdominal', 'pezón / abdomen lateral', 'serrato', 'costado delante',
            'costado', 'dorsal', 'escápula', 'erectores', 'columna lateral', 'columna']
-HOLE_ROWS = (10, 12)          # agujero del brazo entre el anillo 10 (axila, z 1.39) y el 12 (acromion, anillo superior)
-HOLE_SLOTS = (4, 6)           # y las ranuras 4..6 (66°..110°)
+HOLE_ROWS = (9, 12)           # agujero del brazo entre el anillo 9 (axila, z 1.37) y el 12 (acromion, anillo superior)
+HOLE_SLOTS = (4, 7)           # y las ranuras 4..7 (66°..130°: pliegues axilares delante y detrás)
 HAND_TWIST = 5.0             # grados de pronación: en la hoja el dorso mira hacia fuera (vista SIDE)
 N_LEG = 10
-N_ARM = 8
+N_ARM = 12
 H_NECK = 8                    # medio anillo de cuello y cabeza (16 alrededor)
 # ranuras: 0 línea media (barbilla / nariz), 22 cara, 45 pómulo / mandíbula, 68 sien / ángulo de la
 # mandíbula, 90 oreja, 112 detrás de la oreja, 135 parietal, 158 occipital, 180 nuca
@@ -217,11 +217,15 @@ class Figure:
         carve = {}
         if self.stage >= 2:
             # 'arm_carve' = [tramo ('upper'/'lower'), índices de anillo, ranuras k, dr, nota];
-            # k: 0 delante, 2 fuera, 4 detrás, 6 dentro (8 ranuras)
+            # k en octavos de vuelta (k·45°): 0 delante, 2 fuera, 4 detrás, 6 dentro. Se aplica a las
+            # ranuras del anillo (N_ARM) que caen a menos de 22.5° de ese ángulo.
             for seg, idx, ks, dr, _n in self.T.get('arm_carve', []):
                 for i in idx:
-                    for k in ks:
-                        carve[(seg, i, k)] = carve.get((seg, i, k), 0.0) + dr
+                    for k8 in ks:
+                        for k in range(N_ARM):
+                            dd = abs((360.0 * k / N_ARM - 45.0 * k8 + 180) % 360 - 180)
+                            if dd <= 22.5:
+                                carve[(seg, i, k)] = carve.get((seg, i, k), 0.0) + dr
 
         def ring_at(center, axis, rs, rf, rb, key=None):
             a, s, f = frame(axis, (0, -1, 0))
@@ -302,13 +306,15 @@ class Figure:
         P12, p1 = m.step(K, ['q', 'q', 'q', 'f', 'q', 'q', 'q', 'q', 'q', 'q', 'q', 'f', 'q', 'q'],
                          place12, name='nudillos → palma')
 
-        def place8(k, P):
-            return np.mean(P, 0) - h * 0.028
-        P8, p2 = m.step(P12, ['q', 'f', 'q', 'q', 'q', 'q', 'f', 'q', 'q', 'q'], place8, name='palma → muñeca')
-        self.poles['dorso y palma (FourPointTriangles 16→12→8)'] = p1 + p2
-        order = best_alignment([m.V[i] for i in wrist], [m.V[i] for i in P8])
-        m.bridge(wrist, [P8[j] for j in order])
-        m.log.append(('muñeca → palma', 'Bridge (8 = 8)', 'mismo número de aristas'))
+        self.poles['dorso y palma (FourPointTriangles 16→12)'] = p1
+        # palma (12) -> muñeca (12): mismo número de aristas; un loop intermedio en la base de la palma
+        order = best_alignment([m.V[i] for i in wrist], [m.V[i] for i in P12])
+        P12o = [P12[j] for j in order]
+        Pm = m.ring([0.5 * (m.V[a_] + m.V[b_]) + (m.V[b_] - wr) * 0.08 for a_, b_ in zip(wrist, P12o)])
+        m.bridge(wrist, Pm)
+        m.bridge(Pm, P12o)
+        P8 = Pm                                         # (la cara del pulgar sale de esta banda)
+        m.log.append(('muñeca → palma', 'Bridge (12 = 12)', 'mismo número de aristas, loop intermedio'))
         # membranas y dedos
         D, P = K[:8], K[8:][::-1]
         for k in range(3):
@@ -330,10 +336,11 @@ class Figure:
             if sc > best:
                 best, side = sc, list(f_)
         # el pulgar baja por delante de la palma, casi paralelo a los dedos (como en la hoja)
-        d = f * 0.4 + h * 0.5 - w * 0.6
-        self._finger(side, d / np.linalg.norm(d), 0.070, curl=h * 0.3 - f * 0.3, base=0.85, lead=True)
+        d = f * 0.4 + h * 0.4 - w * 0.7
+        self._finger(side, d / np.linalg.norm(d), 0.070, curl=h * 0.3 - f * 0.3, base=0.85, lead=True,
+                     segs=(0.18, 0.40, 0.58, 0.72, 0.84, 1.0))
 
-    def _finger(self, quad, d, length, curl=None, base=0.92, segs=(0.12, 0.45, 0.75, 1.0), taper=0.25, lead=False):
+    def _finger(self, quad, d, length, curl=None, base=0.92, segs=(0.10, 0.38, 0.52, 0.70, 0.80, 1.0), taper=0.25, lead=False):
         m = self.m
         P = np.array([m.V[i] for i in quad])
         c = P.mean(0)

@@ -370,3 +370,68 @@ IoU / % dentro de ±1 cm. n5a–n5d se midieron en la zona de la cabeza (1.44–
 - Validación de n5e:
   - 1356 quads, 0 triángulos, 0 n-gons, 0 polos de más de 5;
   - 0 autointersecciones, simetría exacta.
+
+## Etapa 6: unión, limpieza y validación (`renders/s6_final/`)
+
+### Densidad: de 1 356 a 1 566 caras
+
+Se añade densidad donde sirve para deformar, no por relleno.
+- **Brazo de 8 a 12 aristas.**
+  - Bíceps, tríceps, deltoides y antebrazo tienen ranuras propias. El codo y la muñeca conservan sus 4 y 3 loops.
+  - El agujero del brazo pasa a 12 aristas: anillos 9–12 (axila z 1.37 → acromion) y ranuras 66°–130°. Así abarca los pliegues axilares delantero (pectoral) y trasero (dorsal).
+  - `arm_carve` se aplica por ángulo (k·45° ± 22.5°), así que la talla de la etapa 3 sirve igual con 12 ranuras.
+- **Palma → muñeca.**
+  - Antes: nudillos 16 → palma 12 → muñeca 8 (4 FourPointTriangles).
+  - Ahora: 16 → 12 (2 FourPointTriangles) y un Bridge 12 = 12 hasta la muñeca, con un loop intermedio en la base de la palma. Hay 2 polos menos en la mano.
+- **Dedos.**
+  - De 4 a 6 anillos por dedo: base, dos loops en el nudillo medio (0.38 / 0.52) y dos en el distal (0.70 / 0.80).
+  - El pulgar alarga su tramo recto de salida (0.18 del largo) para no rozar la palma. Dirección final: 0.4f + 0.4h − 0.7w, la más recogida de las 4 probadas sin autointersecciones.
+- `fit.py arm` recoloca los anillos del brazo contra la silueta tras el cambio.
+
+### Validación de la malla completa (f6b)
+
+Validación sobre la malla completa, con el Mirror aplicado en memoria (`validate.py`).
+
+| comprobación | resultado |
+|---|---|
+| vértices / aristas / caras | 1568 / 3132 / 1566 (V − A + C = 2: una superficie cerrada de género 0) |
+| quads / triángulos / n-gons | 1566 / 0 / 0 |
+| aristas abiertas / no manifold / con más de 2 caras | 0 / 0 / 0 |
+| vértices o aristas sueltos | 0 / 0 |
+| vértices y caras duplicados | 0 / 0 |
+| caras internas / degeneradas | 0 / 0 |
+| normales invertidas | 0 (todas hacia fuera, volumen con signo +0.067 m³) |
+| autointersecciones (BVH) | 0 |
+| simetría (vértice espejo más lejano) | 0.0 |
+| vértices del eje fuera de x = 0 | 0 |
+| polos de más de 5 | 0 |
+| polos en zonas de articulación | 0 |
+| caja | x ±0.3465, z 0 … 1.797 m |
+
+No quedan triángulos en ninguna parte: la tabla los permite en zonas planas, pero todas las transiciones se resolvieron con quads.
+
+### Polos y su justificación
+
+Por lado; el Mirror los duplica: 23 + 23 de valencia 5 y 27 + 27 de valencia 3.
+
+| polo | nº por lado | valencia | por qué está ahí y por qué no molesta |
+|---|---|---|---|
+| esquinas del agujero del brazo | 4 | 5 | Axila delantera y trasera (z 1.37) y dos en el acromion (z 1.50). Los 4 caen a 2.7–10 cm del centro del hombro: en el borde de los pliegues axilares, no en su centro. Es donde un base mesh de hombro suele concentrar sus polos. |
+| FourPointTriangles pelvis → muslo | 2 | 5 | Ingle delante y pliegue del glúteo detrás, a 2.8–3.1 cm fuera de la zona de cadera. Marcan el borde de los pliegues. |
+| FourPointTriangle torso → cuello | 1 | 5 | Base del cuello, sobre la clavícula: fuera del giro del esternocleidomastoideo. |
+| membranas entre dedos | 10 | 5 | Anillo de nudillos (Parallel Division): cada base de dedo comparte vértices con la membrana. Están en la palma, rígida, a 7 cm de la muñeca. |
+| base del pulgar | 4 | 5 | Esquinas de la cara extruida en el lateral de la palma, a 4–5 cm de la muñeca. |
+| FourPointTriangles dorso y palma | 2 | 5 | Centro del dorso y de la palma (16 → 12). Metacarpos: zona plana y rígida. |
+| puntas de los dedos | 20 | 3 | Tapa Parallel Division de cada dedo (anillo de 4 → 1 quad). El validador las etiqueta «pierna» por su altura (z 0.75–0.86). |
+| puntera del pie | 4 | 3 | Esquinas de la Grid Division 2 × 3 del bloque de zapato: no se deforma. |
+| coronilla | 2 | 3 | Grid Division 2 × 3 sobre la cabeza: no se deforma. |
+| FourPointTriangle del cuello | 1 | 3 | Vértice central del FourPointTriangle (lo propio del patrón). |
+
+### Diferencias que quedan (se documentan, no se corrigen)
+
+- **Axila trasera.** Un pequeño pliegue oscuro donde el dorsal se une al brazo (z ≈ 1.37). Es el pliegue axilar posterior, algo más marcado que en la hoja.
+- **Hombros.** Las esquinas superiores del agujero se ven en FRONT como un leve saliente sobre el trapecio.
+- **Siluetas de la malla final:** front 0.926 / 92 %, side 0.929 / 88 %, back 0.891 / 85 % dentro de ±1 cm. El 8–15 % restante son:
+  - la espalda más ancha en BACK;
+  - la perspectiva del pie en SIDE;
+  - el hueco de la axila (etapa 1).
