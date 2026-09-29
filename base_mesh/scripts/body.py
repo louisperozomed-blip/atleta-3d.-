@@ -65,6 +65,7 @@ class Body:
         self.torso()
         if stage >= 2:
             self.legs()
+            self.glutes()
         if stage >= 3:
             self.arms()
         if stage >= 4:
@@ -112,7 +113,7 @@ class Body:
             def glute(t, p):
                 sz = 0.095 if z > 0.935 else 0.042
                 g = gauss(t - (np.pi - 0.60), 0.45) * gauss(z - 0.935, sz) * PR.GLUTE
-                cleft = gauss(t - np.pi, 0.20) * gauss(z - 0.93, 0.06) * 0.018
+                cleft = gauss(t - np.pi, 0.26) * gauss(z - 0.925, 0.07) * 0.042
                 return (0.1 * g, g - cleft, 0)
             return (breast, glute)
         R = []
@@ -125,12 +126,14 @@ class Body:
                 p[2] = (zf + (zb - zf) * (1 - np.cos(t)) / 2) * SC
             R.append(m.ring(pts, 'torso'))
         self.R = R
+        self.torso_fidx = {}
         r0, r1 = self.ARM_ROWS
         s0, s1 = self.ARM_SEGS
         for i in range(len(R) - 1):
             for j in range(H_TORSO):
                 if r0 <= i < r1 and s0 <= j < s1:
                     continue                  # agujero del brazo
+                self.torso_fidx[i, j] = len(m.F)
                 m.face(R[i][j], R[i][j + 1], R[i + 1][j + 1], R[i + 1][j])
         # cadena de la entrepierna sobre el plano de simetría (de detrás hacia delante)
         cz = PR.CROTCH_Z * SC
@@ -215,6 +218,51 @@ class Body:
             m.bridge(prev, ring)
             prev = ring
         self.foot(prev)
+
+    # glúteos: 2 insets de la región trasera de la pelvis (hasta el eje) -> loop alrededor de los
+    # glúteos cuyo tramo inferior es el pliegue del glúteo, y un segundo loop que redondea el lóbulo
+    GLUTE_ROWS = (0, 5)          # R0 (borde de la pierna) .. R5 (z 1.025, hoyuelos lumbares)
+    GLUTE_SEGS = (10, 15)        # de θ 112° (lateral de la cadera) a la hendidura (el último segmento queda fuera)
+    GLUTE_LOOPS = (0.30, 0.55)   # posición de cada loop hacia el interior de la región
+
+    def glutes(self):
+        m, R = self.m, self.R
+        (i0, i1), (j0, j1) = self.GLUTE_ROWS, self.GLUTE_SEGS
+        region = [self.torso_fidx[i, j] for i in range(i0, i1) for j in range(j0, j1)]
+        vmap = {R[i][j]: (i, j) for i in range(i0, i1 + 1) for j in range(j0, j1 + 1)}
+        loops = []
+        for _ in self.GLUTE_LOOPS:
+            out, inn, _ = m.inset_region(region)
+            for a_, b_ in zip(out, inn):
+                vmap[b_] = vmap[a_]
+            loops.append((inn, [vmap[v] for v in inn]))
+        for (inn, src), t in zip(loops, self.GLUTE_LOOPS):
+            for v, (i, j) in zip(inn, src):
+                di = 1 if i == i0 else (-1 if i == i1 else 0)
+                dj = 1 if j == j0 else (-1 if j == j1 else 0)
+                p, q = R[i][j], R[i + di][j + dj]
+                pos = m.V[p] + (m.V[q] - m.V[p]) * t
+                if i == i0:
+                    # pliegue del glúteo: hacia dentro, y sube hacia la hendidura y hacia fuera
+                    u = (j - 12.8) / 2.3
+                    rise = 0.034 * u * u if u > 0 else 0.022 * u * u      # hacia la hendidura sube más
+                    pos = pos + np.array([0, -0.002 * (1 - t), rise * (1.2 - t)]) * SC
+                m.V[v] = pos
+        # volumen de cada lóbulo: los vértices interiores y el loop interior se abomban hacia atrás
+        inner = {v for fi in region for v in m.F[fi]}
+        for v in inner:
+            if v not in vmap:
+                continue
+            i, j = vmap[v]
+            lobe = np.sin(np.pi * (j - j0 + 0.3) / 5.6) ** 0.8 * np.sin(np.pi * (i - i0 + 0.6) / 5.2)
+            m.V[v] = m.V[v] + np.array([0.0015 * lobe, 0.008 * lobe, -0.004 * lobe]) * SC
+        # borde interior de cada lóbulo: la pared de la hendidura casi vertical
+        for v in set(vmap):
+            p = m.V[v]
+            if p[1] > 0.04 * SC and p[0] > 1e-6:
+                w = gauss((p[0] / SC - 0.058) / 0.022, 1.0) * gauss((p[2] / SC - 0.935) / 0.05, 1.0)
+                m.V[v] = p + np.array([0, 0.022 * w, 0]) * SC
+        self.glute_loops = [l for l, _ in loops]
 
     def _angles_of(self, ring, c):
         a = []

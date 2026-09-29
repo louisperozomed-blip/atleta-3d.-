@@ -451,3 +451,46 @@ adelante 0; columna y cuello 0.
   la zona de giro del hombro. Base del cuello: 2 de 5 y 2 de 3 (la reducción ya no está en las
   esquinas del agujero). Es un polo más por lado que en la etapa 1 de esta iteración, a cambio
   de tener superficie de trapecio y acromion sobre el deltoides.
+
+## It2 · Etapa 3 — cadera y glúteos
+
+`scripts/glute_views.sh` hace primeros planos de la pelvis (detrás y lado, wireframe y arcilla)
+junto a la misma ventana de la hoja (`*_glute.jpg`). Los glúteos se construyen con
+`Body.glutes()`: dos insets de la región trasera de la pelvis, entre el borde de la pierna (R0) y
+z 1.025 (hoyuelos lumbares) y de θ 112° (lateral de la cadera) hacia el eje.
+
+### g3a — región hasta el eje, 2 insets
+- El primer loop rodea los dos glúteos (se abre en el eje y se cierra con el Mirror) y su tramo
+  inferior es el **pliegue del glúteo**; el segundo redondea el lóbulo. 3 154 quads, todo en 0.
+- Diferencias con BACK: una sola masa ancha con un pliegue recto; la hoja tiene dos lóbulos
+  redondos, una hendidura larga y un pliegue que sube hacia la hendidura y hacia fuera.
+
+### g3b — volumen del lóbulo y pliegue curvo
+- Relieve de lóbulo en los vértices interiores, pliegue que sube en los extremos, hendidura más
+  profunda. El pliegue queda como un escalón horizontal.
+
+### g3c — pliegue en sonrisa
+- El pliegue sube 3.4 cm hacia la hendidura y 2.2 cm hacia fuera; volumen del lóbulo más bajo.
+  Los lóbulos siguen sin separarse: el último segmento de la espalda mide 4.4 cm y la
+  Subdivision convierte la hendidura en una V ancha.
+
+### g3d — un loop cerrado por glúteo
+- La región deja fuera el último segmento (la franja de la hendidura): los dos loops rodean cada
+  glúteo por separado y uno pasa junto a la hendidura. Se ven **dos lóbulos con su pliegue
+  curvo**. Coste: 4 polos más por lado (esquinas de la región).
+
+### g3e/g3f — pared de la hendidura
+- La hendidura era una rampa de 7 cm (del eje, y 0.077, al máximo del lóbulo, y 0.150). Se hunde
+  más el eje (4.2 cm) y se levanta el borde interior de cada lóbulo 2.2 cm para que la pared sea
+  casi vertical.
+- SIDE: 0.90 −6 mm, 0.95 −7 mm, 1.00 +6 mm. Validación: 3 166 quads, 0 tris, 0 n-gons,
+  0 polos >5, 0 no manifold, 0 duplicados, 0 auto-intersecciones, 0 normales invertidas,
+  simetría 0.
+- **Test de cadera a 90°** (sentada, con la rodilla también a 90°, `d3a_deform.jpg`): **0
+  intersecciones en la cadera y el glúteo** (el glúteo se estira y conserva los lóbulos). Las 30
+  intersecciones y las 12 caras aplastadas de la pose están detrás de la rodilla (pantorrilla contra
+  muslo, a 23 cm de la cadera), no en la cadera. Es lo mismo que pasa con la rodilla a 90° en la
+  pose de codos y rodillas.
+- Polos de los glúteos (por lado): 4 de 5 en las esquinas exteriores del loop (pliegue a
+  z 0.875 junto a la hendidura y al lateral; hoyuelos a z 1.025) y 4 de 3 en las esquinas
+  interiores. Están en la superficie del glúteo, a más de 4 cm de la zona de giro de la cadera.
