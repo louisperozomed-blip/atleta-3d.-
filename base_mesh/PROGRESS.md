@@ -533,3 +533,57 @@ un solo loop por articulación (4 segmentos).
   las membranas y las puntas son los mismos quads; los nuevos loops son anillos de 4.
 - Pendiente: el esqueleto temporal no tiene huesos de dedos, así que el doblado de los dedos no
   se prueba en el test de deformación. Los 3 loops por nudillo son el soporte estándar.
+
+## It2 · Etapa 5 — reducción de polos
+
+Punto de partida (m4e): 88 polos de 5 y 96 de 3 (malla completa). En una malla cerrada de quads
+con forma de esfera, Σ(4 − valencia) = 8, así que siempre habrá 8 polos de 3 más que de 5, y los
+polos solo se pueden quitar por parejas (un 3 y un 5). Revisión de cada grupo:
+- Imprescindibles por construcción: puntas de dedos y del pulgar (tapar un tubo de 4 exige 4
+  polos de 3), membranas entre dedos (cada vértice entre dos dedos recibe la arista lateral de
+  los dos), base del pulgar, tapa del cráneo, esquinas de los insets de la cara, oreja y glúteos
+  (son los que crean los loops pedidos), reducciones 20→16 de la pierna y 16→12 de la mano.
+- Evitable: **el pie**. Era un tubo a lo largo de Y con un agujero en el empeine unido al tobillo
+  y dos tapas (talón y puntera): 4 polos de 5 + 8 de 3 por pie.
+
+### p5a — pie como continuación de la pierna
+- El anillo del tobillo (16) sigue con 7 anillos que giran 90° hacia delante (20°, 45°, 70°,
+  90°…); el talón sale del lado exterior de la curva y solo la puntera se tapa con una rejilla
+  4×4. **Por pie: 4 polos de 3 (antes 12 polos)**. El mismo número de caras (+32 quads en total
+  por la tapa 4×4).
+- Mismas caras en el tobillo que en la pierna → los loops del tobillo continúan sin cortes.
+- Diferencias con SIDE: el talón no sale hacia atrás (−13 mm a z 0.05), el empeine hace un ángulo
+  delante del tobillo (−28 mm a z 0.10) y la puntera es alta y redonda (la hoja tiene un pie tipo
+  zapatilla con el talón vertical y la puntera afilada).
+
+### p5b — talón y puntera
+- Radio trasero del segundo anillo de 8.4 cm (talón) y anillos de la puntera más bajos:
+  talón vertical y puntera afilada. Queda una hendidura delante del tobillo.
+
+### p5c/p5d — empeine
+- Empeine más alto; el primer anillo sobresalía por delante de la pierna (pico en p5c) → radio
+  delantero 4.5 cm: perfil del empeine continuo del tobillo a la puntera.
+- SIDE a z 0.05: talón −7 mm, empeine −9 mm; a z 0.10: −11 mm delante. FRONT ±6 mm.
+- Validación: 3 390 quads, 0 tris, 0 n-gons, 0 polos >5, 0 no manifold, 0 duplicados,
+  0 auto-intersecciones, 0 normales invertidas, simetría 0. Test de deformación sin cambios
+  (`d5d_deform.json`).
+
+### Polos finales (malla completa): 80 de 5 y 88 de 3
+
+| Zona | 5 aristas | 3 aristas | Por qué están ahí |
+|---|---:|---:|---|
+| Ojos | 8 | 8 | Esquinas de los 3 insets del ojo (loops concéntricos) |
+| Boca | 4 | 4 | Esquinas exteriores / comisuras interiores de los 3 loops de la boca |
+| Nasolabial | 4 | 4 | Esquinas del loop nasolabial |
+| Orejas | 8 | 8 | Base y concha (hélix y lóbulo) |
+| Cráneo | 0 | 4 | Tapa del cráneo (cerrar un tubo) |
+| Cuello | 4 | 4 | Reducción 32→24 en la clavícula y el trapecio |
+| Hombros | 8 | 0 | Esquinas del agujero del brazo: axila delante/detrás y acromion delante/detrás |
+| Glúteos | 8 | 8 | Esquinas de los loops de cada glúteo (pliegue y lóbulo) |
+| Ingles | 4 | 0 | Reducción 20→16 de la pierna (ingle y pliegue bajo el glúteo) |
+| Manos | 32 | 40 | 20 en las membranas de los nudillos, 4 de la reducción dorso/palma, 8 en la base del pulgar; 40 en las puntas de los dedos |
+| Pies | 0 | 8 | Tapa de la puntera (antes 8 + 16) |
+
+Ningún polo cae dentro de la zona de giro de hombro, codo, muñeca, cadera, rodilla o tobillo
+(`poles_in_joint_zone` vacío). Los de las manos están en las membranas y las puntas, no en los
+3 loops de cada nudillo.

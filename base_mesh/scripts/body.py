@@ -278,31 +278,44 @@ class Body:
         tot = 2 * np.pi * np.sign(step if step else 1)
         return angles[0] + np.arange(n) * tot / n
 
+    # pie: el tubo de la pierna (16) sigue bajando y se dobla 90° hacia delante; el talón sale
+    # del lado exterior de la curva y solo la puntera se tapa (rejilla 4×4 -> 4 polos de 3).
+    # (α grados de giro del anillo, centro x, y, z, semiancho, radio arriba/delante, radio abajo/detrás)
+    FOOT2 = [
+        (20, 0.095, 0.040, 0.092, 0.034, 0.045, 0.050),
+        (45, 0.097, 0.036, 0.058, 0.037, 0.060, 0.086),   # talón: radio trasero grande
+        (70, 0.099, 0.002, 0.042, 0.040, 0.054, 0.044),
+        (90, 0.101, -0.030, 0.034, 0.042, 0.046, 0.034),
+        (90, 0.103, -0.060, 0.028, 0.044, 0.035, 0.028),
+        (90, 0.105, -0.088, 0.021, 0.043, 0.020, 0.021),
+        (90, 0.107, -0.110, 0.015, 0.036, 0.013, 0.015),
+    ]
+
     def foot(self, ankle):
         m = self.m
-        rings = []
-        for (y, w, h, cx) in self.FOOT:
-            y *= SC; w *= SC; h *= SC; cx *= SC
-            xs = np.linspace(cx + w, cx - w, 5)          # de fuera (+x) a dentro
-            top = [(x, y, h * (1 - 0.22 * ((x - cx) / w) ** 2)) for x in xs]
-            si = (cx - w * 1.12, y, h * 0.36)
-            xb = np.linspace(cx - w * 1.08, cx + w * 1.08, 5)   # suela algo más ancha que el empeine
-            bot = [(x, y, 0.0 if abs(x - cx) < w * 0.9 else 0.003 * SC) for x in xb]
-            so = (cx + w * 1.12, y, h * 0.36)
-            pts = top + [si] + bot + [so]                  # 12: arriba 4, lado 2, abajo 4, lado 2
-            rings.append(m.ring(pts, 'foot'))
-        f0, f1 = self.FOOT_HOLE
-        for i in range(len(rings) - 1):
-            for j in range(12):
-                if f0 <= i < f1 and j < 4:
-                    continue                            # agujero del tobillo (arriba, 4x4)
-                a, b = rings[i], rings[i + 1]
-                m.face(a[j], a[(j + 1) % 12], b[(j + 1) % 12], b[j])
-        m.cap_grid(rings[0][4::-1] + rings[0][:4:-1], 4, 2, lift=-0.012 * SC, normal=(0, 1, 0), group='foot')
-        m.cap_grid(rings[-1], 4, 2, lift=-0.012 * SC, normal=(0, -1, 0), group='foot')
-        hole = ([rings[f0][j] for j in range(0, 5)] + [rings[i][4] for i in range(f0 + 1, f1)]
-                + [rings[f1][j] for j in range(4, -1, -1)] + [rings[i][0] for i in range(f1 - 1, f0, -1)])
-        self._bridge_aligned(ankle, hole)
+        prev = ankle
+        n = len(ankle)
+        e = 2.0 / 2.6                                     # superelipse: suela y empeine más planos
+        for (al, cx, cy, cz, rx, rf, rb) in self.FOOT2:
+            a = np.radians(al)
+            c = np.array([cx, cy, cz]) * SC
+            fdir = np.array([0, -np.cos(a), np.sin(a)])  # delante del tobillo -> arriba del empeine
+            X = np.array([1.0, 0, 0])
+            pts = []
+            for k in range(n):
+                ph = 2 * np.pi * k / n
+                sn, cs = np.sin(ph), np.cos(ph)
+                r = rf if cs >= 0 else rb
+                p = c + X * np.sign(sn) * abs(sn) ** e * rx * SC + fdir * np.sign(cs) * abs(cs) ** e * r * SC
+                p[2] = max(p[2], 0.0)                     # suela en el suelo
+                pts.append(p)
+            prev = self._next_ring(prev, pts, 'foot')
+        # puntera: Grid Fill 4×4 empezando en una esquina del anillo
+        V = [m.V[i] for i in prev]
+        start = int(np.argmax([(p[0] - np.mean([q[0] for q in V])) + (p[2] - np.mean([q[2] for q in V]))
+                               for p in V]))                                  # esquina arriba-fuera
+        ring = prev[start:] + prev[:start]
+        m.cap_grid(ring, 4, 4, lift=-0.008 * SC, normal=(0, -1, 0), group='foot')
 
     def _bridge_aligned(self, ring, loop):
         """Bridge Edge Loops con la rotación/dirección que minimiza la longitud de las aristas."""
