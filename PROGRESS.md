@@ -81,3 +81,26 @@ deforman sin roturas; la rodillera sigue la rodilla (pesos transferidos del cuer
 `scripts/export_unity.py` exporta y **re-importa** el FBX para verificarlo:
 `dims=(1.050, 0.497, 1.764) m, tris=9329, bones=57, escala 1`, 5 tomas
 (APose, Idle, Jump, Run, Walk). El GLB re-importado contiene las mismas 5 animaciones.
+
+---
+
+# v3 — refinamiento por zonas (desde v2)
+
+Carpeta `v3/` (copia de `v2/`). Cada iteración: `v3/iter.sh <tag>` construye el modelo, renderiza
+front/side/back ortográficos con el encuadre y el fondo de la referencia y genera
+`v3/renders/compare_<tag>.png` (ref | modelo | mezcla 50 % | diferencia de silueta) y
+`v3/renders/sidebyside_<tag>.png`; la tabla `v3/renders/iter/rows_<tag>.txt` da los tramos de
+silueta en metros altura por altura.
+
+## Zona 1 — silueta y proporciones (z1a → z1e)
+
+| Iter | IoU F/S/B | Diferencias vistas (tabla `rows` + solape) | Corrección |
+|---|---|---|---|
+| z1a | 0.843/0.845/0.847 | Hombros 3 cm estrechos a z=1.385 (trapecio bajo); torso 1-2 cm ancho a z=1.20 (dorsales) → el brazo se pega al costado en la axila (ref separada a z=1.244); cintura 1.5 cm ancha a z=1.10; muslo exterior 2 cm corto (z 0.68-0.73); rodillera 3 cm ancha. | — |
+| z1b | 0.849/0.847/0.845 | Hombros y axila ya correctos; muslo +3 cm (el elipsoide del vasto lateral salta de forma no lineal); rodillera ancha a z 0.54. | Trapecio más alto/ancho, deltoides más arriba y 4 mm más ancho, dorsales más estrechos, torso z 1.08-1.20 −1 cm, oblicuos menores, rodillera menos abombada (2.1 cm). |
+| z1c | 0.852/0.851/0.857 | Muslo −2 cm; rodillera sigue ancha a z 0.54 por la cabeza lateral del gemelo. | Perfil de espinilla superior −8 mm. |
+| z1d | 0.853/0.847/0.849 | Muslo +2.5 cm (mismo salto del elipsoide). | Gemelo lateral más bajo (z 0.44) y corto. |
+| z1e | **0.859/0.841/0.861** | Muslo ±1 cm, hombros ±1 cm, cintura ±1 cm, axila separada como en la ref; manos a medio muslo (puntas z≈0.80). | El ancho del muslo se controla con el perfil del `Limb` (lineal) en vez del elipsoide. |
+
+Rig re-hecho sobre la malla nueva; hojas de Walk/Run revisadas: sin roturas.
+(Este commit incluye ya las primeras ediciones de músculos de la zona 2, documentadas abajo.)
