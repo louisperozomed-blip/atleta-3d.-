@@ -19,7 +19,7 @@ DEG = np.pi / 180
 T_ANG = np.radians([0, 12, 26, 44, 66, 88, 110, 130, 150, 166, 180])
 T_SLOTS = ['línea media', 'recto abdominal', 'pezón / abdomen lateral', 'serrato', 'costado delante',
            'costado', 'dorsal', 'escápula', 'erectores', 'columna lateral', 'columna']
-HOLE_ROWS = (9, 11)           # agujero del brazo entre los anillos 9 (axila, z 1.37) y 11 (acromion)
+HOLE_ROWS = (10, 12)          # agujero del brazo entre el anillo 10 (axila, z 1.39) y el 12 (acromion, anillo superior)
 HOLE_SLOTS = (4, 6)           # y las ranuras 4..6 (66°..110°)
 HAND_TWIST = 35.0             # grados de pronación de la mano respecto al antebrazo
 N_LEG = 10
@@ -50,6 +50,7 @@ class Figure:
         self.m = HalfMesh()
         self.stage = stage
         self.poles = {}
+        self.carve = self._carve_table()
         self.torso()
         self.legs()
         self.arms()
@@ -62,7 +63,33 @@ class Figure:
         th = T_ANG[k]
         x, y = superellipse(th, w, yf, yb, 2 / 2.4)
         z = zf + (zb - zf) * (1 - np.cos(th)) / 2
+        if self.stage >= 2:
+            # talla por planos (etapa 2): desplaza el vértice según la normal del anillo y en z
+            dr, dz = self.carve.get((i, k), (0.0, 0.0))
+            if dr:
+                if k in (0, 10):                     # línea media: solo en y
+                    n = np.array([0.0, -1.0 if k == 0 else 1.0])
+                else:
+                    a = superellipse(th - 0.01, w, yf, yb, 2 / 2.4)
+                    b = superellipse(th + 0.01, w, yf, yb, 2 / 2.4)
+                    t = (b - a) / np.linalg.norm(b - a)
+                    n = np.array([-t[1], t[0]])
+                    if n @ (np.array([x, y]) - [0, 0.5 * (yf + yb)]) < 0:
+                        n = -n
+                x, y = x + dr * n[0], y + dr * n[1]
+            z += dz
         return np.array([x if 0 < k < 10 else 0.0, y, z])
+
+    def _carve_table(self):
+        """tables.json 'carve': lista de [filas, ranuras, desplazamiento normal (m), dz (m), nota].
+        Las entradas se suman."""
+        out = {}
+        for rows, slots, dr, dz, _note in self.T.get('carve', []):
+            for i in rows:
+                for k in slots:
+                    a, b = out.get((i, k), (0.0, 0.0))
+                    out[(i, k)] = (a + dr, b + dz)
+        return out
 
     def torso(self):
         m = self.m
@@ -90,8 +117,18 @@ class Figure:
     # ================================================================== piernas
     def leg_ring(self, row, angles):
         z, cx, cy, rx, rf, rb = row
-        return [np.array([cx + np.sin(a) * rx, cy - np.cos(a) * (rf if np.cos(a) >= 0 else rb), z])
-                for a in angles]
+        out = []
+        for a in angles:
+            p = np.array([cx + np.sin(a) * rx, cy - np.cos(a) * (rf if np.cos(a) >= 0 else rb), z])
+            if self.stage >= 2:
+                # talla por planos: 'leg_carve' = [z mín, z máx, ángulo mín, ángulo máx, dr, nota];
+                # ángulo 0 = delante, 90 = fuera, 180 = detrás, 270 = dentro
+                d = (np.degrees(a) + 360) % 360
+                for z0, z1, a0, a1, dr, _n in self.T.get('leg_carve', []):
+                    if z0 <= z <= z1 and (a0 <= d <= a1 or a0 <= d + 360 <= a1):
+                        p[:2] += dr * np.array([np.sin(a), -np.cos(a)])
+            out.append(p)
+        return out
 
     def legs(self):
         m = self.m
@@ -194,8 +231,8 @@ class Figure:
                 up = max(0.0, (p0[2] - zc) / (H[:, 2].max() - zc))
                 # sale perpendicular al torso, sin pasar de la mitad del hueco hasta el brazo
                 # (en la axila el hueco es corto: si la curva se pasa, el loft se pliega)
-                p1 = p0 + np.array([min(0.05, 0.5 * max(p3[0] - p0[0], 0.0)), 0, 0.09 * up])
-                p2 = p3 - d1 * 0.05 + np.array([0, 0, 0.08 * up])  # llega alineado con el húmero; cúpula del deltoides
+                p1 = p0 + np.array([min(0.05, 0.5 * max(p3[0] - p0[0], 0.0)), 0, 0.04 * up])
+                p2 = p3 - d1 * 0.05 + np.array([0, 0, 0.03 * up])  # llega alineado con el húmero; cúpula del deltoides
                 u = 1 - sv
                 q = u ** 3 * p0 + 3 * u * u * sv * p1 + 3 * u * sv * sv * p2 + sv ** 3 * p3
                 pts.append(q)

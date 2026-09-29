@@ -128,3 +128,84 @@ Validación de b1p (malla completa):
 Renders guardados:
 - b1p completo: `b1p_front/side/back.png`, `b1p_overlay.jpg`, `b1p_silhouette.png`.
 - Todas las iteraciones: `*_sidebyside.jpg`, `*_compare.json`, `*_validate.json`.
+
+## Etapa 2: torso y pelvis (`renders/s2_torso/`)
+
+Hitos anatómicos leídos en la hoja con `scripts/grid_ref.py` (rejilla métrica sobre la vista, en m):
+
+| hito | z |
+|---|---|
+| clavícula | 1.50 |
+| borde inferior del pectoral | 1.37 en el centro, 1.41 junto a la axila |
+| intersecciones del recto | 1.29, 1.22, 1.16 |
+| ombligo | ≈ 1.10 |
+| V inguinal | de (0.10, 1.09) a (0.04, 0.97) |
+| pliegue del glúteo | ≈ 0.84 |
+
+La V inguinal va de (x, z) = (0.10, 1.09) a (0.04, 0.97).
+
+### Talla por planos
+
+`tables.json` → `carve` y `leg_carve`: cada vértice de un anillo se desplaza según la normal del anillo y/o en z.
+- Se usan los mismos anillos y ranuras con nombre anatómico de la etapa 1, así que la topología no cambia.
+- Tras tallar, `fit.py torso` recoloca la línea media para que el perfil siga dentro de la silueta.
+
+| zona | anillos (z) / ranuras | desplazamiento |
+|---|---|---|
+| pectoral: placa y borde en voladizo | 9–11 (1.37–1.46) / recto, pezón, serrato | +20…22 mm |
+| pliegue del pectoral | 9 / serrato | sube 25 mm hacia la axila |
+| esternón | 9–11 / línea media | +10 mm (surco entre pectorales) |
+| caja torácica bajo el pectoral | 8 (1.325) | −16 mm (escalón del pliegue) |
+| recto abdominal | 3–7 / línea media y recto | +3…6 mm; bloques +8 mm |
+| intersecciones tendinosas | 4, 6 (1.13, 1.23) | −13 mm |
+| línea semilunar | ranura 26° | −8 mm |
+| oblicuo externo | ranura 44° | −12 mm (plano lateral); +6 mm sobre la cresta ilíaca |
+| surco inguinal | 1 (0.98) | −5 mm |
+| columna / erectores | 1–11 / 180°; 1–4 / 166° | −8 mm; +8 mm |
+| escápula / infraespinoso | 8–11 / 130°, 150° | +14 mm |
+| dorsal ancho | 5–8 / 110° | +10 mm |
+| glúteo mayor | torso 0–1 y pierna 0.86–0.90 detrás | +14…22 mm |
+| pliegue del glúteo | pierna 0.80–0.84 detrás | −10 mm |
+| pliegue interglúteo | 0 / 180° | −12 mm |
+
+### Cambio de topología: el agujero del brazo sube al anillo superior
+
+- En t2a–t2b el agujero ocupaba los anillos 9–11: el trapecio y el acromion pasaban por encima del brazo como una repisa, con un pico en el deltoides.
+- Desde t2c el agujero va de 10 a 12 (axila z 1.39 → anillo superior), sigue en las ranuras 66°–110° y conserva sus 8 aristas.
+- Su borde superior es ahora el mismo que usa el Linear Stepping torso → cuello. Las caras del trapecio (quads del paso `qqfqqqfq`) llegan directamente a la cúpula del deltoides, igual que en la hoja.
+- La arista es manifold: una cara de trapecio y una del loft del deltoides.
+- El tirador Bézier del loft ya no se levanta más de 4 cm, así que no hay pico.
+
+### Render
+
+- En la etapa 1 las renders usaban Workbench con luz de estudio de frente, que aplana los planos.
+- Desde t2e, `render.py` usa EEVEE:
+  - sol principal arriba a la izquierda, relleno suave del otro lado;
+  - las dos luces cuelgan de la cámara, así las 4 vistas se iluminan igual que la hoja;
+  - arcilla gris clara (0.72) y aristas oscuras (Wireframe).
+- Nueva vista 3/4 (`q34`) para leer volúmenes.
+- Las máscaras de silueta siguen en Workbench (sin luz).
+- `scripts/zoom.py` compone hoja (arriba) y modelo (abajo) de una zona con la misma cámara.
+
+### Iteraciones
+
+| iter | front | side | back | cambio |
+|---|---|---|---|---|
+| t2a | 0.925 / 94 % | 0.920 / 86 % | 0.895 / 88 % | Primera talla. Detectado: la normal en la línea media daba NaN (22 aristas abiertas); corregido. |
+| t2b | 0.925 / 92 % | 0.917 / 85 % | 0.893 / 87 % | Menos ondulación en el abdomen; pectoral y espalda más marcados. |
+| t2c | 0.926 / 93 % | 0.918 / 87 % | 0.894 / 86 % | Agujero del brazo a los anillos 10–12: trapecio → deltoides continuo. |
+| t2d | 0.926 / 93 % | 0.928 / 90 % | 0.894 / 86 % | Pectoral como placa (+2 cm), columna del recto; `fit.py torso` recupera el perfil. |
+| t2e | 0.926 / 93 % | 0.930 / 90 % | 0.895 / 86 % | Escalón bajo el pectoral (−16 mm), intersecciones y serrato. Renders en EEVEE con la luz de la hoja. |
+| t2f | 0.924 / 93 % | 0.930 / 90 % | 0.894 / 87 % | Amplitudes ×2 en abdomen, oblicuos, dorsal, escápula y glúteo. |
+| t2g | **0.924 / 93 %** | **0.927 / 88 %** | **0.894 / 87 %** | `leg_carve`: el glúteo baja a la pierna (0.86–0.90), pliegue del glúteo a 0.82, ingle retirada. Las intersecciones cruzan también la línea semilunar. |
+
+Validación de t2g:
+- 1314 quads, 0 triángulos, 0 n-gons, 0 polos de más de 5, 0 polos en zonas de articulación;
+- 0 aristas abiertas o no manifold, 0 autointersecciones;
+- simetría exacta.
+
+La etapa no añade caras: solo mueve vértices y cambia qué anillo cierra el agujero. El total sube en las etapas 3–5 (dedos, pies, cabeza) hacia 1 500–3 000.
+
+Pendiente para etapas siguientes:
+- Los bloques del recto se leen menos que en la hoja: sus planos son más grandes que los 5 cm entre anillos. Se reforzará al revisar la densidad del torso en la etapa 6 si hace falta.
+- Deltoides y brazo más finos de volumen que en la hoja (etapa 3).

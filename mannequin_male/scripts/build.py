@@ -90,9 +90,9 @@ def main():
     print(f'VALIDATE {TAG}\n' + VAL.summary(rep))
     if RENDER:
         RND.render_masks(obj, os.path.join(OUT, TAG + '_mask'))
-        RND.render_views([obj], os.path.join(OUT, TAG + '_clay'))
+        RND.render_views([obj], os.path.join(OUT, TAG + '_clay'), eevee=True)
         e = RND.edge_overlay(obj)
-        RND.render_views([obj, e], os.path.join(OUT, TAG))
+        RND.render_views([obj, e], os.path.join(OUT, TAG), views=('front', 'side', 'back', 'q34'), eevee=True)
         bpy.data.objects.remove(e, do_unlink=True)
     if SAVE:
         bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, f'{TAG}.blend'))
