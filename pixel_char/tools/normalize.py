@@ -34,8 +34,8 @@ NORM = os.path.join(BUILD, "norm")
 os.makedirs(NORM, exist_ok=True)
 
 TARGET_H = 206.0     # altura de pie objetivo en px
-CANVAS = (224, 272)  # ancho, alto del lienzo común
-PIVOT = (112, 250)   # punto de apoyo en el suelo dentro del lienzo
+CANVAS = (240, 272)  # ancho, alto del lienzo común
+PIVOT = (120, 250)   # punto de apoyo en el suelo dentro del lienzo
 
 
 def load(name):
@@ -170,7 +170,7 @@ def main():
     for i in range(NFRAMES):
         src = out_meta[frame_name("jump", "SE", i)]
         m = src[:, ::-1].copy()
-        # el pivote está en x=112 dentro de un lienzo de 224 -> el espejo lo conserva
+        # el pivote está en el centro del lienzo -> el espejo lo conserva
         out_meta[frame_name("jump", "SW", i)] = m
     corrections.append("jump_SW <- espejo horizontal de jump_SE (la fila original mostraba la espalda)")
     for i in range(NFRAMES):

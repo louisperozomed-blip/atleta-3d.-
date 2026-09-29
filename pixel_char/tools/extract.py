@@ -170,7 +170,11 @@ def matte(crop, fg):
     return col, alpha
 
 
-def extract_cell(a, sat, bglike, box, glyph_mask):
+def extract_cell(a, sat, bglike, box, glyph_mask, inner):
+    """box = celda ampliada (con solape); inner = (x izq, x der) de la celda
+    propiamente dicha en coordenadas del recorte. Las capas y brazos pueden
+    salirse de la celda, así que se recorta con margen y el personaje se elige
+    por tener su centro dentro de la celda."""
     x0, y0, x1, y1 = box
     crop = a[y0:y1, x0:x1]
     s = sat[y0:y1, x0:x1] & ~glyph_mask[y0:y1, x0:x1]
@@ -180,7 +184,7 @@ def extract_cell(a, sat, bglike, box, glyph_mask):
     # Núcleo del personaje: componente saturada grande más cercana al centro.
     sd = cv2.dilate(s.astype(np.uint8), np.ones((5, 5), np.uint8))
     n, lab, st, cen = cv2.connectedComponentsWithStats(sd, connectivity=8)
-    big = [i for i in range(1, n) if st[i, 3] > 60]
+    big = [i for i in range(1, n) if st[i, 3] > 60 and inner[0] <= cen[i][0] < inner[1]]
     core = np.isin(lab, big)
     # Fondo = componentes "tipo fondo" que tocan el borde de la celda, o
     # huecos interiores grandes con color de fondo/baldosa.
@@ -215,6 +219,8 @@ def extract_cell(a, sat, bglike, box, glyph_mask):
     # Baldosa: grises neutros claros (incluye sombras sobre la baldosa)
     lum = crop.mean(2)
     tile = bgl & (lum > 41) & ~fg
+    tile[:, :inner[0]] = False
+    tile[:, inner[1]:] = False
     tfit = fit_tile(tile, ndi.binary_dilation(fg, iterations=2))
     return col, alpha, fg, tfit
 
@@ -257,8 +263,11 @@ def main():
                     xl = int(round(cx - pitch * 0.62)) if i == 0 else int(round((cols[i - 1] + cx) / 2))
                     xr = int(round(cx + pitch * 0.62)) if i == NFRAMES - 1 else int(round((cols[i + 1] + cx) / 2))
                     xl, xr = max(xl, 0), min(xr, W)
-                    box = (xl, by0, xr, by1)
-                    col, alpha, fg, tfit = extract_cell(a, sat, bglike, box, glyph_mask)
+                    MARGIN = 45
+                    bxl, bxr = max(xl - MARGIN, 0), min(xr + MARGIN, W)
+                    box = (bxl, by0, bxr, by1)
+                    col, alpha, fg, tfit = extract_cell(a, sat, bglike, box, glyph_mask,
+                                                        (xl - bxl, xr - bxl))
                     ys, xs = np.nonzero(alpha > 0.5)
                     name = frame_name(anim, d, i)
                     rgba = np.dstack([col, alpha * 255]).round().clip(0, 255).astype(np.uint8)

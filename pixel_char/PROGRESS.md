@@ -36,3 +36,24 @@ Avisos (sin corregir, no son direcciones equivocadas):
   (consecuencia inevitable del espejo pedido).
 - El resto de filas (N, NE, E, SE, S, SW, W, NW de idle/walk/run y N, NE, E, SE, W, NW de jump)
   miran a la dirección de su etiqueta.
+
+Ajuste posterior (en la etapa 2): la capa de `run_NE_2/3` y `run_E_2` se salía de su celda y el límite
+entre columnas la cortaba → las celdas se recortan ahora con 45 px de solape y el personaje se elige por
+tener el centro dentro de su celda; el lienzo pasa a 240×272 (pivote 120, 250) y ningún frame toca el borde.
+
+## Etapa 2 — Volumen
+
+Herramienta: `tools/normals.py` (y `tools/review_stage2.py` para las comparativas).
+Salida: `out/color.png`, `out/normal.png`, `out/specular.png` (atlas 2880×4352, celdas de 240×272,
+mismo orden en los tres) y `out/sprites.json` (tamaño de frame, pivote en px y normalizado para Unity,
+fps por animación, orden y ángulo de direcciones, rectángulo de cada frame, correcciones aplicadas).
+Orden: fila = anim×4 + dir//2, columna = (dir%2)×6 + frame; anims idle, walk, run, jump;
+direcciones S, SW, W, NW, N, NE, E, SE. Comparativas: `review/stage2_compare_{idle,walk,run,jump}.png`
+(sprite | normal | especular | iluminado).
+
+| Paso | Detalle |
+|---|---|
+| Altura | 0.55 × bisel global (transformada de distancia, perfil circular de 16 px) + 0.30 × bisel por pieza (las líneas de contorno oscuras interiores, detectadas con black-top-hat, hacen de pliegue; perfil de 6 px) + 0.55 × detalle pintado (diferencia de gaussianas σ1.2−σ6 de la luminancia). Suavizado σ0.9 antes de derivar. |
+| Normal | Sobel sobre la altura; convención OpenGL/Unity, **verde hacia arriba** (+Y arriba): n = normalize(−∂h/∂x, +∂h/∂y_img, 1). Fuera de la figura, normal plana (128,128,255). |
+| Primer intento | El especular del pecho negro salía casi tan alto como el casco (el refuerzo por «parte superior» pesaba mucho) y el crema parecía cromado → más peso al contexto (vecindad con metal vs. con tela verde/bordado) y crema 0.62–0.82. |
+| Especular | Crema/dorado metálico 0.62–0.82, negro de casco y juntas hasta 0.92 (se separa de la tela negra por el contexto), bordado naranja 0.15, tela verde 0.05. |
