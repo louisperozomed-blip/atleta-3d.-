@@ -132,6 +132,7 @@ class HalfMesh:
         for i in range(4):
             j = (i + 1) % 4
             self.face(quad[i], quad[j], new[j], new[i])
+        self.face(*new)                       # tapa de la extrusión
         return new
 
     # -------------------------------------------------------------- limpieza

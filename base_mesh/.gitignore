@@ -1,2 +1,3 @@
 renders/**/*_mask_*.png
 export/stage*.blend
+renders/**/closeup_*

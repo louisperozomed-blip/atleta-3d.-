@@ -94,8 +94,8 @@ class Body:
         (1.312, 1.312, 0.122, -0.094, 0.076),
         (1.336, 1.340, 0.123, -0.088, 0.083),   # axila (fila inferior del agujero del brazo)
         (1.365, 1.375, 0.125, -0.076, 0.088),
-        (1.392, 1.410, 0.119, -0.058, 0.088),
-        (1.407, 1.440, 0.100, -0.036, 0.080),   # borde superior: clavícula delante, C7 detrás
+        (1.392, 1.410, 0.126, -0.058, 0.088),
+        (1.407, 1.440, 0.116, -0.036, 0.080),   # borde superior: clavícula delante, C7 detrás
     ]
     ARM_ROWS = (16, 19)      # el agujero del brazo ocupa las filas R16-R19 (3 bandas)
     ARM_SEGS = (7, 10)       # y los segmentos 7..10 del medio anillo (3 segmentos)
@@ -385,58 +385,72 @@ class Body:
         m.face(*prev)
 
     # ================================================================== 4. cuello y cabeza
-    NECK = [(1.425, 0.050, 0.030, 0.052), (1.460, 0.046, 0.030, 0.050), (1.495, 0.046, 0.030, 0.050)]
-    HEAD = [(1.508, 0.052, -0.075, 0.056), (1.532, 0.061, -0.083, 0.068), (1.560, 0.067, -0.089, 0.080),
-            (1.590, 0.071, -0.090, 0.088), (1.620, 0.073, -0.088, 0.090), (1.650, 0.071, -0.080, 0.085),
-            (1.675, 0.062, -0.068, 0.074), (1.693, 0.045, -0.048, 0.052)]
+    # anillos inclinados (z delante, z detrás, semiancho x, y delante, y detrás): el cuello sube
+    # inclinado hacia delante y el primer anillo de la cabeza es la línea de la mandíbula.
+    NECK = [(1.428, 1.458, 0.058, -0.018, 0.068), (1.450, 1.478, 0.046, -0.020, 0.064),
+            (1.468, 1.497, 0.044, -0.023, 0.061), (1.481, 1.514, 0.045, -0.029, 0.058)]
+    HEAD = [(1.487, 1.530, 0.050, -0.064, 0.052),   # H0: debajo de la barbilla -> ángulo de la mandíbula
+            (1.497, 1.545, 0.058, -0.079, 0.066),   # H1: barbilla
+            (1.520, 1.563, 0.063, -0.085, 0.078),   # H2: boca
+            (1.546, 1.582, 0.067, -0.089, 0.086),   # H3: base de la nariz
+            (1.573, 1.602, 0.070, -0.090, 0.090),   # H4: ojos
+            (1.600, 1.622, 0.072, -0.090, 0.091),   # H5: cejas
+            (1.627, 1.643, 0.072, -0.089, 0.090),   # H6: frente
+            (1.653, 1.663, 0.067, -0.081, 0.082),
+            (1.675, 1.680, 0.053, -0.060, 0.063)]
+    TOP_Z = 1.694
 
     def neck_head(self):
         m = self.m
         A = self.ports['neck_base']
-        z0, rx0, ry0f, ry0b = self.NECK[0]
-        yc0 = 0.012 * SC
+        th = np.linspace(0, np.pi, H_NECK + 1)
+
+        def tilted_ring(zf, zb, rx, yf, yb, power, group):
+            yc = 0.5 * (yf + yb)
+            pts = half_ring((0, yc * SC, zf * SC), rx * SC, (yc - yf) * SC, (yb - yc) * SC, H_NECK,
+                            power=power, angles=th)
+            for t, p in zip(th, pts):
+                p[2] = (zf + (zb - zf) * (1 - np.cos(t)) / 2) * SC
+            return pts
+        base = tilted_ring(*self.NECK[0], 2.0, 'neck')
 
         def place(P, k):
-            p = np.mean(P, 0)
-            t = np.pi * k / H_NECK
-            q = np.array([np.sin(t) * rx0 * SC, yc0 - np.cos(t) * (ry0f if np.cos(t) >= 0 else ry0b) * SC, z0 * SC])
-            if k in (0, H_NECK):
-                q[0] = 0.0
-            return q
+            return base[k]
         N0, poles = m.reduce_to(A, self.NECK_SPECIALS, place, closed=False, group='neck')
         self.poles_expected['base del cuello (32→16)'] = poles
         prev = N0
-        for (z, rx, ryf, ryb) in self.NECK[1:]:
-            ring = m.ring(half_ring((0, yc0 + 0.004 * SC, z * SC), rx * SC, ryf * SC, ryb * SC, H_NECK), 'neck')
+        for row in self.NECK[1:]:
+            ring = m.ring(tilted_ring(*row, 2.0, 'neck'), 'neck')
             m.bridge(prev, ring, closed=False)
             prev = ring
-        th = np.linspace(0, np.pi, H_NECK + 1)
         H = []
-        for idx, (z, rx, yf, yb) in enumerate(self.HEAD):
-            yc = 0.5 * (yf + yb)
-            pts = half_ring((0, yc * SC, z * SC), rx * SC, (yc - yf) * SC, (yb - yc) * SC, H_NECK, power=2.2, angles=th)
-            ring = m.ring(pts, 'head')
+        for row in self.HEAD:
+            ring = m.ring(tilted_ring(*row, 2.5, 'head'), 'head')
             m.bridge(prev, ring, closed=False)
             prev = ring
             H.append(ring)
-        # rasgos sugeridos: nariz, cuencas, mandíbula
+        # rasgos sugeridos (sin esculpir: solo se mueven vértices de los loops)
         V = m.V
-        V[H[2][0]][1] -= 0.016 * SC          # punta de la nariz
-        V[H[1][0]][1] -= 0.004 * SC
-        V[H[3][0]][1] -= 0.004 * SC          # puente
-        V[H[3][1]][1] += 0.006 * SC          # cuenca del ojo
-        V[H[3][1]][0] -= 0.002 * SC
-        V[H[4][1]][1] -= 0.002 * SC          # arco superciliar
-        V[H[0][2]][0] -= 0.004 * SC          # mandíbula más estrecha
+        s = SC
+        V[H[3][0]][1] -= 0.016 * s; V[H[3][0]][2] += 0.004 * s   # punta de la nariz
+        V[H[2][0]][1] -= 0.003 * s                                # labios / philtrum
+        V[H[4][0]][1] -= 0.006 * s                                # puente de la nariz
+        V[H[4][1]][1] += 0.007 * s; V[H[4][1]][0] -= 0.002 * s    # cuenca del ojo
+        V[H[4][2]][1] += 0.003 * s
+        V[H[5][1]][1] -= 0.002 * s                                # arco superciliar
+        V[H[1][0]][1] -= 0.003 * s                                # barbilla
+        for k in (1, 2):
+            V[H[1][k]][0] -= 0.004 * s                            # mandíbula más estrecha delante
+            V[H[0][k]][0] -= 0.006 * s
         # tapa del cráneo: rejilla 2 x 4 sobre el medio anillo + línea central
         top = H[-1]
-        center = [m.v((0, lerp(V[top[0]], V[top[-1]], t)[1], 1.702 * SC), 'head') for t in (0.25, 0.5, 0.75)]
+        center = [m.v((0, lerp(V[top[0]], V[top[-1]], t)[1], self.TOP_Z * SC), 'head') for t in (0.25, 0.5, 0.75)]
         mid = [m.v(lerp(V[top[4]], V[c], 0.5) + np.array([0, 0, 0.004 * SC]), 'head') for c in center]
         grid = [[top[0], top[1], top[2]], [center[0], mid[0], top[3]], [center[1], mid[1], top[4]],
                 [center[2], mid[2], top[5]], [top[8], top[7], top[6]]]
         for r in range(4):
             for c in range(2):
                 m.face(grid[r][c], grid[r][c + 1], grid[r + 1][c + 1], grid[r + 1][c])
-        # oreja en bloque: extrusión de la cara lateral entre H2 y H3
-        q = [H[2][4], H[2][5], H[3][5], H[3][4]]
-        m.extrude_face(q, np.array([0.014, 0.004, 0.002]) * SC, scale=0.85, group='head')
+        # oreja en bloque: extrusión corta de la cara lateral entre H3 y H4 (detrás de la mejilla)
+        q = [H[3][4], H[3][5], H[4][5], H[4][4]]
+        m.extrude_face(q, np.array([0.006, 0.005, 0.001]) * SC, scale=0.97, group="head")

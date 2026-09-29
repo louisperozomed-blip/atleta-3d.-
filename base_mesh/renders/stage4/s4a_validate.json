@@ -1,18 +1,18 @@
 {
- "verts": 2413,
- "edges": 4808,
- "faces": 2396,
- "quads": 2396,
+ "verts": 2606,
+ "edges": 5208,
+ "faces": 2602,
+ "quads": 2602,
  "tris": 0,
  "ngons": 0,
- "subdiv1_tris": 19168,
- "boundary_edges": 32,
+ "subdiv1_tris": 20816,
+ "boundary_edges": 8,
  "nonmanifold_edges": 0,
  "edges_gt2_faces": 0,
  "loose_edges": 0,
  "loose_verts": 0,
- "poles_3": 56,
- "poles_5": 48,
+ "poles_3": 64,
+ "poles_5": 64,
  "poles_gt5": 0,
  "pole_list_5": [
   {
@@ -254,9 +254,109 @@
    "region": "mano",
    "joint": "muñeca",
    "joint_margin": 0.0173
+  },
+  {
+   "co": [
+    0.0354,
+    -0.0092,
+    1.425
+   ],
+   "region": "cuello",
+   "joint": "hombro",
+   "joint_margin": 0.1247
+  },
+  {
+   "co": [
+    0.05,
+    0.012,
+    1.425
+   ],
+   "region": "cuello",
+   "joint": "hombro",
+   "joint_margin": 0.1132
+  },
+  {
+   "co": [
+    0.0462,
+    0.0319,
+    1.425
+   ],
+   "region": "cuello",
+   "joint": "hombro",
+   "joint_margin": 0.1201
+  },
+  {
+   "co": [
+    0.0191,
+    0.06,
+    1.425
+   ],
+   "region": "cuello",
+   "joint": "hombro",
+   "joint_margin": 0.1513
+  },
+  {
+   "co": [
+    0.067,
+    -0.0045,
+    1.56
+   ],
+   "region": "cabeza",
+   "joint": "hombro",
+   "joint_margin": 0.2003
+  },
+  {
+   "co": [
+    0.0623,
+    0.0308,
+    1.56
+   ],
+   "region": "cabeza",
+   "joint": "hombro",
+   "joint_margin": 0.2055
+  },
+  {
+   "co": [
+    0.071,
+    -0.001,
+    1.59
+   ],
+   "region": "cabeza",
+   "joint": "hombro",
+   "joint_margin": 0.2253
+  },
+  {
+   "co": [
+    0.0661,
+    0.0362,
+    1.59
+   ],
+   "region": "cabeza",
+   "joint": "hombro",
+   "joint_margin": 0.2309
   }
  ],
  "pole_list_3": [
+  {
+   "co": [
+    0.0601,
+    -0.0283,
+    1.4098
+   ],
+   "region": "cuello",
+   "joint": "hombro",
+   "joint_margin": 0.0972
+  },
+  {
+   "co": [
+    0.0434,
+    0.0761,
+    1.4387
+   ],
+   "region": "cuello",
+   "joint": "hombro",
+   "joint_margin": 0.1445
+  },
   {
    "co": [
     0.124,
@@ -536,6 +636,26 @@
    "region": "mano",
    "joint": "muñeca",
    "joint_margin": 0.0951
+  },
+  {
+   "co": [
+    0.0328,
+    -0.0345,
+    1.693
+   ],
+   "region": "cabeza",
+   "joint": "hombro",
+   "joint_margin": 0.3357
+  },
+  {
+   "co": [
+    0.0328,
+    0.0385,
+    1.693
+   ],
+   "region": "cabeza",
+   "joint": "hombro",
+   "joint_margin": 0.3376
   }
  ],
  "pole_list_gt5": [],
@@ -545,7 +665,7 @@
  "internal_faces": 0,
  "degenerate_faces": 0,
  "flipped_normals": 0,
- "signed_volume": 0.0368,
+ "signed_volume": 0.04963,
  "normals_outward": true,
  "symmetry_error": 0.0,
  "center_verts_off_plane": 0,
@@ -557,13 +677,14 @@
   ],
   "z": [
    0.0,
-   1.44
+   1.702
   ]
  },
- "stage": 3,
- "tag": "closeup",
+ "stage": 4,
+ "tag": "s4a",
  "poles_expected": {
   "ingle/glúteo (reducción 20→16)": 2,
-  "dorso/palma (12→16)": 2
+  "dorso/palma (12→16)": 2,
+  "base del cuello (32→16)": 4
  }
 }

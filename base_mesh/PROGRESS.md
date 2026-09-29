@@ -190,3 +190,52 @@ palma del lado del índice. `scripts/closeup.py` renderiza primeros planos con w
     de la muñeca).
   - 10 polos de 5 en las membranas entre dedos (cada membrana une dos dedos de 4 lados).
   - 20 polos de 3 en las puntas de los dedos (tapa de un quad por dedo; puntas que no se deforman).
+
+---
+
+## Etapa 4 — cuello y cabeza
+
+Topología: el borde superior del torso (medio anillo de 16 aristas) se reduce a 8 (16 alrededor)
+con 4 quads de reducción (`NECK_SPECIALS` = 3, 7, 10, 14; 7 y 10 son las esquinas superiores
+del agujero del brazo). Cuello de 4 anillos y cabeza de 9 anillos de 16 vértices, inclinados
+(z distinta delante y detrás) para seguir la inclinación del cuello y la línea de la mandíbula.
+Cráneo cerrado con una rejilla 2×4 sobre el último medio anillo + línea central. Oreja = cara
+lateral extruida (bloque). Rasgos sugeridos moviendo vértices de los loops (nariz, puente,
+cuencas, arco superciliar, barbilla, mandíbula).
+
+### s4a — primer bloqueo
+- 2602 quads. **Error**: 8 aristas de borde → `extrude_face` creaba los lados de la oreja pero
+  no la tapa (agujero en la oreja). Corregido en `topo.py` (la extrusión añade la tapa).
+- Diferencias: la cabeza es un huevo sin mandíbula (el cuello entra en la cabeza sin la cara
+  inferior de la mandíbula; en SIDE la hoja tiene la barbilla a y −0.075 z 1.49 y el cuello
+  delante a y −0.018); coronilla 2 cm demasiado ancha a z 1.70 (cabeza un poco alta); el cuello
+  de la hoja sube inclinado hacia delante (nuca a y +0.07); orejas demasiado salientes en FRONT.
+
+### s4b — mandíbula y cuello inclinado
+- Anillos inclinados: cuello 1.428→1.481 delante / 1.458→1.514 detrás; H0 bajo la barbilla
+  (z 1.487, y −0.064) sube hasta el ángulo de la mandíbula (z 1.53); barbilla H1 a 1.497.
+  Superelipse 2.5 en la cabeza (plano de la cara más plano, como la hoja). Coronilla a 1.694.
+- Malla cerrada: 0 aristas de borde. 2636 quads.
+- Diferencias: frente 1.5 cm por detrás a z 1.65 (SIDE); trapecios estrechos (BACK a z 1.45:
+  ±0.05 contra ±0.072) y hombro a z 1.40 aún 1-2 cm estrecho.
+
+### s4c — frente, trapecios y hombros
+- Frente más adelantada (H6-H8: y −0.089/−0.081/−0.060); base del cuello más ancha (5.8 cm);
+  dos anillos superiores del torso más anchos (0.126 / 0.116) → hombro a z 1.40: ±0.17
+  (FRONT de la hoja ±0.175).
+- Cabeza dentro de ±7 mm en FRONT, SIDE y BACK de z 1.45 a 1.65.
+- Diferencia: la oreja es un bulto pequeño; en la hoja es una placa plana más grande. Nariz
+  demasiado afilada en el primer plano.
+
+### s4d — oreja en placa y nariz
+- Oreja: extrusión corta (6 mm) sin reducir la cara (placa); nariz 1.6 cm (antes 2.0).
+  Primeros planos: `s4d_head_front.png`, `s4d_head_out.png`.
+- IoU (zona 1.38-1.72): front 0.908, side 0.915, back 0.903.
+- Validación: 2636 quads, 0 tris, 0 n-gons, 0 polos >5, **0 aristas de borde, 0 no manifold**,
+  0 duplicados, 0 caras internas, 0 normales invertidas (volumen positivo), simetría 0.
+- Polos nuevos justificados (por lado):
+  - 4 polos de 5 en la base del cuello (reducción 32→16), sobre la clavícula/trapecio, y 2 polos
+    de 3 donde la reducción deja un vértice del torso sin arista hacia arriba (clavícula delante
+    y trapecio detrás). Zona plana entre cuello y hombro, a >8 cm del giro del hombro.
+  - 4 polos de 5 en la base de la oreja y 4 de 3 en sus esquinas (bloque de la oreja, no se deforma).
+  - 2 polos de 3 en las esquinas de la tapa del cráneo (coronilla, no se deforma).
