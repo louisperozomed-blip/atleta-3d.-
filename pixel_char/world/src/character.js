@@ -25,6 +25,8 @@
       uAO: { value: new THREE.Vector3(125 / 136, 34 / 136, 0) },                            // (v del suelo, alto v, fuerza)
       uGround: { value: new THREE.Color(0, 0, 0) }, uBounce: { value: 0 },
       uBody: { value: new THREE.Vector3(0, 0.76, 0) },                                     // (hundimiento v, v rodilla, inclinación)
+      uPal: { value: (W.PALETTE || [[0, 0, 0]]).map((c) => new THREE.Vector3(c[0], c[1], c[2])) },
+      uQuant: { value: 0 }, uOutline: { value: 0 },
     }]);
     uniforms.uColor.value = tex.color; uniforms.uNormal.value = tex.normal; uniforms.uSpec.value = tex.spec;
     const VS = `
@@ -58,6 +60,23 @@
       uniform vec4 uRect, uWarp, uFootA, uFootB;
       uniform vec2 uFootR;
       uniform vec3 uAO, uGround, uBody; uniform float uBounce;
+      #define NPAL ${Math.max(1, (W.PALETTE || [0]).length)}
+      uniform vec3 uPal[NPAL]; uniform float uQuant, uOutline;
+      float bayer4(vec2 p) { vec2 a = floor(mod(p, 4.0)); float b2a = fract(a.x / 2.0 + a.y * a.y * 0.75);
+        vec2 h = floor(a * 0.5); float b2b = fract(h.x / 2.0 + h.y * h.y * 0.75); return b2b * 0.25 + b2a; }
+      // cuantización a la paleta compartida con dither ordenado entre los dos colores más cercanos
+      vec3 quantize(vec3 c) {
+        float d1 = 1e9, d2 = 1e9; vec3 c1 = c, c2 = c;
+        for (int i = 0; i < NPAL; i++) {
+          vec3 e = (uPal[i] - c) * vec3(1.0, 1.25, 0.8);
+          float d = dot(e, e);
+          if (d < d1) { d2 = d1; c2 = c1; d1 = d; c1 = uPal[i]; } else if (d < d2) { d2 = d; c2 = uPal[i]; }
+        }
+        float t = sqrt(d1) / max(sqrt(d1) + sqrt(d2), 1e-5);
+        // dither solo entre colores próximos (si el segundo está lejos, se queda el más cercano)
+        if (d2 > 0.03) return c1;
+        return bayer4(gl_FragCoord.xy) * 0.9 + 0.05 < t ? c2 : c1;
+      }
       // deformación de la pierna apoyada: 0 en la rodilla, 1 en la suela, gaussiana en horizontal
       vec2 footW(vec2 q, vec4 F) {
         if (F.z == 0.0 && F.w == 0.0) return vec2(0.0);
@@ -82,7 +101,16 @@
         uv.x -= uWarp.x * band * band * uRect.z;
         uv.y -= uWarp.y * band * uRect.w;
         vec4 c = texture2D(uColor, uv);
-        if (c.a < 0.5) discard;                                   // alpha test: escribe profundidad limpia
+        if (c.a < 0.5) {
+          // contorno de 1 píxel de render (como el de los objetos del mundo): si algún vecino es opaco
+          if (uOutline > 0.5) {
+            vec2 ex = dFdx(uv), ey = dFdy(uv);
+            float nb = max(max(texture2D(uColor, uv + ex).a, texture2D(uColor, uv - ex).a),
+                           max(texture2D(uColor, uv + ey).a, texture2D(uColor, uv - ey).a));
+            if (nb >= 0.5) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
+          }
+          discard;                                                // alpha test: escribe profundidad limpia
+        }
         vec3 n = normalize(texture2D(uNormal, uv).xyz * 2.0 - 1.0);
         n = normalize(mix(vec3(0.0, 0.0, 1.0), n, uNormalAmt));   // normal en espacio de vista (+y arriba)
         float sm = texture2D(uSpec, uv).r;
@@ -132,10 +160,11 @@
         float mid = smoothstep(0.05, 0.3, lum) * (1.0 - smoothstep(0.55, 0.9, lum));
         col = mix(col, col * vec3(0.86, 1.0, 1.1), 0.35 * mid * uGrade);
         col += vec3(0.018, 0.0, 0.03) * (1.0 - smoothstep(0.0, 0.22, lum)) * uGrade;
+        if (uQuant > 0.0) col = mix(col, quantize(clamp(col, 0.0, 1.0)), uQuant);
         gl_FragColor = vec4(col, 1.0);
         #include <fog_fragment>
       }`;
-    const mat = new THREE.ShaderMaterial({ uniforms, vertexShader: VS, fragmentShader: FS, lights: true, fog: true });
+    const mat = new THREE.ShaderMaterial({ uniforms, vertexShader: VS, fragmentShader: FS, lights: true, fog: true, extensions: { derivatives: true } });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.frustumCulled = false;
     mesh.receiveShadow = true;
@@ -298,6 +327,7 @@
         }
         else if (anim === "walk") { st.fi = W.walkFrameFor(W.walkMode, st.dir, st.phase); f = st.fi.f; }
         else f = Math.floor(st.phase * NF) % NF;
+        if (W.debugFrame) { anim = W.debugFrame.anim; st.dir = W.debugFrame.dir; f = W.debugFrame.f; st.anim = anim; st.fi = { f, u: 0.5 }; st.dipT = null; st.settle = null; }
         st.frame = f;
         // efectos del walk (bob, balanceo, squash, túnica) según la variante
         if (anim === "walk") {
@@ -357,12 +387,23 @@
         mesh.scale.set(w, h, 1);
         const rx = Math.cos(camTheta), rz = -Math.sin(camTheta);
         const ox = -PVX / FW * w, oy = -(FH - PVY) / FH * h;   // esquina inferior izquierda respecto al pivote
-        const baseY = p.y + hgt - lift + bob + oy;
+        // pie exactamente sobre la superficie: el píxel opaco más bajo de los frames apoyados va a la línea del suelo
+        let corr = 0;
+        uniforms.uQuant.value = W.FX.matter ? 1 : 0; uniforms.uOutline.value = W.FX.matter ? 1 : 0;
+        if (W.FX.matter && W.FEET) {
+          const fr = W.FEET[anim + "_" + meta.directions[st.dir]];
+          if (fr) {
+            const grounded = anim === "idle" || anim === "walk" || (fr.contact && fr.contact[f]) || (anim === "jump" && (f === 0 || f === 5));
+            if (grounded) corr = fr.frames[f].lowest * (meta.scale_from_full || 0.5) * unitsV * sy;
+          }
+        }
+        st.footCorr = corr;
+        const baseY = p.y + hgt - lift + bob + oy + corr;
         mesh.position.set(p.x + rx * (ox + sway) + tx * 0.15, baseY, p.z + rz * (ox + sway) + tz * 0.15);
         st.hgt = hgt;
         // pies anclados: el pivote del sprite en el mundo y la deformación de la pierna apoyada
         if (this.anchor) {
-          const base = { x: p.x + rx * sway + tx * 0.15, y: p.y + hgt - lift + bob, z: p.z + rz * sway + tz * 0.15, gx: p.x + rx * sway, gz: p.z + rz * sway };
+          const base = { x: p.x + rx * sway + tx * 0.15, y: p.y + hgt - lift + bob + corr, z: p.z + rz * sway + tz * 0.15, gx: p.x + rx * sway, gz: p.z + rz * sway };
           const wv = this.anchor.update(st.dt || 0, p, anim, st.dir, f, camTheta, base, sx, sy);
           uniforms.uFootA.value.fromArray(wv.A); uniforms.uFootB.value.fromArray(wv.B);
         }
@@ -411,7 +452,7 @@
           if (ft[0].x === ft[1].x && ft[0].y === ft[1].y) boots[1].visible = false;
         }
         ghost.position.copy(mesh.position); ghost.rotation.copy(mesh.rotation); ghost.scale.copy(mesh.scale);
-        mesh.visible = this.integrated; caster.visible = this.integrated; blob.visible = this.integrated; ghost.visible = this.integrated;
+        mesh.visible = this.integrated && !W.hideChar; caster.visible = this.integrated; blob.visible = this.integrated; ghost.visible = this.integrated;
         if (!this.integrated) this.drawSticker(p, hgt - lift + bob, r);
         else if (sticker.style.display !== "none") sticker.style.display = "none";
       },

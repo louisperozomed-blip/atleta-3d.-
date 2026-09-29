@@ -34,6 +34,8 @@ def main():
         # solo lo que usa el anclaje (pies de cada frame y si está en el suelo)
         assets["feet"] = {k: {"frames": [{"feet": fr["feet"], "grounded": fr["grounded"], "lowest": fr["lowest"]} for fr in v["frames"]],
                               "contact": v["contact"], "f": v["f_screen"], "art": v["art_cycle_u"]} for k, v in F.items()}
+    pal = os.path.join(A, "palette.json")
+    if os.path.exists(pal): assets["palette"] = json.load(open(pal))["colors"]
     extra = os.path.join(A, "walk_variants.json")
     if os.path.exists(extra): assets["walk"] = json.load(open(extra))
     scripts = []

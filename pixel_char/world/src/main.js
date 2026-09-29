@@ -89,7 +89,7 @@
 
     // --- cámara isométrica + post-proceso pixel art ----------------------------------
     const cam = (W.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200));
-    const post = W.makePost();
+    const post = (W.post = W.makePost());
     let rh = 1;
     function resize() {
       const px = PIX[ui.pi], w = Math.max(1, Math.floor(wrap.clientWidth * dpr / px)), h = Math.max(1, Math.floor(wrap.clientHeight * dpr / px));
