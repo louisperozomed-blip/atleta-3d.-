@@ -152,3 +152,66 @@ Rendimiento: en headless no hay GPU (SwiftShader, ~20 fps a 1x), así que no se 
 iPhone aquí. Presupuesto medido: ≤ 73 draw calls y ≤ 139k triángulos por frame (sombras incluidas),
 render a 1/3 de resolución (390×664 en un iPhone 13 con px3), 8 luces puntuales fijas, sombra 1024²,
 atlas del personaje de 1920×1632.
+
+## Etapa 5 — Peso e integración (que no levite)
+
+Mismo link: https://claude.ai/artifact/ANHrkwwHE8urZjzme74NhG. Cada mejora tiene un interruptor
+(`W.FX.anchor/contact/impact/inertia/matter/sound`) para grabar el antes/después con la MISMA
+simulación (paso fijo, `W.manual` + `W.tick`). GIF antes/después andando de lado y en diagonal en
+`review/stage5/pasoN.gif` (+ `pasoN_muestra.png`).
+
+### Paso 1 — Pies anclados (`tools/feet.py`, `src/feet.js`)
+- `tools/feet.py` detecta las dos botas en cada frame de idle/walk/run/jump en las 8 direcciones por el
+  perfil inferior de la silueta (el color confundía la túnica y las rodillas), su punto de apoyo, cuál
+  va delante, los frames de contacto y el píxel opaco más bajo → `assets/feet.json`
+  (`review/stage5/pies_detectados.png`).
+- Un root motion puro no sirve: el walk dibujado casi no barre los pies (~6 px por ciclo en S, "anda en
+  el sitio"). Solución equivalente: el cuerpo avanza continuo y la pierna apoyada se deforma (IK 2D en el
+  shader, de la rodilla a la suela, máx. 15–16 texeles) para que la bota se quede en SU punto del suelo.
+  El apoyo pasa a la bota de delante en cada frame de contacto y la liberada vuelve a su forma en 80 ms.
+  La velocidad sale de lo que la pierna puede absorber por apoyo, por dirección.
+- Deslizamiento del pie apoyado (px de render por frame): de lado **2.40 → 0.00**, en diagonal
+  **1.36 → 0.00** (objetivo < 1 px).
+- Límite honesto: andando va a 0.8–1.25 u/s según la dirección (antes 1.8): es lo que permiten unas
+  piernas dibujadas que apenas avanzan sin que el pie patine.
+
+### Paso 2 — Contacto con el suelo
+- Sombra de contacto pequeña y oscura bajo cada bota (se aclara al levantarla); la mancha redonda queda
+  muy tenue.
+- La sombra proyectada nace en el pie apoyado: el plano que la proyecta gira alrededor de esa bota, con
+  el mismo mapa de sombras (misma dureza y oscuridad que árboles y rocas).
+- Oclusión: degradado que oscurece piernas y botas hacia el suelo + rebote del color de la baldosa de
+  debajo (hierba verde, sendero ocre, agua azulada).
+
+### Paso 3 — Impacto en cada pisada
+- Cada nuevo apoyo es un evento de pisada: polvo en sendero/plaza, gotas y onda en charcas, briznas en
+  hierba, esquirlas en ruinas; la hierba cercana se aplasta un momento (4 huecos en el shader de la
+  hierba); huella tenue que se desvanece en 0.6–3.5 s.
+- Hundimiento: el cuerpo (de rodillas arriba, las botas no se mueven) baja 1.5 px andando / 2 px
+  corriendo en el contacto y se recupera en ~0.2 s (el punto más bajo coincide con la pisada).
+- Sonido suave sintetizado por terreno (WebAudio, sin archivos) con botón «sonido» para silenciar.
+
+### Paso 4 — Inercia
+- Arranque: llega al 90 % de la velocidad en 0.23 s (antes 0.13 s).
+- Al parar: frame de contacto + el cuerpo se hunde 2.4 px y se asienta (0.16 s) antes del idle.
+- Al correr, inclinación leve hacia delante (~1.7 px en la cabeza).
+
+### Paso 5 — Misma "materia"
+- El personaje ya se renderiza en el mismo buffer de baja resolución; ahora además se cuantiza a una
+  paleta compartida (24 colores del mundo por k-means de capturas + 14 tonos propios del personaje tal
+  como se ve iluminado, `tools/palette.py`, `review/stage5/paleta_compartida.png`) con dither ordenado
+  solo entre colores cercanos, y contorno de 1 px en el tono oscuro de los objetos del mundo.
+- Pie exactamente sobre la superficie: por frame se corrige el píxel opaco más bajo. Prueba
+  (`tests/foot_surface.mjs`, 129 frames apoyados de idle/walk/run/jump en 8 direcciones): sin corrección
+  desfase medio 0.34 px, máx 5 px, 9 frames > 1 px → con corrección **0 px en todos**
+  (`review/stage5/foot_surface.json`).
+
+### Paso 6 — Pruebas y publicación
+Al escribir las pruebas aparecieron dos fallos reales, corregidos:
+
+| Fallo encontrado | Corrección |
+|---|---|
+| Al cruzar un escalón el cuerpo subía/bajaba con un resorte de 0.3 s mientras el pie seguía anclado abajo: pie hundido o flotando hasta 25 px, y el ancla se reiniciaba (pisada, polvo y sonido falsos). También daba picos de deslizamiento de hasta 4.7 px al arrancar junto a un desnivel. | La altura del cuerpo es la del suelo bajo la bota APOYADA (su punto en profundidad se deduce del dibujo). Al subir, se predice dónde y cuándo se apoya la próxima bota y el cuerpo sube justo antes (el pie de atrás despega: impulso), así la bota nunca se hunde en el escalón; al bajar, cae en cuanto la bota toca el nivel de abajo (ajuste de 17 ms). El ancla acompaña el cambio de altura en vez de reiniciarse. Andando junto al borde de un desnivel, una bota que sobresale no cambia la altura. |
+| E2E «seguir al dedo»: con la marcha más lenta, el último punto caía sobre una meseta inalcanzable y A* iba (bien) al punto alcanzable más cercano, a 2.85 u | La prueba compara con el destino que planificó A* al soltar y exige además el punto exacto cuando es alcanzable. |
+
+`tests/stage5.mjs` (Playwright + SwiftShader, 60 Hz deterministas):

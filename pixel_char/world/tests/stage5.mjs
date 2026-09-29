@@ -207,7 +207,8 @@ for (const gait of run("frenado") ? ["walk", "run"] : []) {
       const along = (p.x - r.x) * d[0] + (p.z - r.z) * d[1];
       overshoot = Math.max(overshoot, along - L);
       // la última muestra (llegada: de < 0.12·walkV a 0 en el punto exacto) se cuenta aparte
-      if (p.speed === 0 && prevV > 0 && !p.path.length) { finalSnap = prevV; snapLimit = 0.12 * p.walkV; }
+      // en ese paso frena lo normal (≤ límite·dt) y lo que queda (< 0.12·walkV) se anula al llegar al punto
+      if (p.speed === 0 && prevV > 0 && !p.path.length) { finalSnap = Math.max(0, prevV - 4.2 * W.CHAR_H * 1.6 / 60); snapLimit = 0.12 * p.walkV; }
       else if (p.speed < prevV) maxDec = Math.max(maxDec, (prevV - p.speed) * 60);
       if (slipStart == null && p.speed < prevV - 1e-6 && p.speed < 0.95 * (gait === "run" ? p.runV || 99 : walkV)) slipStart = W.slip.samples.length;
       prevV = p.speed;
@@ -261,7 +262,7 @@ for (const c of out.charcas) {
 }
 for (const [g, f] of Object.entries(out.frenado)) {
   check(`frenado ${g}: para exacto, sin pasarse, sin tirones`, f.err < 0.01 && f.overshoot < 0.01 && f.maxDecel <= f.decelLimit + 1e-3 && f.finalSnap <= f.snapLimit + 1e-6,
-    `error final ${f.err.toFixed(4)} u, se pasa ${Math.max(0, f.overshoot).toFixed(4)} u, deceleración máx ${f.maxDecel.toFixed(2)} u/s² (límite ${f.decelLimit.toFixed(2)}), última muestra ${f.finalSnap.toFixed(3)} u/s (≤ ${f.snapLimit.toFixed(3)}, regla de llegada) → 0 en el punto exacto`);
+    `error final ${f.err.toFixed(4)} u, se pasa ${Math.max(0, f.overshoot).toFixed(4)} u, deceleración máx ${f.maxDecel.toFixed(2)} u/s² (límite ${f.decelLimit.toFixed(2)}), ajuste final al llegar ${f.finalSnap.toFixed(3)} u/s (≤ ${f.snapLimit.toFixed(3)}) en el punto exacto`);
   check(`frenado ${g}: asentamiento y hundimiento al parar`, f.settle && f.dipMax >= 1 && f.dipMax <= 3 && f.seq.endsWith("idle"), `${f.seq}, hundimiento ${f.dipMax.toFixed(2)} px`);
   check(`frenado ${g}: el pie no desliza al frenar`, f.brakeSlip.n > 0 && f.brakeSlip.max < 1, `${f.brakeSlip.n} muestras, máx ${f.brakeSlip.max.toFixed(3)} px, > 1 px: ${f.brakeSlip.sobre1}`);
 }
