@@ -44,6 +44,7 @@
     uTime: { value: 0 },
     uPlayer: { value: null },       // THREE.Vector3 (lo crea main)
     uPush: { value: 0 },            // 1 mientras el personaje se mueve (hierba que se aparta)
+    uSteps: { value: [0, 1, 2, 3].map(() => new THREE.Vector4(0, 0, -99, 0)) },   // pisadas recientes: x, z, tiempo, fuerza
   };
 
   // ---------------------------------------------------------------------------
@@ -61,7 +62,7 @@
   };
   const SWAY_VS = `
     attribute float aGlow; attribute float aPhase; attribute float aSway;
-    uniform float uTime; uniform vec3 uPlayer; uniform float uPush;
+    uniform float uTime; uniform vec3 uPlayer; uniform float uPush; uniform vec4 uSteps[4];
     varying float vPulse;
   `;
   const SWAY_BODY = `
@@ -76,12 +77,24 @@
       float k = (1.0 - smoothstep(0.25, 1.1, dist)) * s * (0.35 + 0.65 * uPush);
       transformed.xz += normalize(d + 1e-4) * k * 0.35;
       transformed.y -= k * 0.12;
+      // aplastada un momento por cada pisada cercana (se recupera en ~0.6 s)
+      for (int i = 0; i < 4; i++) {
+        vec4 st = uSteps[i];
+        float age = uTime - st.z;
+        if (age < 0.0 || age > 0.7) continue;
+        vec2 e = transformed.xz - st.xy;
+        float r = length(e);
+        float press = (1.0 - smoothstep(0.1, 0.45, r)) * (1.0 - smoothstep(0.05, 0.7, age)) * st.w * s;
+        transformed.y -= press * 0.16;
+        transformed.xz += normalize(e + 1e-4) * press * 0.12;
+      }
     }
   `;
   function patchWorld(shader, withEmissive) {
     shader.uniforms.uTime = W.U.uTime;
     shader.uniforms.uPlayer = W.U.uPlayer;
     shader.uniforms.uPush = W.U.uPush;
+    shader.uniforms.uSteps = W.U.uSteps;
     shader.vertexShader = SWAY_VS + shader.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n" + SWAY_BODY);
     if (withEmissive) {
       shader.fragmentShader = "varying float vPulse;\n" + shader.fragmentShader.replace(

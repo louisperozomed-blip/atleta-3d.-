@@ -34,6 +34,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     <button id="zi" aria-label="Acercar">+</button>
     <button id="px" aria-label="Tamaño de píxel">px3</button>
     <button id="walk" aria-label="Variante del paso">andar E</button>
+<button id="snd" aria-pressed="true" aria-label="Sonido de pasos">sonido</button>
 
     <button id="jump" class="big" aria-label="Saltar">SALTAR</button>
   </div>
@@ -87,6 +88,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     uTime: { value: 0 },
     uPlayer: { value: null },       // THREE.Vector3 (lo crea main)
     uPush: { value: 0 },            // 1 mientras el personaje se mueve (hierba que se aparta)
+    uSteps: { value: [0, 1, 2, 3].map(() => new THREE.Vector4(0, 0, -99, 0)) },   // pisadas recientes: x, z, tiempo, fuerza
   };
 
   // ---------------------------------------------------------------------------
@@ -104,7 +106,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
   };
   const SWAY_VS = `
     attribute float aGlow; attribute float aPhase; attribute float aSway;
-    uniform float uTime; uniform vec3 uPlayer; uniform float uPush;
+    uniform float uTime; uniform vec3 uPlayer; uniform float uPush; uniform vec4 uSteps[4];
     varying float vPulse;
   `;
   const SWAY_BODY = `
@@ -119,12 +121,24 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       float k = (1.0 - smoothstep(0.25, 1.1, dist)) * s * (0.35 + 0.65 * uPush);
       transformed.xz += normalize(d + 1e-4) * k * 0.35;
       transformed.y -= k * 0.12;
+      // aplastada un momento por cada pisada cercana (se recupera en ~0.6 s)
+      for (int i = 0; i < 4; i++) {
+        vec4 st = uSteps[i];
+        float age = uTime - st.z;
+        if (age < 0.0 || age > 0.7) continue;
+        vec2 e = transformed.xz - st.xy;
+        float r = length(e);
+        float press = (1.0 - smoothstep(0.1, 0.45, r)) * (1.0 - smoothstep(0.05, 0.7, age)) * st.w * s;
+        transformed.y -= press * 0.16;
+        transformed.xz += normalize(e + 1e-4) * press * 0.12;
+      }
     }
   `;
   function patchWorld(shader, withEmissive) {
     shader.uniforms.uTime = W.U.uTime;
     shader.uniforms.uPlayer = W.U.uPlayer;
     shader.uniforms.uPush = W.U.uPush;
+    shader.uniforms.uSteps = W.U.uSteps;
     shader.vertexShader = SWAY_VS + shader.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n" + SWAY_BODY);
     if (withEmissive) {
       shader.fragmentShader = "varying float vPulse;\n" + shader.fragmentShader.replace(
@@ -1093,23 +1107,53 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     const dust = new THREE.Points(dg, dm); dust.frustumCulled = false; scene.add(dust);
     const dv = new Float32Array(DUST_N * 4);   // vx vy vz vida
     let ri = 0, di = 0;
+    // huellas: pequeñas manchas oscuras que se desvanecen en unos segundos
+    const PRINT_N = 20, printTex = (function () {
+      const c = document.createElement("canvas"); c.width = 16; c.height = 32;
+      const g = c.getContext("2d"), gr = g.createRadialGradient(8, 16, 0, 8, 16, 8);
+      gr.addColorStop(0, "rgba(0,0,0,1)"); gr.addColorStop(0.7, "rgba(0,0,0,0.6)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+      g.save(); g.scale(1, 2); g.fillStyle = gr; g.fillRect(0, 0, 16, 16); g.restore();
+      return new THREE.CanvasTexture(c);
+    })();
+    const printGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+    const prints = [];
+    for (let i = 0; i < PRINT_N; i++) {
+      const m = new THREE.Mesh(printGeo, new THREE.MeshBasicMaterial({ map: printTex, color: 0x0a0610, transparent: true, depthWrite: false, opacity: 0, polygonOffset: true, polygonOffsetFactor: -1 }));
+      m.visible = false; m.renderOrder = 1; scene.add(m); prints.push({ m, t: 9 });
+    }
+    let pi = 0;
     const fx = {
+      footprint(x, y, z, heading, strength) {
+        W.__prints = (W.__prints || 0) + 1;
+        const p = prints[pi++ % PRINT_N];
+        p.m.position.set(x, y + 0.012, z); p.m.rotation.set(0, -heading + Math.PI / 2, 0);
+        p.m.scale.set(0.11, 1, 0.2); p.t = 0; p.s = strength == null ? 0.38 : strength; p.m.visible = true;
+      },
       ripple(x, y, z, size) {
         W.__ripples = (W.__ripples || 0) + 1;
         const r = rings[ri++ % RING_N];
         r.m.position.set(x, y + 0.02, z); r.t = 0; r.life = 0.9; r.size = size || 0.6; r.m.visible = true;
       },
-      dust(x, y, z, n) {
+      dust(x, y, z, n, o) {
         W.__dust = (W.__dust || 0) + 1;
-        const pal = [[0.5, 0.95, 1], [1, 0.55, 0.9], [0.83, 1, 0.48]];
+        o = o || {};
+        const pal = o.pal || [[0.5, 0.95, 1], [1, 0.55, 0.9], [0.83, 1, 0.48]];
+        const spd = o.spd == null ? 1 : o.spd, up = o.up == null ? 1 : o.up, life = o.life || 0.5;
         for (let k = 0; k < n; k++) {
-          const i = di++ % DUST_N, a = Math.random() * Math.PI * 2, s = 0.6 + Math.random() * 0.9;
-          dp[i * 3] = x; dp[i * 3 + 1] = y + 0.05; dp[i * 3 + 2] = z;
-          dv[i * 4] = Math.cos(a) * s; dv[i * 4 + 1] = 0.6 + Math.random() * 0.8; dv[i * 4 + 2] = Math.sin(a) * s; dv[i * 4 + 3] = 0.5 + Math.random() * 0.35;
+          const i = di++ % DUST_N, a = Math.random() * Math.PI * 2, s = (0.6 + Math.random() * 0.9) * spd;
+          dp[i * 3] = x + Math.cos(a) * 0.05; dp[i * 3 + 1] = y + 0.04; dp[i * 3 + 2] = z + Math.sin(a) * 0.05;
+          dv[i * 4] = Math.cos(a) * s; dv[i * 4 + 1] = (0.6 + Math.random() * 0.8) * up; dv[i * 4 + 2] = Math.sin(a) * s; dv[i * 4 + 3] = life * (0.7 + Math.random() * 0.6);
           const c = pal[k % 3]; dc[i * 3] = c[0]; dc[i * 3 + 1] = c[1]; dc[i * 3 + 2] = c[2];
         }
       },
       update(dt) {
+        for (const p of prints) {
+          if (!p.m.visible) continue;
+          p.t += dt;
+          const k = 1 - W.smoothstep(0.6, 3.5, p.t);
+          p.m.material.opacity = p.s * k;
+          if (k <= 0) p.m.visible = false;
+        }
         for (const r of rings) {
           if (!r.m.visible) continue;
           r.t += dt / r.life;
@@ -1498,6 +1542,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
                           wx: base.gx + R.x * q.x * ch.unitsH * sx, wz: base.gz + R.z * q.x * ch.unitsH * sx };
             st.stance++;
             st.lastScreen = null;
+            // pisada: evento para polvo, huella, hierba, hundimiento y sonido
+            (W.stepEvents || (W.stepEvents = [])).push({ x: st.anchor.wx, z: st.anchor.wz, anim, heading: p.heading, t: performance.now() });
           }
           // desplazamiento necesario para que la bota vuelva a su punto del suelo
           const a = st.anchor;
@@ -1572,6 +1618,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       uFootR: { value: new THREE.Vector2(7 / 120, 22 / 136) },                             // (sigma u, alto rodilla v)
       uAO: { value: new THREE.Vector3(125 / 136, 34 / 136, 0) },                            // (v del suelo, alto v, fuerza)
       uGround: { value: new THREE.Color(0, 0, 0) }, uBounce: { value: 0 },
+      uBody: { value: new THREE.Vector3(0, 0.76, 0) },                                     // (hundimiento v, v rodilla, inclinación)
     }]);
     uniforms.uColor.value = tex.color; uniforms.uNormal.value = tex.normal; uniforms.uSpec.value = tex.spec;
     const VS = `
@@ -1604,7 +1651,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       uniform sampler2D uColor, uNormal, uSpec;
       uniform vec4 uRect, uWarp, uFootA, uFootB;
       uniform vec2 uFootR;
-      uniform vec3 uAO, uGround; uniform float uBounce;
+      uniform vec3 uAO, uGround, uBody; uniform float uBounce;
       // deformación de la pierna apoyada: 0 en la rodilla, 1 en la suela, gaussiana en horizontal
       vec2 footW(vec2 q, vec4 F) {
         if (F.z == 0.0 && F.w == 0.0) return vec2(0.0);
@@ -1618,6 +1665,11 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         // deformación de la túnica (etapa 3): desplaza el muestreo en la franja cintura-bajo
         vec2 q = vec2(vQ.x, 1.0 - vQ.y);
         q -= footW(q, uFootA) + footW(q, uFootB);
+        // peso: de rodillas arriba el cuerpo baja (las piernas se comprimen, las botas no se mueven)
+        float above = 1.0 - smoothstep(uBody.y - 0.06, uBody.y + 0.03, q.y);
+        q.y -= uBody.x * above;
+        // inclinación al correr: cizalla horizontal proporcional a la altura sobre las botas
+        q.x -= uBody.z * max(0.0, uBody.y - q.y);
         vec2 uv = vec2(uRect.x + q.x * uRect.z, uRect.y + q.y * uRect.w);
         float vv = q.y;
         float band = smoothstep(uWarp.z, uWarp.z + 0.12, vv) * (1.0 - smoothstep(uWarp.w - 0.08, uWarp.w, vv));
@@ -1856,8 +1908,18 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         let lift = 0, hgt = 0;
         if (anim === "jump") { hgt = p.jump.h; lift = (meta.foot_lift["jump_" + meta.directions[st.dir]][f] || 0) * unitsV; }
         let bob = 0, sway = 0, wsx = 1, wsy = 1;
-        if (anim === "run") bob = 0.026 * W.CHAR_H * Math.pow(Math.sin(st.phase * 2 * Math.PI), 2);
-        if (anim === "walk" && st.wfx) { bob = st.wfx.bob * W.CHAR_H; sway = st.wfx.sway * W.CHAR_H; wsx = st.wfx.sx; wsy = st.wfx.sy;
+        // hundimiento en el contacto (curva de impacto: baja ~70 ms y se recupera)
+        let dip = 0;
+        if (W.FX.impact && st.dipT != null) {
+          st.dipT += st.dt || 0;
+          const tau = 0.07, x = st.dipT / tau;
+          dip = st.dipA * x * Math.exp(1 - x);                   // píxeles de render
+          if (st.dipT > 0.5) st.dipT = null;
+        }
+        st.dipPx = dip;
+        uniforms.uBody.value.x = W.wpp ? -dip * W.wpp / unitsH / FH : 0;
+        if (anim === "run" && !W.FX.impact) bob = 0.026 * W.CHAR_H * Math.pow(Math.sin(st.phase * 2 * Math.PI), 2);
+        if (anim === "walk" && st.wfx) { bob = W.FX.impact ? 0 : st.wfx.bob * W.CHAR_H; sway = st.wfx.sway * W.CHAR_H; wsx = st.wfx.sx; wsy = st.wfx.sy;
           uniforms.uWarp.value.set(st.wfx.warpX, st.wfx.warpY, 0.5, 0.86); }
         else uniforms.uWarp.value.set(0, 0, 0.5, 0.86);
         const sq = Math.sin(p.squash * Math.PI) * (p.squash > 0 ? 1 : 0);
@@ -1941,9 +2003,50 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
   "use strict";
   const W = (window.W = window.W || {});
   let idleT = 0;
+  let stepSlot = 0;
+  // terreno bajo el pie -> tipo de impacto
+  function surfaceKind(x, z) {
+    const k = W.kindAt(x, z), K = W.K;
+    if (k === K.PUDDLE) return "water";
+    if (k === K.PATH || k === K.PLAZA) return "dust";
+    if (k === K.STONE) return "stone";
+    return "grass";
+  }
+  const PAL = {
+    dust: { pal: [[0.62, 0.66, 0.62], [0.5, 0.52, 0.5], [0.72, 0.74, 0.68]], spd: 0.55, up: 0.55, life: 0.45, n: 7 },
+    stone: { pal: [[0.6, 0.64, 0.7], [0.45, 0.5, 0.56], [0.36, 0.62, 0.42]], spd: 0.6, up: 0.6, life: 0.4, n: 5 },
+    water: { pal: [[0.75, 0.97, 1], [0.5, 0.88, 0.95], [1, 1, 1]], spd: 0.7, up: 1.6, life: 0.45, n: 9 },
+    grass: { pal: [[0.36, 0.64, 0.4], [0.45, 0.72, 0.45], [0.8, 1, 0.5]], spd: 0.5, up: 1.0, life: 0.5, n: 6 },
+  };
   W.afterCharacter = function (dt) {
     const p = W.player, fx = W.fx, st = W.character.st;
     const surf = p.ground + 0.045;
+    // --- impacto de cada pisada (eventos del anclaje de pies) --------------------------------
+    const evs = W.stepEvents || [];
+    if (W.FX.impact) {
+      for (const e of evs) {
+        const kind = surfaceKind(e.x, e.z), P = PAL[kind], run = e.anim === "run";
+        const y = W.heightAt(e.x, e.z);
+        fx.dust(e.x, kind === "water" ? y + 0.045 : y, e.z, Math.round(P.n * (run ? 1.5 : 1)), P);
+        if (kind === "water") fx.ripple(e.x, y + 0.045, e.z, run ? 0.7 : 0.5);
+        else fx.footprint(e.x, y, e.z, e.heading, kind === "grass" ? 0.22 : 0.38);
+        // hierba aplastada un momento
+        const s = W.U.uSteps.value[stepSlot++ % 4];
+        s.x = e.x; s.y = e.z; s.z = W.U.uTime.value; s.w = run ? 1 : 0.8;
+        // peso: el cuerpo se hunde en el contacto
+        st.dipT = 0; st.dipA = run ? 2.0 : 1.5;
+        if (W.sfx) W.sfx.step(kind, run ? 1 : 0.7);
+        W.__steps = (W.__steps || 0) + 1;
+        (W.stepLog || (W.stepLog = [])).push({ t: W.U.uTime.value, kind });
+      }
+    }
+    evs.length = 0;
+    if (W.FX.impact) {
+      if (p.inWater && !p.jump && st.anim === "idle") { idleT += dt; if (idleT > 1.4) { idleT = 0; fx.ripple(p.x, surf, p.z, 0.35); } }
+      for (const e of p.events) if (e.type === "land") { fx.dust(p.x, p.ground, p.z, 18); if (p.inWater) { fx.ripple(p.x, surf, p.z, 0.9); fx.ripple(p.x, surf, p.z, 0.5); } if (W.sfx) W.sfx.step(surfaceKind(p.x, p.z), 1.2); }
+      p.events.length = 0;
+      return;
+    }
     if (st.anim === "walk" || st.anim === "run") {
       // dos pisadas por ciclo: fase 0 y 0.5
       const q = Math.floor(st.phase * 2);
@@ -1967,6 +2070,72 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     }
     p.events.length = 0;
   };
+})();
+
+</script>
+<script>/* audio.js */
+// audio.js — pasos suaves sintetizados (WebAudio, sin archivos), distintos por terreno.
+// El contexto de audio se crea con el primer toque (política de reproducción de los navegadores).
+// Botón "sonido" para silenciar.
+(function () {
+  "use strict";
+  const W = (window.W = window.W || {});
+  const A = (W.sfx = { enabled: true, ctx: null, noise: null, count: 0 });
+
+  function ensure() {
+    if (A.ctx || !A.enabled) return A.ctx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    try {
+      A.ctx = new AC();
+      const len = A.ctx.sampleRate * 0.4, buf = A.ctx.createBuffer(1, len, A.ctx.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      A.noise = buf;
+      A.master = A.ctx.createGain(); A.master.gain.value = 0.35; A.master.connect(A.ctx.destination);
+    } catch (e) { A.ctx = null; }
+    return A.ctx;
+  }
+  A.unlock = function () { const c = ensure(); if (c && c.state === "suspended") c.resume(); };
+  A.setEnabled = function (on) { A.enabled = on; if (A.master) A.master.gain.value = on ? 0.35 : 0; };
+
+  // kind: "dust" (sendero/plaza), "stone" (ruinas), "water" (charco), "grass" (hierba/cristal)
+  A.step = function (kind, strength) {
+    A.count++;
+    if (!A.enabled || !W.FX.sound) return;
+    const c = A.ctx;
+    if (!c || c.state !== "running") return;
+    const t = c.currentTime, s = strength == null ? 1 : strength;
+    const src = c.createBufferSource(); src.buffer = A.noise;
+    src.playbackRate.value = 0.85 + Math.random() * 0.3;
+    const f = c.createBiquadFilter(), g = c.createGain();
+    const P = {
+      dust: ["lowpass", 900, 0.9, 0.09, 0.22],
+      stone: ["bandpass", 2200, 2.5, 0.05, 0.2],
+      water: ["bandpass", 1300, 4, 0.14, 0.2],
+      grass: ["highpass", 2600, 0.7, 0.11, 0.12],
+    }[kind] || ["lowpass", 900, 0.9, 0.09, 0.2];
+    f.type = P[0]; f.frequency.value = P[1]; f.Q.value = P[2];
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(P[4] * s, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + P[3]);
+    if (kind === "water") f.frequency.exponentialRampToValueAtTime(500, t + P[3]);
+    src.connect(f); f.connect(g); g.connect(A.master);
+    src.start(t, Math.random() * 0.2, P[3] + 0.02);
+    // golpe grave del talón (sendero, piedra)
+    if (kind === "dust" || kind === "stone") {
+      const o = c.createOscillator(), og = c.createGain();
+      o.frequency.setValueAtTime(kind === "stone" ? 150 : 95, t); o.frequency.exponentialRampToValueAtTime(55, t + 0.07);
+      og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.25 * s, t + 0.005); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+      o.connect(og); og.connect(A.master); o.start(t); o.stop(t + 0.09);
+    }
+    if (kind === "water") {
+      const o = c.createOscillator(), og = c.createGain();
+      o.frequency.setValueAtTime(1500, t); o.frequency.exponentialRampToValueAtTime(600, t + 0.06);
+      og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.06 * s, t + 0.004); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+      o.connect(og); og.connect(A.master); o.start(t); o.stop(t + 0.08);
+    }
+  };
+  ["pointerdown", "keydown", "touchstart"].forEach((ev) => addEventListener(ev, () => A.unlock(), { passive: true }));
 })();
 
 </script>
@@ -2392,6 +2561,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     const setWalk = (m) => { W.walkMode = m; if (wb) wb.textContent = "andar " + m; };
     on("walk", () => { const M = W.WALK_MODES; setWalk(M[(M.indexOf(W.walkMode) + 1) % M.length]); });
     W.setWalk = setWalk;
+    on("snd", () => { const b = $("snd"), onNow = !(W.sfx && W.sfx.enabled); if (W.sfx) W.sfx.setEnabled(onNow); b.setAttribute("aria-pressed", String(onNow)); b.textContent = onNow ? "sonido" : "silencio"; });
     if (W.initControls) W.initControls(renderer.domElement);
 
     // --- bucle -------------------------------------------------------------------------------

@@ -177,23 +177,53 @@
     const dust = new THREE.Points(dg, dm); dust.frustumCulled = false; scene.add(dust);
     const dv = new Float32Array(DUST_N * 4);   // vx vy vz vida
     let ri = 0, di = 0;
+    // huellas: pequeñas manchas oscuras que se desvanecen en unos segundos
+    const PRINT_N = 20, printTex = (function () {
+      const c = document.createElement("canvas"); c.width = 16; c.height = 32;
+      const g = c.getContext("2d"), gr = g.createRadialGradient(8, 16, 0, 8, 16, 8);
+      gr.addColorStop(0, "rgba(0,0,0,1)"); gr.addColorStop(0.7, "rgba(0,0,0,0.6)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+      g.save(); g.scale(1, 2); g.fillStyle = gr; g.fillRect(0, 0, 16, 16); g.restore();
+      return new THREE.CanvasTexture(c);
+    })();
+    const printGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+    const prints = [];
+    for (let i = 0; i < PRINT_N; i++) {
+      const m = new THREE.Mesh(printGeo, new THREE.MeshBasicMaterial({ map: printTex, color: 0x0a0610, transparent: true, depthWrite: false, opacity: 0, polygonOffset: true, polygonOffsetFactor: -1 }));
+      m.visible = false; m.renderOrder = 1; scene.add(m); prints.push({ m, t: 9 });
+    }
+    let pi = 0;
     const fx = {
+      footprint(x, y, z, heading, strength) {
+        W.__prints = (W.__prints || 0) + 1;
+        const p = prints[pi++ % PRINT_N];
+        p.m.position.set(x, y + 0.012, z); p.m.rotation.set(0, -heading + Math.PI / 2, 0);
+        p.m.scale.set(0.11, 1, 0.2); p.t = 0; p.s = strength == null ? 0.38 : strength; p.m.visible = true;
+      },
       ripple(x, y, z, size) {
         W.__ripples = (W.__ripples || 0) + 1;
         const r = rings[ri++ % RING_N];
         r.m.position.set(x, y + 0.02, z); r.t = 0; r.life = 0.9; r.size = size || 0.6; r.m.visible = true;
       },
-      dust(x, y, z, n) {
+      dust(x, y, z, n, o) {
         W.__dust = (W.__dust || 0) + 1;
-        const pal = [[0.5, 0.95, 1], [1, 0.55, 0.9], [0.83, 1, 0.48]];
+        o = o || {};
+        const pal = o.pal || [[0.5, 0.95, 1], [1, 0.55, 0.9], [0.83, 1, 0.48]];
+        const spd = o.spd == null ? 1 : o.spd, up = o.up == null ? 1 : o.up, life = o.life || 0.5;
         for (let k = 0; k < n; k++) {
-          const i = di++ % DUST_N, a = Math.random() * Math.PI * 2, s = 0.6 + Math.random() * 0.9;
-          dp[i * 3] = x; dp[i * 3 + 1] = y + 0.05; dp[i * 3 + 2] = z;
-          dv[i * 4] = Math.cos(a) * s; dv[i * 4 + 1] = 0.6 + Math.random() * 0.8; dv[i * 4 + 2] = Math.sin(a) * s; dv[i * 4 + 3] = 0.5 + Math.random() * 0.35;
+          const i = di++ % DUST_N, a = Math.random() * Math.PI * 2, s = (0.6 + Math.random() * 0.9) * spd;
+          dp[i * 3] = x + Math.cos(a) * 0.05; dp[i * 3 + 1] = y + 0.04; dp[i * 3 + 2] = z + Math.sin(a) * 0.05;
+          dv[i * 4] = Math.cos(a) * s; dv[i * 4 + 1] = (0.6 + Math.random() * 0.8) * up; dv[i * 4 + 2] = Math.sin(a) * s; dv[i * 4 + 3] = life * (0.7 + Math.random() * 0.6);
           const c = pal[k % 3]; dc[i * 3] = c[0]; dc[i * 3 + 1] = c[1]; dc[i * 3 + 2] = c[2];
         }
       },
       update(dt) {
+        for (const p of prints) {
+          if (!p.m.visible) continue;
+          p.t += dt;
+          const k = 1 - W.smoothstep(0.6, 3.5, p.t);
+          p.m.material.opacity = p.s * k;
+          if (k <= 0) p.m.visible = false;
+        }
         for (const r of rings) {
           if (!r.m.visible) continue;
           r.t += dt / r.life;

@@ -6,7 +6,7 @@ import base64, io, json, os, re, sys
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ORDER = ["core.js", "terrain.js", "props.js", "effects.js", "player.js", "walk.js", "feet.js", "character.js", "interact.js", "nav.js", "controls.js", "main.js"]
+ORDER = ["core.js", "terrain.js", "props.js", "effects.js", "player.js", "walk.js", "feet.js", "character.js", "interact.js", "audio.js", "nav.js", "controls.js", "main.js"]
 
 
 def webp(path, **kw):

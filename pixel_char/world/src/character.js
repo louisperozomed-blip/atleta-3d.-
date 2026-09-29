@@ -24,6 +24,7 @@
       uFootR: { value: new THREE.Vector2(7 / 120, 22 / 136) },                             // (sigma u, alto rodilla v)
       uAO: { value: new THREE.Vector3(125 / 136, 34 / 136, 0) },                            // (v del suelo, alto v, fuerza)
       uGround: { value: new THREE.Color(0, 0, 0) }, uBounce: { value: 0 },
+      uBody: { value: new THREE.Vector3(0, 0.76, 0) },                                     // (hundimiento v, v rodilla, inclinación)
     }]);
     uniforms.uColor.value = tex.color; uniforms.uNormal.value = tex.normal; uniforms.uSpec.value = tex.spec;
     const VS = `
@@ -56,7 +57,7 @@
       uniform sampler2D uColor, uNormal, uSpec;
       uniform vec4 uRect, uWarp, uFootA, uFootB;
       uniform vec2 uFootR;
-      uniform vec3 uAO, uGround; uniform float uBounce;
+      uniform vec3 uAO, uGround, uBody; uniform float uBounce;
       // deformación de la pierna apoyada: 0 en la rodilla, 1 en la suela, gaussiana en horizontal
       vec2 footW(vec2 q, vec4 F) {
         if (F.z == 0.0 && F.w == 0.0) return vec2(0.0);
@@ -70,6 +71,11 @@
         // deformación de la túnica (etapa 3): desplaza el muestreo en la franja cintura-bajo
         vec2 q = vec2(vQ.x, 1.0 - vQ.y);
         q -= footW(q, uFootA) + footW(q, uFootB);
+        // peso: de rodillas arriba el cuerpo baja (las piernas se comprimen, las botas no se mueven)
+        float above = 1.0 - smoothstep(uBody.y - 0.06, uBody.y + 0.03, q.y);
+        q.y -= uBody.x * above;
+        // inclinación al correr: cizalla horizontal proporcional a la altura sobre las botas
+        q.x -= uBody.z * max(0.0, uBody.y - q.y);
         vec2 uv = vec2(uRect.x + q.x * uRect.z, uRect.y + q.y * uRect.w);
         float vv = q.y;
         float band = smoothstep(uWarp.z, uWarp.z + 0.12, vv) * (1.0 - smoothstep(uWarp.w - 0.08, uWarp.w, vv));
@@ -308,8 +314,18 @@
         let lift = 0, hgt = 0;
         if (anim === "jump") { hgt = p.jump.h; lift = (meta.foot_lift["jump_" + meta.directions[st.dir]][f] || 0) * unitsV; }
         let bob = 0, sway = 0, wsx = 1, wsy = 1;
-        if (anim === "run") bob = 0.026 * W.CHAR_H * Math.pow(Math.sin(st.phase * 2 * Math.PI), 2);
-        if (anim === "walk" && st.wfx) { bob = st.wfx.bob * W.CHAR_H; sway = st.wfx.sway * W.CHAR_H; wsx = st.wfx.sx; wsy = st.wfx.sy;
+        // hundimiento en el contacto (curva de impacto: baja ~70 ms y se recupera)
+        let dip = 0;
+        if (W.FX.impact && st.dipT != null) {
+          st.dipT += st.dt || 0;
+          const tau = 0.07, x = st.dipT / tau;
+          dip = st.dipA * x * Math.exp(1 - x);                   // píxeles de render
+          if (st.dipT > 0.5) st.dipT = null;
+        }
+        st.dipPx = dip;
+        uniforms.uBody.value.x = W.wpp ? -dip * W.wpp / unitsH / FH : 0;
+        if (anim === "run" && !W.FX.impact) bob = 0.026 * W.CHAR_H * Math.pow(Math.sin(st.phase * 2 * Math.PI), 2);
+        if (anim === "walk" && st.wfx) { bob = W.FX.impact ? 0 : st.wfx.bob * W.CHAR_H; sway = st.wfx.sway * W.CHAR_H; wsx = st.wfx.sx; wsy = st.wfx.sy;
           uniforms.uWarp.value.set(st.wfx.warpX, st.wfx.warpY, 0.5, 0.86); }
         else uniforms.uWarp.value.set(0, 0, 0.5, 0.86);
         const sq = Math.sin(p.squash * Math.PI) * (p.squash > 0 ? 1 : 0);

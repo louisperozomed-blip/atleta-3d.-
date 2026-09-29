@@ -147,6 +147,7 @@
     const setWalk = (m) => { W.walkMode = m; if (wb) wb.textContent = "andar " + m; };
     on("walk", () => { const M = W.WALK_MODES; setWalk(M[(M.indexOf(W.walkMode) + 1) % M.length]); });
     W.setWalk = setWalk;
+    on("snd", () => { const b = $("snd"), onNow = !(W.sfx && W.sfx.enabled); if (W.sfx) W.sfx.setEnabled(onNow); b.setAttribute("aria-pressed", String(onNow)); b.textContent = onNow ? "sonido" : "silencio"; });
     if (W.initControls) W.initControls(renderer.domElement);
 
     // --- bucle -------------------------------------------------------------------------------

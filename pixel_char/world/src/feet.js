@@ -106,6 +106,8 @@
                           wx: base.gx + R.x * q.x * ch.unitsH * sx, wz: base.gz + R.z * q.x * ch.unitsH * sx };
             st.stance++;
             st.lastScreen = null;
+            // pisada: evento para polvo, huella, hierba, hundimiento y sonido
+            (W.stepEvents || (W.stepEvents = [])).push({ x: st.anchor.wx, z: st.anchor.wz, anim, heading: p.heading, t: performance.now() });
           }
           // desplazamiento necesario para que la bota vuelva a su punto del suelo
           const a = st.anchor;
