@@ -34,7 +34,15 @@
       this.moved = 0;                    // distancia recorrida (fase de la animación)
     }
     get H() { return W.CHAR_H; }
-    get walkV() { return P.walkSpeed * W.CHAR_H * (W.speedMul || 1); }
+    get walkV() {
+      let v = P.walkSpeed;
+      // variante E: la velocidad se ajusta a la zancada medida de la dirección que se ve
+      if (W.walkMode === "E" && W.WALK_DATA && W.character) {
+        const d = ["S", "SW", "W", "NW", "N", "NE", "E", "SE"][W.character.st.dir];
+        v = Math.min(1.1, Math.max(0.75, W.WALK_DATA.stride[d] * 1.8));
+      }
+      return v * W.CHAR_H * (W.speedMul || 1);
+    }
     get runV() { return P.runSpeed * W.CHAR_H * (W.speedMul || 1); }
     remaining() {
       let d = 0, px = this.x, pz = this.z;

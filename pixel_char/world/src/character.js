@@ -188,9 +188,13 @@
         }
         if (anim !== st.anim) { if (anim === "idle") st.idleT = 0; st.anim = anim; }
         if (anim === "walk" || anim === "run") {
-          const stride = (anim === "run" ? W.STRIDE.run : W.STRIDE.walk) * H;
+          const stride = W.walkStride(W.walkMode, st.dir, anim) * H;
           st.phase = (st.phase + (p.realSpeed || p.speed) * dt / stride) % 1;
         } else if (anim === "idle") st.idleT += dt;
+        // velocidad angular del rumbo (la túnica reacciona a los giros)
+        let dh = p.heading - (st.lastHeading == null ? p.heading : st.lastHeading);
+        while (dh > Math.PI) dh -= 2 * Math.PI; while (dh < -Math.PI) dh += 2 * Math.PI;
+        st.turnRate = dh / Math.max(dt, 1e-3); st.lastHeading = p.heading;
         // --- dirección (histéresis + paso por intermedias cada 40 ms) --------------
         // se usa el azimut OBJETIVO de la cámara: al girar 90° el índice salta 2 posiciones
         const moving = p.speed > 0.01 * H || (p.jump && p.jump.forward) || p.path.length;
@@ -221,8 +225,14 @@
           else if (t < P.jumpPrep + P.jumpAir) { const u = (t - P.jumpPrep) / P.jumpAir; f = u < 0.2 ? 1 : u < 0.45 ? 2 : u < 0.72 ? 3 : 4; }
           else f = 5;
         } else if (anim === "idle") f = Math.floor(st.idleT * meta.animations.idle.fps) % NF;
-        else f = W.walkFrame ? W.walkFrame(anim, st.phase) : Math.floor(st.phase * NF) % NF;
+        else if (anim === "walk") { st.fi = W.walkFrameFor(W.walkMode, st.dir, st.phase); f = st.fi.f; }
+        else f = Math.floor(st.phase * NF) % NF;
         st.frame = f;
+        // efectos del walk (bob, balanceo, squash, túnica) según la variante
+        if (anim === "walk") {
+          const k = Math.min(1, p.speed / Math.max(p.walkV * 0.6, 1e-3));
+          st.wfx = W.walkFx(W.walkMode, st.dir, st.phase, st.fi, dt, st.wst || (st.wst = {}), k, st.turnRate);
+        } else st.wfx = null;
         this.place(p, camTheta, anim, f);
       },
       drawSticker(p, yUp, r) {
@@ -243,10 +253,13 @@
         uniforms.uRect.value.set(r[0], r[1], r[2], r[3]);
         let lift = 0, hgt = 0;
         if (anim === "jump") { hgt = p.jump.h; lift = (meta.foot_lift["jump_" + meta.directions[st.dir]][f] || 0) * unitsV; }
-        let bob = 0;
-        if (anim === "walk" || anim === "run") bob = (anim === "run" ? 0.026 : 0.011) * W.CHAR_H * Math.pow(Math.sin(st.phase * 2 * Math.PI), 2);
+        let bob = 0, sway = 0, wsx = 1, wsy = 1;
+        if (anim === "run") bob = 0.026 * W.CHAR_H * Math.pow(Math.sin(st.phase * 2 * Math.PI), 2);
+        if (anim === "walk" && st.wfx) { bob = st.wfx.bob * W.CHAR_H; sway = st.wfx.sway * W.CHAR_H; wsx = st.wfx.sx; wsy = st.wfx.sy;
+          uniforms.uWarp.value.set(st.wfx.warpX, st.wfx.warpY, 0.5, 0.86); }
+        else uniforms.uWarp.value.set(0, 0, 0.5, 0.86);
         const sq = Math.sin(p.squash * Math.PI) * (p.squash > 0 ? 1 : 0);
-        const sx = 1 + 0.06 * sq, sy = 1 - 0.09 * sq;
+        const sx = (1 + 0.06 * sq) * wsx, sy = (1 - 0.09 * sq) * wsy;
         const w = FW * unitsH * sx, h = FH * unitsV * sy;
         // hacia la cámara 0.15 para no pelearse con el suelo en los pies
         const tx = Math.sin(camTheta), tz = Math.cos(camTheta);
@@ -255,7 +268,7 @@
         const rx = Math.cos(camTheta), rz = -Math.sin(camTheta);
         const ox = -PVX / FW * w, oy = -(FH - PVY) / FH * h;   // esquina inferior izquierda respecto al pivote
         const baseY = p.y + hgt - lift + bob + oy;
-        mesh.position.set(p.x + rx * ox + tx * 0.15, baseY, p.z + rz * ox + tz * 0.15);
+        mesh.position.set(p.x + rx * (ox + sway) + tx * 0.15, baseY, p.z + rz * (ox + sway) + tz * 0.15);
         st.hgt = hgt;
         // proyector de sombra: mismo tamaño, girado de cara al sol
         const sd = W.SUN_DIR, sa = Math.atan2(sd.x, sd.z);
@@ -276,5 +289,4 @@
     };
     return ch;
   };
-  W.STRIDE = { walk: 0.72, run: 1.35 };                    // alturas por ciclo (etapa 3 lo mide)
 })();

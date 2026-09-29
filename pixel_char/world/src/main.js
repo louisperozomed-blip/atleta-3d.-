@@ -143,6 +143,10 @@
     on("zi", () => { ui.zoom = Math.min(4, ui.zoom * 1.25); resize(); });
     on("zo", () => { ui.zoom = Math.max(0.45, ui.zoom / 1.25); resize(); });
     on("px", () => { ui.pi = (ui.pi + 1) % PIX.length; resize(); });
+    const wb = $("walk");
+    const setWalk = (m) => { W.walkMode = m; if (wb) wb.textContent = "andar " + m; };
+    on("walk", () => { const M = W.WALK_MODES; setWalk(M[(M.indexOf(W.walkMode) + 1) % M.length]); });
+    W.setWalk = setWalk;
     if (W.initControls) W.initControls(renderer.domElement);
 
     // --- bucle -------------------------------------------------------------------------------

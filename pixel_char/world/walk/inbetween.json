@@ -1,0 +1,42 @@
+{
+ "S": {
+  "semitransparente_originales": 0.025,
+  "semitransparente_intermedios": 0.058,
+  "desacuerdo_color_medio": 0.059
+ },
+ "SW": {
+  "semitransparente_originales": 0.029,
+  "semitransparente_intermedios": 0.091,
+  "desacuerdo_color_medio": 0.057
+ },
+ "W": {
+  "semitransparente_originales": 0.032,
+  "semitransparente_intermedios": 0.078,
+  "desacuerdo_color_medio": 0.049
+ },
+ "NW": {
+  "semitransparente_originales": 0.024,
+  "semitransparente_intermedios": 0.068,
+  "desacuerdo_color_medio": 0.04
+ },
+ "N": {
+  "semitransparente_originales": 0.025,
+  "semitransparente_intermedios": 0.067,
+  "desacuerdo_color_medio": 0.043
+ },
+ "NE": {
+  "semitransparente_originales": 0.029,
+  "semitransparente_intermedios": 0.074,
+  "desacuerdo_color_medio": 0.045
+ },
+ "E": {
+  "semitransparente_originales": 0.035,
+  "semitransparente_intermedios": 0.138,
+  "desacuerdo_color_medio": 0.047
+ },
+ "SE": {
+  "semitransparente_originales": 0.026,
+  "semitransparente_intermedios": 0.067,
+  "desacuerdo_color_medio": 0.037
+ }
+}

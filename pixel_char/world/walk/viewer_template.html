@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Paso del autómata</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Visor de variantes del walk. Mismo mundo nocturno que la demo (un solo aspecto). */
+:root{--bg:#0c141c;--panel:#111e29;--ink:#d6f3ff;--dim:#8fb1c2;--edge:#2f7dff;--hi:#ffd27a;color-scheme:dark;
+  --px:"Press Start 2P",ui-monospace,Menlo,monospace;--body:"IBM Plex Sans",system-ui,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
+main{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:18px 40px}
+h1{font:13px/1.6 var(--px);margin:0 0 6px;text-wrap:balance}
+p{margin:0 0 10px;max-width:70ch;color:var(--dim)}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0}
+.controls button{font:10px var(--px);color:var(--ink);background:var(--panel);border:2px solid var(--edge);min-width:44px;min-height:40px;padding:0 10px;cursor:pointer}
+.controls button[aria-pressed="true"]{background:#1d4a8a}
+.controls button:focus-visible,.card input:focus-visible{outline:2px solid #7fe8ff;outline-offset:2px}
+.controls label{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--dim)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.card{background:var(--panel);border:1px solid #1f3446;min-width:0}
+.card canvas{display:block;width:100%;aspect-ratio:3/4;image-rendering:pixelated}
+.card .cap{padding:8px 10px 10px}
+.card .cap b{font:10px/1.6 var(--px);display:block;margin-bottom:4px}
+.card .cap small{color:var(--dim);font-size:12px;display:block;font-variant-numeric:tabular-nums}
+.card.rec{border-color:var(--hi)}
+.card.rec b::after{content:" · recomendada";color:var(--hi)}
+.card label{display:flex;gap:6px;align-items:center;font-size:13px;margin-top:6px;cursor:pointer}
+section{margin-top:26px}
+h2{font:11px/1.6 var(--px);margin:0 0 8px}
+.wide{overflow-x:auto;background:#fff;border:1px solid #1f3446}
+.wide img{display:block;max-width:none;height:auto}
+table{border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+td,th{padding:4px 10px;border-bottom:1px solid #1f3446;text-align:left}
+#choice{font:10px var(--px);color:var(--hi)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Paso del autómata · variantes del walk</h1>
+  <p>Las cinco variantes andan a la vez sobre el mismo suelo, que se desplaza a la velocidad real del personaje en el mundo. Si los pies patinan, el zapato apoyado se desliza respecto a las baldosas. Cada variante suma lo de la anterior.</p>
+  <div class="controls" id="dirs" role="group" aria-label="Dirección"></div>
+  <div class="controls">
+    <button id="slow" aria-pressed="false">Cámara lenta</button>
+    <label>Tamaño <input id="zoom" type="range" min="0.6" max="1.6" step="0.05" value="1"></label>
+    <span id="choice"></span>
+  </div>
+  <div class="grid" id="grid"></div>
+
+  <section>
+    <h2>Medición de los pies</h2>
+    <p>Barras: medición en bruto de la separación de los zapatos a lo largo de la marcha (rojo = contacto) y del reparto del avance entre frames. Tabla: valores finales que usa la variante E, promediados con la dirección espejo (E↔W, NE↔NW, SE↔SW), con la zancada limitada a 0.35–0.7 H y cada frame con al menos el 10 % del ciclo. La zancada está convertida a la cámara del mundo.</p>
+    <div class="wide"><img id="measure" alt="Barras de separación de pies y duración de cada frame para las 8 direcciones"></div>
+    <div style="overflow-x:auto;margin-top:10px"><table id="tab"></table></div>
+  </section>
+  <section>
+    <h2>Opcional descartado: 12 frames con flujo óptico</h2>
+    <p>Los intermedios (en rojo) se generaron con flujo óptico DIS de OpenCV en ambos sentidos. Salen pies y bajo de la túnica dobles y semitransparentes: la proporción de alfa intermedio es 2–4 veces la de los frames originales (en E, 13.8 % frente a 3.5 %). No se usan.</p>
+    <div class="wide"><img id="inb" alt="Frames originales alternados con intermedios de flujo óptico que muestran fantasmas"></div>
+  </section>
+</main>
+<script>
+"use strict";
+const D = /*DATA*/null;
+const DIRS = ["S", "SW", "W", "NW", "N", "NE", "E", "SE"];
+const MODES = ["A", "B", "C", "D", "E"];
+const LABEL = { A: "A · Original", B: "B · Tiempos", C: "C · Bob y balanceo", D: "D · Túnica", E: "E · Zancada medida" };
+const DESC = { A: "6 frames iguales, zancada fija 0.72 H", B: "contactos ×1.3, pasos ×0.85", C: "bob por separación de pies, balanceo lateral, squash al apoyar", D: "bajo de la túnica con retraso (resorte)", E: "velocidad y reparto de frames según los pies medidos" };
+const EL = Math.atan(0.5), SIN = Math.sin(EL), COS = Math.cos(EL);
+let dir = 6, slow = false, zoom = 1;
+document.getElementById("measure").src = D.measureImg;
+document.getElementById("inb").src = D.inbImg;
+// tabla
+(function () {
+  const t = document.getElementById("tab");
+  t.innerHTML = "<tr><th>Dir.</th><th>Zancada (H/ciclo)</th><th>Contactos</th><th>Duración de cada frame (% del ciclo)</th><th>Velocidad E (H/s)</th></tr>" +
+    DIRS.map((d) => `<tr><td>${d}</td><td>${D.walk.stride[d].toFixed(2)}</td><td>${D.walk.contact[d].map((c, i) => c ? i : "").filter((x) => x !== "").join(", ")}</td><td>${D.walk.advance[d].map((v) => Math.round(v * 100)).join(" · ")}</td><td>${speedE(d).toFixed(2)}</td></tr>`).join("");
+})();
+function speedE(d) { return Math.min(1.1, Math.max(0.75, D.walk.stride[d] * 1.8)); }
+// botones de dirección
+const dirBox = document.getElementById("dirs");
+DIRS.forEach((d, i) => { const b = document.createElement("button"); b.textContent = d; b.setAttribute("aria-pressed", i === dir); b.onclick = () => { dir = i; [...dirBox.children].forEach((c, k) => c.setAttribute("aria-pressed", k === dir)); }; dirBox.appendChild(b); });
+document.getElementById("slow").onclick = (e) => { slow = !slow; e.target.setAttribute("aria-pressed", slow); };
+document.getElementById("zoom").oninput = (e) => { zoom = +e.target.value; };
+let choice = "E";
+try { choice = localStorage.getItem("walkChoice") || "E"; } catch (_) {}
+function showChoice() { document.getElementById("choice").textContent = "Elegida: " + LABEL[choice]; }
+showChoice();
+
+// --- lógica de las variantes (misma que src/walk.js del mundo) ------------------
+const has = (m, f) => MODES.indexOf(m) >= MODES.indexOf(f);
+function weights(m, d) {
+  if (has(m, "E")) return D.walk.advance[d];
+  if (has(m, "B")) { const w = D.walk.contact[d].map((k) => k ? 1.3 : 0.85), s = w.reduce((a, b) => a + b); return w.map((v) => v / s); }
+  return [1, 1, 1, 1, 1, 1].map((v) => v / 6);
+}
+function frameFor(m, d, ph) { const w = weights(m, d); let acc = 0; for (let i = 0; i < 6; i++) { acc += w[i]; if (ph < acc) return { f: i, u: (ph - (acc - w[i])) / w[i] }; } return { f: 5, u: 1 }; }
+function fx(m, d, ph, fi, dt, st) {
+  const o = { bob: 0, sway: 0, sx: 1, sy: 1, wx: 0, wy: 0 };
+  if (!has(m, "C")) { o.bob = 0.011 * Math.pow(Math.sin(ph * 2 * Math.PI), 2); return o; }
+  const sp = D.walk.spread[d], mx = Math.max(...sp), mn = Math.min(...sp);
+  const n0 = (sp[fi.f] - mn) / (mx - mn || 1), n1 = (sp[(fi.f + 1) % 6] - mn) / (mx - mn || 1), sep = n0 + (n1 - n0) * fi.u;
+  o.bob = (1 - sep) * 0.016;
+  o.sway = Math.sin(ph * 2 * Math.PI) * 0.009;
+  if (D.walk.contact[d][fi.f] && st.lastF !== fi.f) st.sqT = 0;
+  st.lastF = fi.f; st.sqT = (st.sqT == null ? 1 : st.sqT) + dt;
+  const sq = Math.exp(-st.sqT * 14); o.sy = 1 - 0.022 * sq; o.sx = 1 + 0.012 * sq;
+  if (has(m, "D")) {
+    const tgt = -o.sway * 1.6, k = 38, c = 2 * Math.sqrt(k) * 0.9;
+    st.cv = (st.cv || 0) + ((tgt - (st.cx || 0)) * k - (st.cv || 0) * c) * dt; st.cx = (st.cx || 0) + st.cv * dt;
+    o.wx = st.cx; o.wy = -0.006 * (1 - sep);
+  }
+  return o;
+}
+
+// --- render WebGL por tarjeta -------------------------------------------------------
+const img = new Image();
+img.src = D.atlas;
+const VS = "attribute vec2 p;varying vec2 q;void main(){q=p;gl_Position=vec4(p*2.-1.,0.,1.);}";
+const FS_GROUND = `precision highp float;varying vec2 q;uniform vec2 res,off;uniform float ppu;
+  void main(){vec2 s=(q-vec2(.5,.35))*res; // px de pantalla (y arriba)
+    vec2 g=vec2(s.x, -s.y/${SIN.toFixed(4)})/ppu+off; // suelo (x derecha, z hacia la cámara)
+    // baldosas del mundo: ejes del mundo girados 45° respecto a la cámara
+    vec2 w=vec2(g.x+g.y,g.y-g.x)*0.7071;
+    vec2 c=floor(w); float k=mod(c.x+c.y,2.);
+    float h=fract(sin(dot(c,vec2(12.9898,78.233)))*43758.5453);
+    vec3 a=vec3(.24,.40,.33),b=vec3(.29,.47,.37),v=vec3(.29,.23,.37);
+    vec3 col=mix(a,b,k); if(h>.9) col=v;
+    vec2 f=fract(w); float e=min(min(f.x,1.-f.x),min(f.y,1.-f.y));
+    col*=.9+.1*smoothstep(0.,.04,e);
+    gl_FragColor=vec4(col,1.);}`;
+const FS_SPRITE = `precision highp float;varying vec2 q;uniform sampler2D t;uniform vec4 rect,warp;
+  void main(){vec2 uv=vec2(rect.x+q.x*rect.z, rect.y+(1.-q.y)*rect.w);
+    float vv=1.-q.y; float band=smoothstep(warp.z,warp.z+.12,vv)*(1.-smoothstep(warp.w-.08,warp.w,vv));
+    uv.x-=warp.x*band*band*rect.z; uv.y-=warp.y*band*rect.w;
+    vec4 c=texture2D(t,uv); if(c.a<.5) discard; gl_FragColor=vec4(c.rgb,1.);}`;
+const cards = [];
+const grid = document.getElementById("grid");
+MODES.forEach((m) => {
+  const el = document.createElement("div"); el.className = "card" + (m === "E" ? " rec" : "");
+  el.innerHTML = `<canvas width="240" height="320" aria-label="${LABEL[m]} andando"></canvas><div class="cap"><b>${LABEL[m]}</b><small>${DESC[m]}</small><small class="st"></small><label><input type="radio" name="pick" value="${m}" ${m === choice ? "checked" : ""}> Elegir esta</label></div>`;
+  grid.appendChild(el);
+  el.querySelector("input").onchange = () => { choice = m; try { localStorage.setItem("walkChoice", m); } catch (_) {} showChoice(); };
+  const cv = el.querySelector("canvas"), gl = cv.getContext("webgl", { antialias: false });
+  const mk = (fs) => { const p = gl.createProgram(); [[gl.VERTEX_SHADER, VS], [gl.FRAGMENT_SHADER, fs]].forEach(([ty, src]) => { const s = gl.createShader(ty); gl.shaderSource(s, src); gl.compileShader(s); gl.attachShader(p, s); }); gl.bindAttribLocation(p, 0, "p"); gl.linkProgram(p); return p; };
+  const pg = mk(FS_GROUND), ps = mk(FS_SPRITE);
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  cards.push({ m, el, cv, gl, pg, ps, tex: null, st: {}, pos: [0, 0], phase: 0, stEl: el.querySelector(".st") });
+});
+img.onload = () => cards.forEach((c) => {
+  const gl = c.gl; c.tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, c.tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+});
+let last = 0;
+function loop(ts) {
+  const dt0 = Math.min(0.05, last ? (ts - last) / 1000 : 0.016); last = ts;
+  const dt = dt0 * (slow ? 0.3 : 1), d = DIRS[dir];
+  for (const c of cards) {
+    if (!c.tex) continue;
+    const gl = c.gl, W = c.cv.width, Hh = c.cv.height;
+    const charPx = 190 * zoom;                       // alto del personaje de pie en px
+    const ppu = charPx / (1.7 * COS);                 // px por unidad del mundo
+    const v = (c.m === "E" ? speedE(d) : 1.05) * 1.7;   // u/s
+    const stride = (c.m === "E" ? D.walk.stride[d] : 0.72) * 1.7;
+    const a = dir * Math.PI / 4, mvx = -Math.sin(a), mvz = Math.cos(a);
+    c.pos[0] += mvx * v * dt; c.pos[1] += mvz * v * dt;
+    c.phase = (c.phase + v * dt / stride) % 1;
+    const fi = frameFor(c.m, d, c.phase), o = fx(c.m, d, c.phase, fi, dt, c.st);
+    gl.viewport(0, 0, W, Hh);
+    gl.useProgram(c.pg);
+    gl.uniform2f(gl.getUniformLocation(c.pg, "res"), W, Hh);
+    gl.uniform2f(gl.getUniformLocation(c.pg, "off"), c.pos[0], c.pos[1]);
+    gl.uniform1f(gl.getUniformLocation(c.pg, "ppu"), ppu);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    // sprite
+    const FW = 240, FH = 272, PVX = 120, PVY = 250, sc = charPx / 206;
+    const k = dir * 6 + fi.f, col = k % 6, row = Math.floor(k / 6);
+    const w = FW * sc * o.sx, h = FH * sc * o.sy;
+    const cx = W * 0.5 + o.sway * charPx, cy = Hh * 0.35 + (o.bob * charPx);   // pivote (y hacia arriba)
+    const x0 = cx - PVX * sc * o.sx, y0 = cy - (FH - PVY) * sc * o.sy;
+    gl.viewport(Math.round(x0), Math.round(y0), Math.round(w), Math.round(h));
+    gl.useProgram(c.ps);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, c.tex);
+    gl.uniform4f(gl.getUniformLocation(c.ps, "rect"), col * FW / 1440, row * FH / 2176, FW / 1440, FH / 2176);
+    gl.uniform4f(gl.getUniformLocation(c.ps, "warp"), o.wx, o.wy, 0.5, 0.86);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    c.stEl.textContent = `zancada ${(stride / 1.7).toFixed(2)} H · ${(v / 1.7).toFixed(2)} H/s · ${(v / stride * 6).toFixed(1)} fps · frame ${fi.f}`;
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+window.__viewer = { cards, setDir: (i) => dirBox.children[i].click() };
+</script>
+</body>
+</html>
