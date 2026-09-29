@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Bosque del autómata</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+/* Mundo nocturno de un solo aspecto (como la referencia), sin variante clara */
+:root{--bg:#0c141c;--ink:#d6f3ff;--dim:#7fa6b8;--panel:rgba(10,18,26,.8);--edge:#2f7dff;--on:#1d4a8a;color-scheme:dark}
+html,body{height:100%;margin:0;background:var(--bg);overflow:hidden;color:var(--ink);overscroll-behavior:none;
+  font-family:"Press Start 2P",ui-monospace,Menlo,Consolas,monospace;-webkit-user-select:none;user-select:none;
+  -webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+#wrap{position:fixed;inset:0;touch-action:none}
+canvas{position:absolute;inset:0;width:100%!important;height:100%!important;display:block;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none}
+.hud{position:absolute;left:calc(12px + env(safe-area-inset-left,0px));top:calc(12px + env(safe-area-inset-top,0px));pointer-events:none;line-height:1.7}
+.hud .t{font-size:11px;text-shadow:2px 2px 0 #0a2a55}.hud .s{font-size:8px;color:var(--dim)}
+.bar{position:absolute;left:8px;right:8px;bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;flex-wrap:wrap;justify-content:center;gap:6px;pointer-events:none}
+.bar button{pointer-events:auto;font:inherit;font-size:9px;color:var(--ink);background:var(--panel);border:2px solid var(--edge);min-width:44px;min-height:44px;padding:0 9px;cursor:pointer;touch-action:manipulation}
+.bar button[aria-pressed="true"]{background:var(--on)}
+.bar button:focus-visible{outline:2px solid #7fe8ff;outline-offset:2px}
+.bar button.big{min-width:88px;background:#1d4a8a}
+#loading{position:absolute;inset:0;display:grid;place-items:center;font-size:10px;color:var(--dim)}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="hud"><div class="t">Bosque del autómata</div><div class="s" id="zone">Sendero</div></div>
+  <div class="bar">
+    <button id="rl" aria-label="Girar cámara a la izquierda">⟲</button>
+    <button id="rr" aria-label="Girar cámara a la derecha">⟳</button>
+    <button id="zo" aria-label="Alejar">−</button>
+    <button id="zi" aria-label="Acercar">+</button>
+    <button id="px" aria-label="Tamaño de píxel">px3</button>
+    <!--EXTRA_BUTTONS-->
+    <button id="jump" class="big" aria-label="Saltar">SALTAR</button>
+  </div>
+  <div id="loading">Cargando…</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!--SCRIPTS-->
+<script>
+(function () {
+  const A = /*ASSETS*/null;
+  function load(src) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
+  function tex(img, srgb) {
+    const t = new THREE.Texture(img);
+    t.flipY = false; t.generateMipmaps = true;
+    t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
+    t.needsUpdate = true; return t;
+  }
+  Promise.all([load(A.color), load(A.normal), load(A.spec)]).then(([c, n, s]) => {
+    const T = { color: tex(c), normal: tex(n), spec: tex(s) };
+    document.getElementById("loading").remove();
+    W.start({ tex: T, meta: A.meta });
+  }).catch((e) => { document.getElementById("loading").textContent = "Error: " + e; });
+})();
+</script>
+</body>
+</html>
