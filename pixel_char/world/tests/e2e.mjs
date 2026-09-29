@@ -175,9 +175,15 @@ async function suite(browser, label, opts, touch) {
     endG = await page.evaluate((q) => W.pick(q[0], q[1]), pts[pts.length - 1]);
     await page.mouse.up();
   }
+  await sleep(150);
+  // destino que planificó A* al soltar: el último punto si es alcanzable o, si no (p. ej. cae sobre una
+  // meseta), el punto alcanzable más cercano
+  const goal = await page.evaluate(() => { const p = W.lastPath; return p && p.length ? { ...p[p.length - 1], exact: !!p.exact } : null; });
   w = await waitIdle(page, 20000);
   s1 = w.s;
-  check(`[${label}] mantener pulsado sigue al dedo y termina en el último punto`, followSeen && w.t > 0 && Math.hypot(s1.x - endG.x, s1.z - endG.z) < 0.8, `final a ${Math.hypot(s1.x - endG.x, s1.z - endG.z).toFixed(2)} u del último punto`);
+  const dEnd = Math.hypot(s1.x - endG.x, s1.z - endG.z), dGoal = goal ? Math.hypot(s1.x - goal.x, s1.z - goal.z) : 99;
+  check(`[${label}] mantener pulsado sigue al dedo y termina en el último punto`, followSeen && w.t > 0 && dGoal < 0.3 && (goal.exact ? dEnd < 0.8 : true),
+    `final a ${dGoal.toFixed(2)} u del destino planificado, ${dEnd.toFixed(2)} u del punto soltado (${goal && goal.exact ? "alcanzable" : "inalcanzable: más cercano alcanzable"})`);
 
   // --- 9. botones: girar cámara (índice ±2), zoom, píxel ------------------------------------------------
   const d0 = (await S(page)).dir;

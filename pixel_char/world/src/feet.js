@@ -64,6 +64,21 @@
       return [wx * R.x + wz * R.z, wx * ux + wy * uy + wz * uz];
     }
     const warps = { A: [0, 0, 0, 0], B: [0, 0, 0, 0] };
+    // punto del suelo bajo una bota: a lo ancho del plano (wx, wz) y en profundidad (px, pz): una bota
+    // dibujada más abajo está más cerca de la cámara (el suelo se ve acortado por sin(EL)); q.y se mide
+    // desde la línea del suelo (el sprite se desplaza para que su píxel más bajo quede en ella) y el plano
+    // del sprite va 0.15 u por delante del centro
+    function groundPoint(q, anim, dir, f, base, sx, sy, camTheta) {
+      const R = { x: Math.cos(camTheta), z: -Math.sin(camTheta) };
+      const lowT = W.FX.matter ? (W.FEET[anim + "_" + DIRS[dir]].frames[f].lowest || 0) * SC : 0;
+      const dep = (q.y - lowT) * ch.unitsH * sy / Math.sin(EL), TX = Math.sin(camTheta), TZ = Math.cos(camTheta);
+      const wx = base.gx + R.x * q.x * ch.unitsH * sx, wz = base.gz + R.z * q.x * ch.unitsH * sx;
+      return { wx, wz, px: wx + TX * (0.15 + dep), pz: wz + TZ * (0.15 + dep) };
+    }
+    function frontOf(feet, dir) {
+      const a8 = dir * Math.PI / 4, mx = -Math.sin(a8), my = Math.cos(a8) * Math.sin(EL);
+      return (feet[0].x * mx + feet[0].y * my) >= (feet[1].x * mx + feet[1].y * my) ? 0 : 1;
+    }
 
     return {
       st, warps, anyFeet,
@@ -72,18 +87,22 @@
         const R = { x: Math.cos(camTheta), z: -Math.sin(camTheta) };
         const data = (anim === "walk" || anim === "run") && !p.jump ? feetOf(anim, dir, f) : null;
         const key = anim + dir;
-        // cambios que invalidan el ancla: otra animación/dirección, giro de cámara, escalón
-        if (key !== st.key || st.lastTheta !== camTheta || (st.lastGround != null && Math.abs(p.ground - st.lastGround) > 1e-3)) {
+        // cambios que invalidan el ancla: otra animación/dirección, giro de cámara
+        if (key !== st.key || st.lastTheta !== camTheta) {
           if (st.anchor) st.release = { x: st.anchor.fx, y: st.anchor.fy, d: st.anchor.d.slice(), t: 0 };
           st.anchor = null; st.key = key; st.lastScreen = null;
         }
-        st.lastTheta = camTheta; st.lastGround = p.ground;
+        // escalón: el cuerpo sube o baja al nuevo nivel cuando el apoyo pasa a él (player.js) y el pie
+        // apoyado acompaña ese cambio de altura (es colocar el pie en el escalón, no un deslizamiento)
+        const dyBody = st.lastY == null ? 0 : p.y - st.lastY;
+        const riding = !!st.anchor && Math.abs(dyBody) > 1e-5;
+        if (riding) st.anchor.sy += dyBody * Math.cos(EL);
+        st.lastTheta = camTheta; st.lastY = p.y;
         let applied = [0, 0], cur = null;
         if (data && data.grounded) {
           const feet = data.feet;
           // dirección de avance en la pantalla (para saber qué bota va delante)
-          const a8 = dir * Math.PI / 4, mx = -Math.sin(a8), my = Math.cos(a8) * Math.sin(EL);
-          const front = (feet[0].x * mx + feet[0].y * my) >= (feet[1].x * mx + feet[1].y * my) ? 0 : 1;
+          const front = frontOf(feet, dir);
           const newFrame = st.frame !== f;
           st.frame = f;
           // al entrar en un frame de contacto, la bota de delante toma el apoyo
@@ -102,12 +121,12 @@
           if (!st.anchor) {
             const q = feet[low];
             const s = screenOf(base, R, q.x, q.y, sx, sy, camTheta);
-            st.anchor = { fx: q.x, fy: q.y, sx: s[0], sy: s[1], d: [0, 0],
-                          wx: base.gx + R.x * q.x * ch.unitsH * sx, wz: base.gz + R.z * q.x * ch.unitsH * sx };
+            const g = groundPoint(q, anim, dir, f, base, sx, sy, camTheta);
+            st.anchor = { fx: q.x, fy: q.y, sx: s[0], sy: s[1], d: [0, 0], wx: g.wx, wz: g.wz, px: g.px, pz: g.pz };
             st.stance++;
             st.lastScreen = null;
             // pisada: evento para polvo, huella, hierba, hundimiento y sonido
-            (W.stepEvents || (W.stepEvents = [])).push({ x: st.anchor.wx, z: st.anchor.wz, anim, heading: p.heading, t: performance.now() });
+            (W.stepEvents || (W.stepEvents = [])).push({ x: st.anchor.px, z: st.anchor.pz, anim, heading: p.heading, t: performance.now() });
           }
           // desplazamiento necesario para que la bota vuelva a su punto del suelo
           const a = st.anchor;
@@ -123,11 +142,31 @@
           cur = [s[0] + dx * ch.unitsH, s[1] + dy * ch.unitsH];
         } else if (st.anchor) {
           st.frame = f;
+          st.lastY = null;
           st.release = { x: st.anchor.fx, y: st.anchor.fy, d: st.anchor.d.slice(), t: 0 };
           st.anchor = null; st.lastScreen = null;
         }
+        // próxima pisada: dónde y cuándo se apoyará la bota delantera (para subir escalones: el cuerpo
+        // empieza a subir justo antes, así la bota no se hunde en el escalón al apoyarse)
+        st.next = null;
+        const lp = (anim === "walk" || anim === "run") && !p.jump && p.speed > 0.05 && ch.st ? W.locoParams(anim, dir) : null;
+        if (lp) {
+          let acc = 0; const starts = lp.weights.map((w) => { const a = acc; acc += w; return a; });
+          let fc = -1;
+          for (let k = 1; k <= 6 && fc < 0; k++) if (lp.contact[(f + k) % 6]) fc = (f + k) % 6;
+          if (fc >= 0) {
+            const stride = (anim === "walk" ? lp.v : p.runV) * 6 / lp.fps;
+            const tC = ((starts[fc] - ch.st.phase) % 1 + 1) % 1 * stride / p.speed;
+            if (tC < 0.2) {
+              const fe = anyFeet(anim, dir, fc), adv = p.speed * tC;
+              const b2 = { gx: base.gx + Math.cos(p.heading) * adv, gz: base.gz + Math.sin(p.heading) * adv };
+              const g = groundPoint(fe[frontOf(fe, dir)], anim, dir, fc, b2, sx, sy, camTheta);
+              st.next = { h: W.heightAt(g.px, g.pz), t: tC };
+            }
+          }
+        }
         // medida del deslizamiento: posición en pantalla de la bota apoyada entre frames seguidos
-        if (cur && st.lastScreen && st.lastScreen.stance === st.stance && W.wpp) {
+        if (cur && st.lastScreen && st.lastScreen.stance === st.stance && W.wpp && !riding) {
           const px = Math.hypot(cur[0] - st.lastScreen.x, cur[1] - st.lastScreen.y) / W.wpp;
           W.slip.samples.push(px);
           if (W.slip.samples.length > 4000) W.slip.samples.shift();

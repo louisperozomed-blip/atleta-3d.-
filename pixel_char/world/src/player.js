@@ -14,7 +14,7 @@
     runDist: 4.0, walkBackDist: 2.2,
     radius: 0.28,
     jumpPrep: 0.07, jumpAir: 0.62, jumpLand: 0.15, jumpHeight: 0.5,
-    stepSmooth: 10,                     // rapidez del ajuste vertical al subir/bajar escalones
+    stepSmooth: 10, stepSmoothFoot: 30,                     // rapidez del ajuste vertical al subir/bajar escalones
   });
 
   class Player {
@@ -149,11 +149,27 @@
       const dist = Math.hypot(this.x - x0, this.z - z0);
       this.moved += dist;
       this.realSpeed = dist / Math.max(dt, 1e-4);
-      // altura del suelo: escalones suaves (resorte rápido), nunca por debajo del suelo
+      // altura del cuerpo: la del suelo bajo el pie APOYADO (feet.js); sin apoyo, la del suelo bajo el centro.
+      // Al subir o bajar un escalón el cuerpo cambia de nivel cuando el apoyo pasa al pie del otro nivel,
+      // con un ajuste corto (~0.1 s) en vez de ir flotando o hundido detrás del centro.
       this.ground = W.heightAt(this.x, this.z);
-      const k = 1 - Math.exp(-dt * P.stepSmooth);
-      this.y += (this.ground - this.y) * k;
-      if (Math.abs(this.ground - this.y) < 1e-3) this.y = this.ground;
+      const an = W.FX && W.FX.anchor && !this.jump && W.character && W.character.anchor && W.character.anchor.st.anchor;
+      let target = this.ground;
+      if (an) {
+        // solo si el pie está en el nivel de delante o de detrás (cruzando el escalón) o en el mismo: andando junto al
+        // borde de un desnivel, una bota que sobresale no hace bajar el cuerpo
+        const c = Math.cos(this.heading) * 0.35, s = Math.sin(this.heading) * 0.35;
+        const hf = W.heightAt(an.px, an.pz), ha = W.heightAt(this.x + c, this.z + s), hb = W.heightAt(this.x - c, this.z - s);
+        if (Math.abs(hf - this.ground) <= W.MAX_STEP + 1e-3 && (hf === this.ground || hf === ha || hf === hb)) target = hf;
+        // subiendo: la próxima bota se apoyará en el escalón dentro de < 0.12 s → el cuerpo sube ya (el pie
+        // de atrás acompaña: es el impulso) y al apoyarse la bota ya está a la altura del escalón
+        const nx = W.character.anchor.st.next;
+        if (nx && nx.t < 0.12 && nx.h > target && nx.h - this.ground <= W.MAX_STEP + 1e-3 && nx.h === ha) target = nx.h;
+      }
+      // bajando, el ajuste es más rápido (cae al apoyarse, sin quedarse flotando)
+      const k = 1 - Math.exp(-dt * (an ? (target < this.y ? P.stepSmoothFoot * 2 : P.stepSmoothFoot) : P.stepSmooth));
+      this.y += (target - this.y) * k;
+      if (Math.abs(target - this.y) < 1e-3) this.y = target;
       this.squash = Math.max(0, this.squash - dt / 0.16);
       // eventos: pisadas en charcas
       const kd = W.kindAt(this.x, this.z);
