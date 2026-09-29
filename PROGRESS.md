@@ -114,3 +114,14 @@ Rig re-hecho sobre la malla nueva; hojas de Walk/Run revisadas: sin roturas.
 | z2c | 9 581 | 0.848/0.838/0.857 | Glúteo sobresale claramente de perfil; el surco central existe en el campo (2 cm) pero la malla del short lo suaviza; deltoides algo más redondo. | Subdivisión local de glúteos y del casquete del deltoides (radio 6 cm, +176 tris en lugar de +2 000 como en v2). |
 
 Rig re-hecho; Run y poses extremas revisadas (T-pose, brazos arriba, sentadilla, zancada): sin roturas.
+
+## Zona 3 — ropa (z3a → z3d)
+
+| Iter | Tris | IoU F/S/B | Diferencias vistas | Corrección |
+|---|---|---|---|---|
+| z3a | 9 919 | 0.856/0.842/0.860 | Escote en V ancho y poco profundo (ref: U estrecha y profunda); espalda con muesca en V (ref: racerback que cubre el centro hasta el cuello con ribete coral/blanco por la sisa); franjas del short solo en el lateral (ref: visibles de frente y de espaldas, bajando en diagonal); cuadro de rodillera estrecho y sin franja trasera; muñequera fina con el cuadro delante; zapatilla plana y pequeña. | Polígonos nuevos del top (U y racerback); franjas del short por ángulo φ con término en z (diagonal), blanco 0.33-0.57 y coral 0.57-0.78; cuadro navy de rodillera ±35° y franja navy detrás; muñequera más gruesa/alta con el cuadro turquesa en la cara exterior (por normal); zapatilla +10 %, 19 secciones, suela 4.3 cm, cordones en filas alternas, bloques de color. |
+| z3b | 10 131 | 0.854/0.842/0.864 | Faltan las franjas verticales de los paneles laterales del top; bloques de la zapatilla como rayas verticales; rodillera 20 cm de alto (ref ≈15). | Cortes φ en el lateral del top (coral 0.26-0.38, blanco 0.38-0.50); bloques inclinados; rodillera 0.478-0.652. |
+| z3c | 10 127 | 0.859/0.843/0.860 | Zapatilla plana por arriba; de frente, la puntera navy sale en picos. | Puntera más alta y redondeada (0.052→0.112 m), cuello 1 cm más bajo. |
+| z3d | 10 131 | 0.851/0.842/0.862 | Zapatilla con parches grandes como la ref (turquesa lateral, coral en el cuello, talón navy, cordones). | Sin puntera navy; parches grandes inclinados en lugar de zigzag. |
+
+Rig re-hecho (rodilleras/muñequeras por transferencia de pesos, zapatillas a Foot/Toes); Walk y Run revisados.

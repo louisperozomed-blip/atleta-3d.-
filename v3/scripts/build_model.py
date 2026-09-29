@@ -102,11 +102,12 @@ def labels_verts(ob):
 K = C.CKEY
 
 # ------------------------------------------------------------------ ropa (cuerpo)
+# v3: escote en U más estrecho y profundo; espalda racerback (cubre el centro hasta el cuello)
 TOP_FRONT = [(0, 1.10), (0.40, 1.10), (0.40, 1.245), (0.165, 1.255), (0.142, 1.290), (0.120, 1.330),
-             (0.106, 1.380), (0.102, 1.46), (0.064, 1.46), (0.060, 1.37), (0.050, 1.338), (0.028, 1.320),
-             (0.0, 1.314)]
-TOP_BACK = [(0, 1.10), (0.40, 1.10), (0.40, 1.245), (0.160, 1.250), (0.136, 1.282), (0.108, 1.322),
-            (0.094, 1.370), (0.098, 1.46), (0.056, 1.46), (0.036, 1.372), (0.018, 1.340), (0.0, 1.330)]
+             (0.108, 1.380), (0.104, 1.46), (0.066, 1.46), (0.063, 1.40), (0.057, 1.360), (0.044, 1.334),
+             (0.024, 1.320), (0.0, 1.316)]
+TOP_BACK = [(0, 1.10), (0.40, 1.10), (0.40, 1.232), (0.150, 1.236), (0.128, 1.275), (0.104, 1.320),
+            (0.087, 1.370), (0.078, 1.440), (0.050, 1.418), (0.0, 1.408)]
 TOP_Z0, TOP_BAND = 1.19, 1.213
 LEG_FRONT = [(0, 0.868), (0.05, 0.878), (0.10, 0.912), (0.15, 0.960), (0.20, 1.000), (0.40, 1.010)]
 LEG_BACK = [(0, 0.858), (0.06, 0.852), (0.12, 0.862), (0.17, 0.900), (0.21, 0.945), (0.40, 0.965)]
@@ -146,6 +147,16 @@ def side_phi(P):
     return np.abs(np.arctan2(P[:, 1] - torso_yc(P[:, 2]), np.abs(P[:, 0])))
 
 
+# v3: franjas del short visibles de frente y de espaldas (φ = ángulo desde el lateral):
+# blanco 0.33-0.57, coral 0.57-0.78, y bajan en diagonal hacia fuera (menor φ abajo).
+SHORT_STRIPES = (0.33, 0.57, 0.78)
+TOP_SIDE = (0.26, 0.38, 0.50)
+
+
+def stripe_phi(P):
+    return side_phi(P) - (P[:, 2] - 0.97) * 1.6
+
+
 def dress_body(body):
     torso_parts = {'torso_up', 'torso_low', 'neck'}
 
@@ -165,11 +176,15 @@ def dress_body(body):
     # --- cortes implícitos (bordes limpios de la ropa y ribetes)
     for off in (0.0, -0.012, -0.026):
         mu.implicit_cut(body, lambda P, o=off: g_top(P) - o * (P[:, 2] > TOP_BAND + 0.012), m_torso)
+    # v3: franjas verticales en los paneles laterales del top (coral fuera, blanco dentro)
+    for ph in TOP_SIDE:
+        mu.implicit_cut(body, lambda P, ph=ph: (side_phi(P) - ph) * 0.14,
+                        lambda P: m_torso(P) & (g_top(P) < 0.01) & (P[:, 2] < 1.30) & (P[:, 2] > TOP_BAND - 0.01))
     for z in (TOP_Z0, TOP_BAND):
         mu.implicit_cut(body, lambda P, z=z: P[:, 2] - z, lambda P: m_torso(P) & (g_top(P) < 0.01))
     mu.implicit_cut(body, g_shorts, m_shorts)
-    for ph in (0.30, 0.50):
-        mu.implicit_cut(body, lambda P, ph=ph: (side_phi(P) - ph) * 0.15,
+    for ph in SHORT_STRIPES:
+        mu.implicit_cut(body, lambda P, ph=ph: (stripe_phi(P) - ph) * 0.15,
                         lambda P: m_shorts(P) & (g_shorts(P) < 0.02))
     for z in [SOCK_TOP] + [z for s in SOCK_STRIPES for z in s]:
         mu.implicit_cut(body, lambda P, z=z: P[:, 2] - z, m_shin)
@@ -192,12 +207,16 @@ def dress_body(body):
     upper = top & (fc[:, 2] > TOP_BAND + 0.012)
     keys[upper & (gt > -0.026)] = K['white']
     keys[upper & (gt > -0.012)] = K['coral']
+    tphi = side_phi(fc)
+    lat_panel = upper & (fc[:, 2] < 1.30)
+    keys[lat_panel & (tphi > TOP_SIDE[0]) & (tphi < TOP_SIDE[1])] = K['coral']
+    keys[lat_panel & (tphi > TOP_SIDE[1]) & (tphi < TOP_SIDE[2])] = K['white']
     off[top] = 0.006
     sh = np.isin(lab, ['torso_low', 'torso_up', 'thigh_L', 'thigh_R']) & (g_shorts(fc) < 0) & (fc[:, 2] < 1.12)
-    phi = side_phi(fc)
+    phi = stripe_phi(fc)
     keys[sh] = K['teal_short']
-    keys[sh & (phi < 0.50)] = K['coral']
-    keys[sh & (phi < 0.30)] = K['white']
+    keys[sh & (phi > SHORT_STRIPES[0]) & (phi < SHORT_STRIPES[1])] = K['white']
+    keys[sh & (phi > SHORT_STRIPES[1]) & (phi < SHORT_STRIPES[2])] = K['coral']
     off[sh] = 0.005
     shin = np.isin(lab, ['shin_L', 'shin_R'])
     sock = shin & (fc[:, 2] < SOCK_TOP)
@@ -253,10 +272,10 @@ def band_mesh(field, name, p0, p1, ts, offs, angles, keyf, front=(0, -1, 0)):
 
 def knee_pads(body, field):
     # ángulo 0 = delante (-Y); cuadros navy delante [-27,27] y detrás [153,207]
-    angs_deg = [-27, 0, 27, 52, 77, 102, 128, 153, 180, 207, 232, 258, 283, 308, 333]
+    angs_deg = [-35, 0, 35, 60, 85, 110, 135, 160, 180, 200, 225, 250, 275, 300, 325]
     angs = np.radians(angs_deg)
     # v2: más anillos con perfil redondeado (casco abombado como en la referencia)
-    zs = [0.466, 0.480, 0.497, 0.515, 0.560, 0.606, 0.625, 0.645, 0.664]
+    zs = [0.478, 0.490, 0.505, 0.522, 0.560, 0.598, 0.615, 0.635, 0.652]   # v3: 15 cm de alto
     offs = [-0.004, 0.007, 0.013, 0.018, 0.021, 0.018, 0.013, 0.007, -0.004]
     pads = []
     for side, tag in ((1, 'L'), (-1, 'R')):
@@ -270,27 +289,34 @@ def knee_pads(body, field):
 
         def keyf(jj, ii):
             a, a2 = angs_deg[ii], angs_deg[(ii + 1) % len(angs_deg)]
-            sq = (a >= -27 and a2 <= 27 and a2 > a) or (a >= 153 and a2 <= 207 and a2 > a)
+            sq = (a >= -35 and a2 <= 35 and a2 > a)      # cuadro grande delante
+            if jj == 4 and a >= 135 and a2 <= 225 and a2 > a:
+                return K['navy']                          # franja oscura detrás
             return K['navy'] if (jj in (3, 4) and sq) else K['white']
         pads.append(band_mesh(field, f'KneePad_{tag}', p0, p1, ts, offs, angs, keyf))
     # borrar la piel cubierta por las rodilleras
     fc = mu.face_centers(body)
     lab = anatomy.part_labels(fc)
-    delete_faces(body, np.isin(lab, ['thigh_L', 'thigh_R', 'shin_L', 'shin_R']) & (fc[:, 2] > 0.492) & (fc[:, 2] < 0.64))
+    delete_faces(body, np.isin(lab, ['thigh_L', 'thigh_R', 'shin_L', 'shin_R']) & (fc[:, 2] > 0.500) & (fc[:, 2] < 0.628))
     return pads
 
 
 def wristbands(body, field):
     angs = np.radians(np.arange(-18, 342, 36))
-    ts = [0.735, 0.76, 0.86, 0.955, 0.98]
-    offs = [-0.003, 0.007, 0.008, 0.007, -0.003]
+    # v3: banda más gruesa y alta; el cuadro turquesa va en la cara exterior de la muñeca
+    ts = [0.715, 0.74, 0.85, 0.96, 0.985]
+    offs = [-0.003, 0.010, 0.011, 0.010, -0.003]
     out = []
     for side, tag in ((1, 'L'), (-1, 'R')):
         el, wr = anatomy.jl('elbow', side), anatomy.jl('wrist', side)
-
-        def keyf(jj, ii):
-            return K['teal'] if (jj == 1 and ii == 0) else K['navy']
-        out.append(band_mesh(field, f'Wristband_{tag}', el, wr, ts, offs, angs, keyf))
+        ob = band_mesh(field, f'Wristband_{tag}', el, wr, ts, offs, angs, lambda jj, ii: K['navy'])
+        fc, fn = mu.face_centers(ob), mu.face_normals(ob)
+        ax = wr - el
+        tt = ((fc - el) @ ax) / (ax @ ax)
+        keys = np.full(len(fc), K['navy'])
+        keys[(fn[:, 0] * side > 0.55) & (tt > 0.75) & (tt < 0.95)] = K['teal']
+        set_face_keys(ob, keys)
+        out.append(ob)
     # borrar la piel bajo las muñequeras
     fc = mu.face_centers(body)
     lab = anatomy.part_labels(fc)
@@ -306,21 +332,26 @@ def wristbands(body, field):
 
 # ------------------------------------------------------------------- zapatillas
 def shoe(side, tag):
-    heel = np.array([0.214 * side, 0.142, 0.0])
-    toe = np.array([0.244 * side, -0.178, 0.0])
+    # v3: zapatilla retro más grande (≈+10 %), puntera más alta y suela más gruesa
+    heel = np.array([0.212 * side, 0.150, 0.0])
+    toe = np.array([0.250 * side, -0.190, 0.0])
     d = toe - heel
     L = np.linalg.norm(d)
     d /= L
     lat = np.cross(d, [0, 0, 1.0])
     # (u, semiancho suela, altura empeine, elevación puntera)
-    prof = [(0.00, 0.048, 0.100, 0.010), (0.03, 0.064, 0.140, 0.003), (0.10, 0.072, 0.164, 0.0),
-            (0.20, 0.076, 0.168, 0.0), (0.30, 0.078, 0.158, 0.0), (0.40, 0.080, 0.134, 0.0),
-            (0.50, 0.081, 0.122, 0.0), (0.60, 0.081, 0.106, 0.0), (0.70, 0.079, 0.092, 0.002),
-            (0.79, 0.075, 0.080, 0.006), (0.87, 0.066, 0.070, 0.011), (0.94, 0.052, 0.060, 0.017),
-            (1.00, 0.032, 0.048, 0.022)]
+    prof0 = [(0.00, 0.052, 0.100, 0.012), (0.03, 0.070, 0.140, 0.004), (0.10, 0.079, 0.165, 0.0),
+             (0.20, 0.083, 0.170, 0.0), (0.30, 0.085, 0.160, 0.0), (0.40, 0.087, 0.142, 0.0),
+             (0.50, 0.088, 0.130, 0.0), (0.60, 0.088, 0.120, 0.0), (0.70, 0.086, 0.112, 0.003),
+             (0.79, 0.082, 0.104, 0.008), (0.87, 0.074, 0.095, 0.014), (0.94, 0.060, 0.082, 0.020),
+             (0.98, 0.046, 0.068, 0.024), (1.00, 0.030, 0.052, 0.026)]
+    # más secciones (interpoladas) para que los bloques de color y los cordones se lean
+    us = np.linspace(0, 1, 19)
+    pa = np.array(prof0)
+    prof = [(u, *(np.interp(u, pa[:, 0], pa[:, i]) for i in (1, 2, 3))) for u in us]
     # media sección (lateral normalizado, altura): suela gruesa navy y empeine más estrecho
-    half = [(0.0, 'b'), (0.85, 'b'), (1.06, 0.012), (1.08, 0.036), (0.92, 0.048), (0.80, 'm'),
-            (0.55, 'h'), (0.22, 't')]
+    half = [(0.0, 'b'), (0.85, 'b'), (1.07, 0.014), (1.09, 0.042), (0.93, 0.054), (0.82, 'm'),
+            (0.58, 'h'), (0.24, 't')]
     secs = []
     for u, hw, h, lift in prof:
         c = heel + d * (u * L) + np.array([0, 0, lift])
@@ -344,16 +375,25 @@ def shoe(side, tag):
     lx = np.abs(rel @ lat)
     z = fc[:, 2]
     keys = np.full(len(fc), K['shoe_white'])
-    sidep = lx > 0.052
-    keys[z < 0.036] = K['navy']                                       # suela
-    keys[(u < 0.16) & (z < 0.11)] = K['navy']                         # contrafuerte
-    keys[(u < 0.06) & (z >= 0.11)] = K['coral']                       # lengüeta del talón
-    band = np.mod((u * 4.0 + z * 9.0), 1.0)
-    keys[sidep & (u > 0.22) & (u < 0.78) & (z > 0.045) & (band < 0.33)] = K['teal']   # franjas
-    keys[sidep & (u > 0.18) & (u < 0.30) & (z > 0.05) & (z < 0.10)] = K['coral']
-    keys[(u > 0.84) & (z > 0.048) & (lx < 0.05)] = K['coral']         # puntera
-    keys[(u > 0.08) & (u < 0.34) & (z > 0.150)] = K['teal']           # cuello acolchado
-    keys[(u > 0.36) & (u < 0.74) & (lx < 0.028) & (z > 0.09)] = K['white']   # cordones
+    sidep = lx > 0.056
+    up = z > 0.045
+    keys[z < 0.043] = K['navy']                                        # suela gruesa
+    keys[(u < 0.17) & (z < 0.12)] = K['navy']                          # talón oscuro
+    keys[(u < 0.06) & (z >= 0.12)] = K['coral']                        # lengüeta del talón
+    # paneles laterales en bloques: turquesa / coral / turquesa en diagonal
+    ud = u + (z - 0.05) * 1.2          # parches grandes inclinados hacia delante, como en la ref
+    keys[sidep & up & (ud > 0.30) & (ud < 0.56) & (z < 0.12)] = K['teal']
+    keys[sidep & up & (ud > 0.56) & (ud < 0.64) & (z < 0.10)] = K['navy']
+    keys[sidep & up & (u > 0.17) & (u < 0.30) & (z > 0.08) & (z < 0.15)] = K['coral']
+    # empeine: bloque turquesa en la puntera y coral delante del cordón
+    keys[(u > 0.80) & (u < 0.93) & (z > 0.06) & (lx < 0.06)] = K['teal']
+    keys[(u > 0.72) & (u < 0.80) & (z > 0.08) & (lx < 0.05)] = K['coral']
+    keys[(u > 0.08) & (u < 0.34) & (z > 0.160)] = K['teal']            # cuello acolchado
+    # cordones: filas alternas claro/oscuro sobre el empeine
+    lace = (u > 0.36) & (u < 0.72) & (lx < 0.030) & (z > 0.10)
+    row = (np.floor((u - 0.36) / 0.055).astype(int) % 2) == 0
+    keys[lace] = K['shoe_white']
+    keys[lace & row] = K['navy']
     set_face_keys(ob, keys)
     return ob
 
