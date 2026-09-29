@@ -55,7 +55,7 @@ def main():
     stage, tag = int(sys.argv[1]), sys.argv[2]
     zmin = float(sys.argv[3]) if len(sys.argv) > 3 else 0.0
     zmax = float(sys.argv[4]) if len(sys.argv) > 4 else 1.75
-    d = os.path.join(ROOT, 'renders', f'stage{stage}')
+    d = os.path.join(ROOT, 'renders', os.environ.get('RENDER_DIR', f'stage{stage}'))
     r0, r1 = max(z_to_row(zmax), 0), min(z_to_row(zmin), 959)
     tiles, overlays, sils = [], [], []
     print(f'== {tag}  zona z {zmin:.2f}-{zmax:.2f}')

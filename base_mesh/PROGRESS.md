@@ -310,3 +310,81 @@ auto-intersecciones con BVH (pares de caras que se cruzan sin compartir vértice
   10 546 / 10 544 (FBX) y 5 272 / 21 088 triángulos (GLB), escala 1.
 - Visor web nuevo: `web/visor_base_mesh.html` (LOD0/LOD1, arcilla / + wire / solo wire con las
   aristas de los quads, cámaras front/side/back/3-4 y regla de 8 cabezas).
+
+---
+
+# Iteración 2
+
+Objetivo: topología facial y de deformación de nivel producción, manos y cadera más fieles a la
+hoja, menos polos y UVs, manteniendo toda la validación en 0 y la jaula entre 2 500 y 3 500 quads.
+Renders de cada etapa en `renders/it2_*`; `RENDER_DIR=<carpeta> sh scripts/iter.sh 5 <tag>`.
+
+## It2 · Etapa 1 — cara
+
+Rediseño completo de cuello y cabeza en un módulo nuevo, `scripts/head.py`:
+- La cabeza es una rejilla de quads sobre una superficie paramétrica P(θ, zf) (θ = ángulo del
+  medio anillo, zf = altura del anillo en el centro de la cara; los anillos suben hacia la nuca).
+  Pasa de 16 a **24 vértices alrededor**, con los segmentos más densos delante
+  (0-12-24-36-48-60-74-90… grados) y 16 anillos; tapa del cráneo = rejilla 3×6.
+- El cuello también tiene 24 alrededor. La reducción del torso pasa de 32→16 (4 quads de
+  reducción por lado) a **32→24 (2 por lado)**, y esos 2 coinciden con las esquinas superiores del
+  agujero del brazo: 4 polos de 5 y 2 de 3 menos por lado.
+- Nueva operación `HalfMesh.inset_region` en `topo.py` (Inset Faces de una región): crea un loop
+  de quads alrededor de la región y respeta el plano de simetría (en el eje la región continúa en
+  el lado espejo, así que el loop se abre allí y se cierra con el Mirror).
+- **Ojo**: región 2×2 con 3 insets = **3 loops concéntricos** (órbita, párpados y borde del ojo) +
+  el loop exterior de la órbita. **Boca**: región 2×2 sobre el eje con 3 insets = **3 loops
+  concéntricos** (en la malla completa, de 12 vértices cada uno). **Loop nasolabial**: región de
+  3×5 alrededor de nariz y boca con 1 inset, por dentro del cual están la nariz y los loops de la
+  boca. Cada loop se recoloca en una elipse del espacio (θ, zf) y los vértices interiores de cada
+  región se reparten dentro del loop más pequeño (cuadrado → disco).
+- **Relieve** (desplazamiento por la normal, sin añadir geometría): puente y dorso de la nariz,
+  punta, aletas, labio superior e inferior, línea de la boca, barbilla, cuenca del ojo, **arco de
+  la ceja** y pómulo.
+- **Oreja**: región 1×4 en el lateral con dos insets: el primero se saca hacia fuera y hacia atrás
+  en C (**hélix**, más ancho arriba y detrás); el segundo vuelve hacia la cabeza (**concha**),
+  excepto abajo, donde queda macizo (**lóbulo**).
+- `scripts/head_profile.py` compara el perfil de la cabeza cada 1 cm (SIDE delante/detrás y FRONT
+  semiancho); `scripts/face_views.sh` hace primeros planos front / lado / 3-4 con y sin wireframe
+  junto al panel HEAD de la hoja (`*_face.jpg`).
+
+### f1a — primera construcción
+- 3 062 quads, todo quads. **Errores**: 1 vértice duplicado y 12 auto-intersecciones.
+  - Duplicado: los vértices del eje de la cabeza tenían x = 1e-8…2e-7 (sin(π) y la normal) en vez
+    de 0, y el Mirror (umbral 1e-4) fundía un par de forma inesperada → se fuerza x = 0 exacto.
+  - Intersecciones: los loops interiores de la boca (radio 0.0125) salían de la región (media
+    altura 0.010) y el loop nasolabial (0.028) pasaba por encima de su borde superior.
+
+### f1b — loops dentro de sus regiones
+- Radios de boca y nasolabial ajustados a su región; el loop exterior de la boca también se
+  recoloca. Oreja rehecha como contorno en C (antes era un rectángulo).
+- Quedan 2 auto-intersecciones (aleta de la nariz): los vértices interiores de la región
+  nasolabial seguían en su posición de rejilla y el loop nasolabial pasaba por encima de ellos.
+- Perfil: frente 4-7 mm por detrás entre z 1.61 y 1.68; bajo la barbilla la hoja es casi
+  horizontal a z 1.495 y el modelo bajaba en rampa; coronilla demasiado plana.
+
+### f1c — interiores de región, frente, barbilla y coronilla
+- Vértices interiores de cada región → dentro de su loop más pequeño (mapa cuadrado → disco):
+  **0 auto-intersecciones**.
+- Filas de mandíbula y barbilla subidas (1.494 / 1.502); frente más adelantada; tapa del cráneo
+  más redonda; nariz con el máximo a z 1.563.
+- Perfil SIDE dentro de ±4 mm de 1.50 a 1.69 (antes hasta 7 mm). En los primeros planos, los ojos
+  estaban demasiado separados (distancia entre pupilas 72 mm) y abultados, y la boca era
+  demasiado ancha y de labios planos.
+
+### f1d — ojos, boca y mandíbula
+- Ojo en θ 21° (distancia entre pupilas ~62 mm), globo ocular menos saliente; boca de 44 mm con
+  labios más marcados; mandíbula y barbilla más estrechas.
+
+### f1e — arco de la ceja
+- Ceja más marcada (6 mm, borde inferior más definido sobre el loop exterior del ojo).
+- Validación: 3 062 quads, 0 tris, 0 n-gons, 0 polos >5, 0 no manifold, 0 duplicados,
+  0 auto-intersecciones, 0 normales invertidas, simetría 0. IoU (1.40-1.72): front 0.909,
+  side 0.947, back 0.907. Perfil SIDE de la cabeza dentro de ±4 mm (±6 mm en el borde de la
+  barbilla).
+- Polos de cara y cuello (por lado): 5 aristas: 2 en la base del cuello (antes 4), 4 en las
+  esquinas exteriores del loop del ojo, 2 en las del loop exterior de la boca, 2 en las del
+  nasolabial y 4 en la base de la oreja. 3 aristas: 4 en las esquinas del borde del ojo, 2 en las
+  comisuras interiores de la boca, 2 en las esquinas interiores del nasolabial, 4 en la concha de
+  la oreja y 2 en las esquinas de la tapa del cráneo. Todos están en la cara o la oreja, que no
+  tienen articulación: son las esquinas de los insets que crean los loops concéntricos.

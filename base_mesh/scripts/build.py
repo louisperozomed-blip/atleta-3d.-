@@ -94,7 +94,7 @@ def full_bmesh(obj, subsurf=False):
 def main():
     clear_scene()
     obj, b = build_object(STAGE)
-    out_dir = os.path.join(ROOT, 'renders', f'stage{STAGE}')
+    out_dir = os.path.join(ROOT, 'renders', os.environ.get('RENDER_DIR', f'stage{STAGE}'))
     os.makedirs(out_dir, exist_ok=True)
     bm = full_bmesh(obj)
     rep = VAL.validate(bm, expect_closed=(STAGE == 5))

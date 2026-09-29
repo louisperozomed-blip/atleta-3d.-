@@ -135,6 +135,52 @@ class HalfMesh:
         self.face(*new)                       # tapa de la extrusión
         return new
 
+    def inset_region(self, region, on_plane=lambda p: abs(p[0]) < 1e-9):
+        """Inset de una región de caras (índices de self.F): crea un loop de quads alrededor.
+
+        Las aristas de la región que están sobre el plano de simetría (solo una cara en la media
+        malla) no son borde: la región continúa en el lado espejo, así que el loop se abre allí.
+        Devuelve (exterior, interior, cerrado): cadenas ordenadas de vértices, interior[k] es la
+        copia de exterior[k]. Las copias nacen en la misma posición: el llamador las coloca."""
+        region = list(region)
+        rset = set(region)
+        use = {}
+        for fi, f in enumerate(self.F):
+            for k in range(len(f)):
+                e = frozenset((f[k], f[(k + 1) % len(f)]))
+                use.setdefault(e, []).append(fi)
+        nxt = {}
+        for fi in region:
+            f = self.F[fi]
+            for k in range(len(f)):
+                a, b = f[k], f[(k + 1) % len(f)]
+                fs = use[frozenset((a, b))]
+                if all(x in rset for x in fs):
+                    if len(fs) == 1 and not (on_plane(self.V[a]) and on_plane(self.V[b])):
+                        raise ValueError('borde abierto dentro de la región')
+                    continue                       # arista interior o sobre el plano de simetría
+                assert a not in nxt, 'la región no es un disco'
+                nxt[a] = b
+        prev = {b: a for a, b in nxt.items()}
+        starts = [a for a in nxt if a not in prev]
+        start = starts[0] if starts else next(iter(nxt))
+        chain, v = [start], start
+        while v in nxt and nxt[v] != start:
+            v = nxt[v]
+            chain.append(v)
+        closed = not starts
+        assert len(chain) == len(set(nxt) | set(prev)), 'borde de la región en varias piezas'
+        copy = {v: self.v(self.V[v].copy()) for v in chain}
+        for g, members in self.groups.items():
+            for v in chain:
+                if v in members:
+                    members.add(copy[v])
+        for fi in region:
+            self.F[fi] = tuple(copy.get(v, v) for v in self.F[fi])
+        for a, b in nxt.items():
+            self.face(a, b, copy[b], copy[a])
+        return chain, [copy[v] for v in chain], closed
+
     # -------------------------------------------------------------- limpieza
     def compact(self):
         used = sorted({i for f in self.F for i in f})
