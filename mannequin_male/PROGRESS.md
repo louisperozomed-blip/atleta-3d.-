@@ -266,3 +266,57 @@ Validación de l3g:
 - 1334 quads, 0 triángulos, 0 n-gons, 0 polos de más de 5;
 - 0 polos en zonas de articulación, 0 autointersecciones, 0 aristas abiertas;
 - simetría exacta.
+
+## Etapa 4: manos y pies (`renders/s4_hands_feet/`)
+
+`scripts/zoom.py` acepta ahora un rango `x0:x1` para encuadrar la mano o el pie.
+En SIDE el eje horizontal es −y: la mano se encuadra con −0.12:0.12 y el pie con −0.18:0.22.
+
+### Mano
+
+- **Orientación.**
+  - En la etapa 1 la mano iba pronada 35° para imitar la «C» que se ve en FRONT.
+  - La vista SIDE de la hoja lo desmiente: se ve el dorso con los 4 dedos paralelos, así que el dorso mira hacia fuera.
+  - La «C» de FRONT sale de los dedos curvados hacia la palma y del pulgar delante.
+  - `HAND_TWIST` pasa a 5°.
+- **Dedos.**
+  - Curvatura hacia la palma −0.75·w (antes −0.35).
+  - Sección más gruesa: base 1.0 y afilado 15 % (antes 0.92 y 25 %), como los dedos en bloque de la hoja.
+  - Siguen separados por las 3 membranas de la Parallel Division.
+- **Pulgar.**
+  - Sale de la cara delantera del lado de la palma (se puntúa `f − 0.6·w`).
+  - Primer tramo recto según la normal de esa cara (`lead=True`); después gira hacia abajo, delante y dentro (`0.4f + 0.5h − 0.6w`).
+  - Largo 7 cm.
+  - Sin el tramo recto, cualquier dirección metida hacia la palma cortaba la cara vecina (8–14 autointersecciones en los barridos).
+
+### Pie: bloque de zapato
+
+Seis secciones: talón a 35° y 60°, empeine, metatarsos, caja de los dedos y punta. La puntera se tapa con Grid Division 2 × 3.
+- Secciones casi rectangulares (superelipse e = 0.4) y en trapecio: 40 % más estrechas arriba, como la puntera achaflanada de la hoja.
+- Talón plano y trasera vertical: los vértices de abajo y detrás de las secciones inclinadas bajan a z = 0.
+- Empeine en rampa continua desde el tobillo (z 0.13) hasta la puntera (z 0.06), sin pico en la unión.
+- Arco interno abombado hacia dentro (maléolo) en las secciones del talón.
+- Pierde una sección respecto a la etapa 1: 7 → 6 (−20 quads en la malla completa).
+
+### Iteraciones
+
+| iter | front | side | back | cambio |
+|---|---|---|---|---|
+| h4a | 0.926 / 92 % | 0.926 / 89 % | 0.894 / 87 % | Punto de partida (l3g). |
+| h4b | 0.924 / 92 % | 0.924 / 88 % | 0.893 / 87 % | Dorso hacia fuera, dedos curvados y gruesos. Pulgar aún en gancho hacia delante. |
+| h4c | 0.923 / 92 % | 0.925 / 88 % | 0.893 / 87 % | Pulgar metido delante de la palma con tramo recto de salida. |
+| h4d | 0.923 / 92 % | 0.924 / 88 % | 0.892 / 86 % | Pulgar de 7 cm (antes 5.5). |
+| h4e–h4f | – | – | – | Pie rehecho como zapato. La rampa tallada en la espinilla se descartó (12 autointersecciones con el pie). |
+| h4g | 0.925 / 91 % | 0.937 / 89 % | 0.888 / 84 % | Secciones en trapecio; talón más estrecho y hacia fuera; arco interno. |
+| h4h | 0.924 / 91 % | 0.933 / 88 % | 0.888 / 84 % | Talón plano sobre el suelo con trasera vertical: ya no se ve la suela desde BACK. |
+| h4i | **0.924 / 91 %** | **0.932 / 88 %** | **0.889 / 85 %** | El vértice alto de la sección de 60° hacía un pico sobre el tobillo; rampa continua. |
+
+Pie en FRONT, z 0–0.12: bordes a ±1…2 cm.
+- En la hoja la suela entera cae hacia fuera (0.17–0.27) y el tobillo hacia dentro (0.134 a z 0.07). Es el pie abierto en V de la foto, que tiene algo de perspectiva.
+- Un bloque recto y simétrico solo lo aproxima. En SIDE el pie cercano coincide en largo (talón y = 0.165, punta −0.09) y en alto de la puntera.
+
+Validación de h4i:
+- 1314 quads, 0 triángulos, 0 n-gons, 0 polos de más de 5;
+- 0 autointersecciones, 0 aristas abiertas, simetría exacta.
+
+Total de caras: 1314, por debajo del objetivo de 1 500–3 000. Se sube en la etapa 5 con los planos de la cabeza y, si hace falta, con un loop más de nudillos en la etapa 6.

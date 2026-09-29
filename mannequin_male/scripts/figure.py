@@ -21,7 +21,7 @@ T_SLOTS = ['línea media', 'recto abdominal', 'pezón / abdomen lateral', 'serra
            'costado', 'dorsal', 'escápula', 'erectores', 'columna lateral', 'columna']
 HOLE_ROWS = (10, 12)          # agujero del brazo entre el anillo 10 (axila, z 1.39) y el 12 (acromion, anillo superior)
 HOLE_SLOTS = (4, 6)           # y las ranuras 4..6 (66°..110°)
-HAND_TWIST = 35.0             # grados de pronación de la mano respecto al antebrazo
+HAND_TWIST = 5.0             # grados de pronación: en la hoja el dorso mira hacia fuera (vista SIDE)
 N_LEG = 10
 N_ARM = 8
 H_NECK = 6                    # medio anillo de cuello y cabeza (12 alrededor)
@@ -164,15 +164,16 @@ class Figure:
         m = self.m
         m.tag = 'foot'
         # (α giro, centro x, y, z, semiancho, radio arriba/delante, radio abajo/detrás)
-        F = [(25, 0.182, 0.105, 0.095, 0.036, 0.050, 0.065),
-             (50, 0.190, 0.100, 0.062, 0.042, 0.060, 0.100),   # talón: radio trasero grande
-             (72, 0.198, 0.078, 0.045, 0.048, 0.058, 0.050),
-             (90, 0.205, 0.030, 0.040, 0.052, 0.048, 0.040),
-             (90, 0.213, -0.020, 0.034, 0.055, 0.044, 0.034),
-             (90, 0.221, -0.064, 0.030, 0.052, 0.038, 0.030),
-             (90, 0.227, -0.098, 0.028, 0.044, 0.030, 0.028)]
+        # bloque de zapato como en la hoja: talón cuadrado, empeine en rampa desde la espinilla hasta
+        # la puntera, puntera plana y banda de suela vertical (secciones casi rectangulares, e = 0.4)
+        F = [(35, 0.184, 0.098, 0.085, 0.034, 0.058, 0.082),   # talón alto: detrás llega a y 0.165
+             (60, 0.194, 0.078, 0.074, 0.038, 0.062, 0.078),   # arranque del empeine / talón abajo
+             (90, 0.204, 0.030, 0.064, 0.047, 0.052, 0.064),   # empeine
+             (90, 0.217, -0.018, 0.052, 0.053, 0.044, 0.052),  # metatarsos
+             (90, 0.224, -0.058, 0.043, 0.051, 0.033, 0.043),  # caja de los dedos
+             (90, 0.229, -0.090, 0.034, 0.044, 0.025, 0.034)]  # punta
         prev = ankle
-        e = 2.0 / 3.0
+        e = 0.4
         for (al, cx, cy, cz, rx, rf, rb) in F:
             a = np.radians(al)
             cc = np.array([cx, cy, cz])
@@ -182,7 +183,12 @@ class Figure:
                 ph = 2 * np.pi * k / N_LEG
                 sn, cs = np.sin(ph), np.cos(ph)
                 r = rf if cs >= 0 else rb
-                p = cc + np.array([1.0, 0, 0]) * np.sign(sn) * abs(sn) ** e * rx + fdir * np.sign(cs) * abs(cs) ** e * r
+                xw = rx * (1 - 0.40 * max(cs, 0.0))          # sección en trapecio: más estrecha arriba
+                if sn < 0 and al < 90 + 1 and cy > 0.0:      # arco interno / maléolo: abombado hacia dentro
+                    xw += 0.012 * max(0.0, 1 - abs(cs - 0.2))
+                p = cc + np.array([1.0, 0, 0]) * np.sign(sn) * abs(sn) ** e * xw + fdir * np.sign(cs) * abs(cs) ** e * r
+                if al < 90 and cs < -0.6:                    # talón plano sobre el suelo, trasera vertical
+                    p[2] = 0.0
                 p[2] = max(p[2], 0.0)
                 pts.append(p)
             order = best_alignment([m.V[i] for i in prev], pts)
@@ -310,7 +316,7 @@ class Figure:
         for k in range(4):
             quad = [D[2 * k], D[2 * k + 1], P[2 * k + 1], P[2 * k]]
             d = h + f * spread[k] - w * 0.12
-            self._finger(quad, d / np.linalg.norm(d), lengths[k], curl=-w * 0.35)
+            self._finger(quad, d / np.linalg.norm(d), lengths[k], curl=-w * 0.75, base=1.0, taper=0.15)
         m.log.append(('palma → dedos', 'Parallel Division',
                       'anillo de 16 = 4 bases de dedo + 3 membranas (quads paralelos)'))
         # pulgar: cara lateral de la palma del lado del índice
@@ -318,14 +324,14 @@ class Figure:
         faces = [f_ for f_ in m.F if len(set(f_) & set(P8)) == 2 and len(set(f_) & set(P12)) >= 1]
         for f_ in faces:
             cpos = np.mean([m.V[x] for x in f_], 0)
-            sc = (cpos - wr) @ f
+            sc = (cpos - wr) @ (f - 0.6 * w)     # cara delantera del lado de la palma
             if sc > best:
                 best, side = sc, list(f_)
         # el pulgar baja por delante de la palma, casi paralelo a los dedos (como en la hoja)
-        d = f * 1.0 + h * 0.25 - w * 0.5
-        self._finger(side, d / np.linalg.norm(d), 0.055, curl=h * 0.4 - f * 0.2, base=0.8)
+        d = f * 0.4 + h * 0.5 - w * 0.6
+        self._finger(side, d / np.linalg.norm(d), 0.070, curl=h * 0.3 - f * 0.3, base=0.85, lead=True)
 
-    def _finger(self, quad, d, length, curl=None, base=0.92, segs=(0.12, 0.45, 0.75, 1.0)):
+    def _finger(self, quad, d, length, curl=None, base=0.92, segs=(0.12, 0.45, 0.75, 1.0), taper=0.25, lead=False):
         m = self.m
         P = np.array([m.V[i] for i in quad])
         c = P.mean(0)
@@ -335,11 +341,17 @@ class Figure:
             n0 = -n0
         cv = np.zeros(3) if curl is None else np.asarray(curl)
         rings = []
+        t0 = segs[0]
         for i, t in enumerate(segs):
-            sc = base * (1 - 0.25 * t)
-            off = d * length * t + cv * length * t * t
-            tan = d + 2 * cv * t
-            tan /= np.linalg.norm(tan)
+            sc = base * (1 - taper * t)
+            if lead and i == 0:
+                # primer tramo recto según la normal de la cara: no roza las caras vecinas
+                off, tan = n0 * length * t0, n0
+            else:
+                u = t - t0 if lead else t
+                off = (n0 * length * t0 if lead else 0) + d * length * u + cv * length * u * u
+                tan = d + 2 * cv * u
+                tan = tan / np.linalg.norm(tan)
             rings.append([c + off + rotate_to(n0, tan, (p - c) * sc) for p in P])
         R = m.extrude_quad(quad, rings)
         m.cap_parallel(R[-1])

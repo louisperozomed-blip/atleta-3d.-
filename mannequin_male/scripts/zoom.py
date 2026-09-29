@@ -1,5 +1,5 @@
 """Recorte comparativo hoja | modelo de una zona (mismo lienzo y cámara, x2).
-Uso: RENDER_DIR=<carpeta> python3 scripts/zoom.py <etiqueta> <zona> zmin zmax [xhalf] [vistas]
+Uso: RENDER_DIR=<carpeta> python3 scripts/zoom.py <etiqueta> <zona> zmin zmax [xhalf | x0:x1] [vistas]
 Escribe <tag>_zoom_<zona>.jpg: por cada vista, hoja arriba y modelo (arcilla + aristas) abajo."""
 import os
 import sys
@@ -7,11 +7,12 @@ from PIL import Image, ImageDraw
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 P, W, G = 560.0, 600, 1040
 tag, zone, z0, z1 = sys.argv[1], sys.argv[2], float(sys.argv[3]), float(sys.argv[4])
-xh = float(sys.argv[5]) if len(sys.argv) > 5 else 0.30
+xs = sys.argv[5] if len(sys.argv) > 5 else '0.30'
+x0, x1 = map(float, xs.split(':')) if ':' in xs else (-float(xs), float(xs))
 views = sys.argv[6].split(',') if len(sys.argv) > 6 else ['front', 'side', 'back']
 D = os.path.join(ROOT, 'renders', os.environ.get('RENDER_DIR', 'test'))
-box = (int(W / 2 - xh * P), int(G - z1 * P), int(W / 2 + xh * P), int(G - z0 * P))
-k = 2
+box = (int(W / 2 + x0 * P), int(G - z1 * P), int(W / 2 + x1 * P), int(G - z0 * P))
+k = 2 if z1 - z0 > 0.4 else 4
 cols = []
 for v in views:
     b = Image.open(f'{D}/{tag}_{v}.png').convert('RGB').crop(box)
