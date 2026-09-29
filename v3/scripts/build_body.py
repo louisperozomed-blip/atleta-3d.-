@@ -182,6 +182,21 @@ def region_calves(co):
     return out
 
 
+def region_glutes(co):
+    """v3: glúteos (surco central y pliegue inferior)."""
+    return (np.abs(co[:, 0]) < 0.16) & (co[:, 2] > 0.85) & (co[:, 2] < 1.02) & (co[:, 1] > 0.03)
+
+
+def region_delt_cap(co):
+    """v3: solo el casquete del deltoides (radio pequeño para no disparar el presupuesto)."""
+    out = np.zeros(len(co), bool)
+    for sx in (1, -1):
+        sh, el = anatomy.jl('shoulder', sx), anatomy.jl('elbow', sx)
+        c = sh + (el - sh) * 0.13 + np.array([0.02 * sx, 0, 0])
+        out |= np.linalg.norm(co - c, axis=1) < 0.062
+    return out
+
+
 def build_body(field=None):
     field = field or anatomy.build_field()
     ob = build_skin_mesh()
@@ -195,6 +210,8 @@ def build_body(field=None):
     local_subdivide(ob, field, region_abs)
     local_subdivide(ob, field, region_back)
     local_subdivide(ob, field, region_calves)
+    local_subdivide(ob, field, region_glutes)
+    local_subdivide(ob, field, region_delt_cap)
     decimate_hands(ob, ratio=0.38)
     mu.set_flat(ob)
     return ob, field

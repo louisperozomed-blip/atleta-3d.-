@@ -104,3 +104,13 @@ silueta en metros altura por altura.
 
 Rig re-hecho sobre la malla nueva; hojas de Walk/Run revisadas: sin roturas.
 (Este commit incluye ya las primeras ediciones de músculos de la zona 2, documentadas abajo.)
+
+## Zona 2 — musculatura (z2a → z2c)
+
+| Iter | Tris | IoU F/S/B | Diferencias vistas | Corrección |
+|---|---|---|---|---|
+| z2a | 9 413 | 0.860/0.837/0.860 | Espalda plana (sin columna ni erectores, sin V); gemelos sin forma de diamante desde atrás; sin lágrima del vasto medial; antebrazo poco grueso junto al codo. | Erectores, escápulas y aductores (elipsoides); surcos de columna, vasto medial y borde inferior del gemelo; braquiorradial más grueso, bíceps con más pico; subdivisión local de espalda y gemelos. |
+| z2b | 9 405 | 0.856/0.843/0.858 | Espalda y gemelos ya se leen; glúteos como un solo bloque sin dos globos; deltoides y bíceps planos de frente. | Glúteos más altos, redondos y definidos (k menor); surco interglúteo y pliegue inferior; deltoides más grande (6.6×7 cm) y más nítido; vasto medial mayor. |
+| z2c | 9 581 | 0.848/0.838/0.857 | Glúteo sobresale claramente de perfil; el surco central existe en el campo (2 cm) pero la malla del short lo suaviza; deltoides algo más redondo. | Subdivisión local de glúteos y del casquete del deltoides (radio 6 cm, +176 tris en lugar de +2 000 como en v2). |
+
+Rig re-hecho; Run y poses extremas revisadas (T-pose, brazos arriba, sentadilla, zancada): sin roturas.

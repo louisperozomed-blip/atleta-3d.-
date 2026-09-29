@@ -140,8 +140,8 @@ def build_field():
         F.add(Ellipsoid(knee, knee - hip, (0.052, 0.050, 0.055), k=0.015, name='knee'))
         F.add(Ellipsoid(ankle, (0, 0, 1), (0.040, 0.038, 0.040), k=0.015, name='ankle'))
         # músculos de la pierna
-        F.add(Ellipsoid(P(0.075, 0.030, 0.945), (0, 0, 1), (0.105, 0.090, 0.080), k=0.02, name='glute'))
-        F.add(Ellipsoid(P(0.098, -0.060, 0.670), knee - hip, (0.068, 0.040, 0.042), k=0.008, name='vmedialis'))
+        F.add(Ellipsoid(P(0.072, 0.036, 0.950), (0, 0, 1), (0.100, 0.084, 0.088), k=0.012, name='glute'))
+        F.add(Ellipsoid(P(0.098, -0.060, 0.670), knee - hip, (0.070, 0.046, 0.047), k=0.006, name='vmedialis'))
         F.add(Ellipsoid(P(0.190, -0.028, 0.760), knee - hip, (0.135, 0.040, 0.060), k=0.01, name='vlateralis'))
         F.add(Ellipsoid(P(0.128, -0.082, 0.780), knee - hip, (0.150, 0.052, 0.048), k=0.012, name='rectus'))
         F.add(Ellipsoid(P(0.125, 0.070, 0.450), (0.05 * sx, 0.1, 1), (0.090, 0.044, 0.044), k=0.006, name='gastro_m'))
@@ -174,8 +174,8 @@ def build_field():
         F.add(Ellipsoid(el, el - sh, (0.042, 0.042, 0.042), k=0.012, name='elbow'))
         # músculos del brazo / hombro
         arm = el - sh
-        F.add(Ellipsoid(sh + arm * 0.13 + np.array([0.006 * sx, 0, 0.006]), arm, (0.108, 0.060, 0.064), k=0.008, name='deltoid'))
-        F.add(Ellipsoid(sh + arm * 0.55 + np.array([0, -0.028, 0]), arm, (0.080, 0.036, 0.038), k=0.006, name='biceps'))
+        F.add(Ellipsoid(sh + arm * 0.13 + np.array([0.006 * sx, 0, 0.006]), arm, (0.110, 0.066, 0.070), k=0.006, name='deltoid'))
+        F.add(Ellipsoid(sh + arm * 0.55 + np.array([0, -0.028, 0]), arm, (0.078, 0.038, 0.042), k=0.005, name='biceps'))
         F.add(Ellipsoid(sh + arm * 0.40 + np.array([0, 0.030, 0]), arm, (0.105, 0.038, 0.034), k=0.006, name='triceps'))
         F.add(Ellipsoid(el + (wr - el) * 0.2 + np.array([0.006 * sx, -0.012, 0]), wr - el, (0.080, 0.047, 0.042), k=0.006, name='brachiorad'))
         F.add(Ellipsoid(P(0.110, -0.012, 1.385), (0.13 * sx, 0.0, -0.040), (0.105, 0.036, 0.044), k=0.035, name='traps'))
@@ -224,6 +224,10 @@ def add_grooves(F):
         # v3: borde inferior del gemelo (forma de diamante vista desde atrás)
         G.append(Capsule(lerp(kn, ank, 0.52) + np.array([-0.030 * sx, 0.080, 0]),
                          lerp(kn, ank, 0.44) + np.array([0.045 * sx, 0.075, 0]), 0.006, k=0.004, name='calf_low'))
+    # v3: surco interglúteo y pliegue bajo el glúteo
+    G.append(Capsule((0, 0.118, 0.995), (0, 0.112, 0.880), 0.008, k=0.004, name='glute_cleft'))
+    for sx in (1, -1):
+        G.append(Capsule((0.020 * sx, 0.085, 0.862), (0.140 * sx, 0.070, 0.872), 0.007, k=0.004, name='glute_fold'))
     # v3: surco de la columna
     G.append(Capsule((0, 0.042, 1.000), (0, 0.048, 1.340), 0.007, k=0.004, name='spine'))
     F.subtract.extend(G)
