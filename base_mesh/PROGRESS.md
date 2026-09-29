@@ -494,3 +494,42 @@ z 1.025 (hoyuelos lumbares) y de θ 112° (lateral de la cadera) hacia el eje.
 - Polos de los glúteos (por lado): 4 de 5 en las esquinas exteriores del loop (pliegue a
   z 0.875 junto a la hendidura y al lateral; hoyuelos a z 1.025) y 4 de 3 en las esquinas
   interiores. Están en la superficie del glúteo, a más de 4 cm de la zona de giro de la cadera.
+
+## It2 · Etapa 4 — manos
+
+`scripts/hand_views.sh` pone la mano de la hoja (FRONT / SIDE / BACK) junto al modelo en la
+misma ventana, más primeros planos con wireframe (`*_hand.jpg`).
+
+Diferencias de partida (m4a, comparado con `g3f`): en la hoja los dedos van casi paralelos, con
+separaciones pequeñas, y el pulgar baja por delante del índice. En el modelo los dedos se abrían
+en abanico (hasta 12° entre índice y meñique) y el pulgar salía hacia delante en L. Cada dedo tenía
+un solo loop por articulación (4 segmentos).
+
+### m4a — 3 loops por nudillo
+- Dedos: anillos a 0.07 / 0.14 de su longitud (MCP, junto con la cara base del nudillo),
+  0.42 / 0.48 / 0.54 (PIP) y 0.74 / 0.79 / 0.84 (DIP), más la punta. Pulgar: 0.12 (base sobre la
+  palma), 0.26 / 0.33 / 0.40 (MCP) y 0.64 / 0.70 / 0.76 (IP). **3 loops en cada nudillo.**
+- Abanico reducido (3.5°…−4.5°) y membranas más anchas para que los dedos queden paralelos y
+  separados. 3 358 quads.
+- El pulgar, al apuntarlo más hacia abajo, cruzaba el borde de la palma (12 auto-intersecciones);
+  se dejó saliendo hacia delante. Tras la Subdivision los dedos parecen un tenedor (finos).
+
+### m4b — error de variable
+- Dedos más gruesos con un parámetro nuevo `base` en `_finger`, que pisaba la variable local
+  `base` (centro de la cara): los dedos se aplanaron (renders `m4b_*`). Renombrado a `base_scale`.
+
+### m4c — pulgar
+- Probadas 12 combinaciones de dirección y curvatura del pulgar comprobando las auto-
+  intersecciones. La que no cruza la palma sale casi perpendicular (metacarpo) y se curva con
+  fuerza hacia abajo (curl 1.3): en FRONT el pulgar baja separado por delante del índice, como en
+  la hoja.
+
+### m4d/m4e — grosor de los dedos
+- Membranas más estrechas (4 mm) y menos afinado hacia la punta (20 %); base de los dedos al 93 %
+  de su cara y la del pulgar al 80 % (con más, la base del pulgar cortaba la palma: 4
+  intersecciones en m4d).
+- Validación: 3 358 quads, 0 tris, 0 n-gons, 0 polos >5, 0 no manifold, 0 duplicados,
+  0 auto-intersecciones, 0 normales invertidas, simetría 0. Los polos de la mano no cambian:
+  las membranas y las puntas son los mismos quads; los nuevos loops son anillos de 4.
+- Pendiente: el esqueleto temporal no tiene huesos de dedos, así que el doblado de los dedos no
+  se prueba en el test de deformación. Los 3 loops por nudillo son el soporte estándar.

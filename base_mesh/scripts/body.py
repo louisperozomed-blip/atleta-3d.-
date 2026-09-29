@@ -387,7 +387,7 @@ class Body:
             return dors + palm
         # anillo de nudillos (16): dorso D0..D7 (del índice al meñique) + palma P7..P0
         kc = wr + h * 0.085 * SC
-        us = np.array([0.037, 0.021, 0.017, 0.001, -0.003, -0.019, -0.023, -0.038]) * SC
+        us = np.array([0.038, 0.0205, 0.0170, -0.0005, -0.004, -0.0215, -0.025, -0.040]) * SC
         K = m.ring([kc + f * u + w_axis * 0.012 * SC for u in us]
                    + [kc + f * u - w_axis * 0.011 * SC for u in us[::-1]], 'hand')
 
@@ -405,13 +405,13 @@ class Body:
         Pm = K[8:][::-1]                     # P0..P7
         for k in range(3):
             m.face(D[2 * k + 1], D[2 * k + 2], Pm[2 * k + 2], Pm[2 * k + 1])
-        lengths = [0.066, 0.074, 0.069, 0.055]
-        spread = [0.10, 0.03, -0.04, -0.12]
+        lengths = [0.068, 0.076, 0.071, 0.057]
+        spread = [0.035, 0.010, -0.015, -0.045]   # casi paralelos, con separación (como la hoja)
         for k in range(4):
             quad = [D[2 * k], D[2 * k + 1], Pm[2 * k + 1], Pm[2 * k]]
             dirf = h + f * spread[k] - w_axis * 0.10
             self._finger(quad, dirf / np.linalg.norm(dirf), lengths[k] * SC, 0.0085 * SC, 0.0080 * SC,
-                         curl=-w_axis * (0.22 + 0.04 * k))
+                         segs=self.FINGER_SEGS, curl=-w_axis * (0.22 + 0.04 * k))
         # pulgar: sale de la cara lateral entre Pa0 y Pa1 del lado del índice
         side = None
         best = -1e9
@@ -423,15 +423,21 @@ class Body:
             if sc > best:
                 best, side = sc, q
         # sale casi perpendicular al lado de la palma (metacarpo) y se curva hacia abajo
-        tdir = f * 0.95 + h * 0.12 - w_axis * 0.30
-        self._finger(side, tdir / np.linalg.norm(tdir), 0.050 * SC, 0.011 * SC, 0.010 * SC,
-                     segs=(0.30, 0.60, 0.82, 1.0), curl=h * 0.75 - w_axis * 0.10)
+        tdir = f * 1.0 + h * 0.0 - w_axis * 0.30
+        self._finger(side, tdir / np.linalg.norm(tdir), 0.054 * SC, 0.011 * SC, 0.010 * SC,
+                     base_scale=0.80, segs=self.THUMB_SEGS, curl=h * 1.3 - f * 0.2 - w_axis * 0.10)
+
+    # anillos de cada dedo (fracción de su longitud): 3 loops en cada nudillo.
+    # MCP = cara base + 0.07 + 0.14; PIP 0.42/0.48/0.54; DIP 0.74/0.79/0.84; punta.
+    FINGER_SEGS = (0.07, 0.14, 0.42, 0.48, 0.54, 0.74, 0.79, 0.84, 1.0)
+    # pulgar: MCP 0.26/0.33/0.40, IP 0.64/0.70/0.76 (la base está sobre la palma: CMC)
+    THUMB_SEGS = (0.12, 0.26, 0.33, 0.40, 0.64, 0.70, 0.76, 1.0)
 
     def _bridge_ring_to_ring(self, a, b):
         order = best_alignment([self.m.V[i] for i in a], [self.m.V[i] for i in b])
         self.m.bridge(a, [b[k] for k in order])
 
-    def _finger(self, quad, d, length, hw, ht, segs=(0.22, 0.48, 0.75, 1.0), curl=None):
+    def _finger(self, quad, d, length, hw, ht, segs=(0.22, 0.48, 0.75, 1.0), curl=None, base_scale=0.93):
         """Extruye un dedo desde una cara (quad) en 4 segmentos + tapa.
         curl: vector hacia la palma; los segmentos se curvan hacia él (dedos relajados)."""
         m = self.m
@@ -445,7 +451,7 @@ class Body:
             n0 = -n0
         cv = np.zeros(3) if curl is None else np.asarray(curl, float)
         for i, t in enumerate(segs):
-            scale = 0.86 if i == 0 else 0.86 * (1.0 - 0.28 * t)
+            scale = base_scale if i == 0 else base_scale * (1.0 - 0.20 * t)
             off = d * (length * t) + cv * length * t * t
             # cada anillo es perpendicular a la tangente local del dedo (sin cizalla)
             tan = d + 2 * cv * t
