@@ -23,6 +23,25 @@ def lerp(a, b, t):
     return np.asarray(a, float) + (np.asarray(b, float) - np.asarray(a, float)) * t
 
 
+def catmull(keys, x):
+    """Interpolación Catmull-Rom de una tabla [(x, v1, v2, ...)] ordenada (creciente o decreciente)."""
+    K = np.asarray(keys, float)
+    if K[0, 0] > K[-1, 0]:
+        K = K[::-1]
+    xs = K[:, 0]
+    i = int(np.clip(np.searchsorted(xs, x) - 1, 0, len(xs) - 2))
+    p0, p1, p2, p3 = K[max(i - 1, 0)], K[i], K[i + 1], K[min(i + 2, len(K) - 1)]
+    t = (x - p1[0]) / (p2[0] - p1[0])
+    t2, t3 = t * t, t * t * t
+    v = 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3)
+    v[0] = x
+    return v
+
+
+def interp_table(keys, xs):
+    return [tuple(catmull(keys, x)) for x in xs]
+
+
 def gauss(x, s):
     return np.exp(-(x / s) ** 2)
 
@@ -118,31 +137,36 @@ class Body:
         self.ports['neck_base'] = R[-1]
 
     # ================================================================== 2. piernas y pies
-    # (z, centro x, centro y, semiancho x, radio delante, radio detrás)
+    # tabla clave de la pierna (z, centro x, centro y, semiancho x, radio delante, radio detrás);
+    # los anillos se interpolan (Catmull-Rom) en las alturas de LEG_Z.
     LEG = [
-        (0.790, 0.100, -0.008, 0.086, 0.098, 0.090),
-        (0.740, 0.100, -0.005, 0.078, 0.090, 0.082),
-        (0.690, 0.100, -0.002, 0.068, 0.080, 0.076),
-        (0.645, 0.098, 0.003, 0.057, 0.066, 0.064),
-        (0.612, 0.098, 0.006, 0.050, 0.058, 0.058),   # rodilla (3 loops)
-        (0.585, 0.098, 0.008, 0.046, 0.055, 0.056),
-        (0.558, 0.099, 0.012, 0.046, 0.052, 0.058),
-        (0.520, 0.102, 0.020, 0.048, 0.047, 0.064),
-        (0.470, 0.106, 0.034, 0.057, 0.047, 0.072),
-        (0.430, 0.108, 0.043, 0.060, 0.050, 0.070),
-        (0.380, 0.108, 0.046, 0.057, 0.048, 0.062),
-        (0.330, 0.106, 0.046, 0.049, 0.045, 0.052),
-        (0.280, 0.104, 0.045, 0.041, 0.040, 0.045),
-        (0.230, 0.102, 0.044, 0.032, 0.034, 0.037),
-        (0.190, 0.101, 0.043, 0.028, 0.032, 0.034),   # tobillo (3 loops)
-        (0.155, 0.101, 0.043, 0.029, 0.033, 0.035),
-        (0.120, 0.101, 0.046, 0.032, 0.037, 0.039),
+        (0.790, 0.093, -0.008, 0.091, 0.098, 0.090),
+        (0.740, 0.093, -0.005, 0.080, 0.091, 0.090),
+        (0.690, 0.094, -0.002, 0.067, 0.080, 0.078),
+        (0.645, 0.091, 0.003, 0.056, 0.068, 0.062),
+        (0.612, 0.090, 0.006, 0.048, 0.060, 0.052),
+        (0.585, 0.091, 0.008, 0.045, 0.058, 0.054),
+        (0.558, 0.090, 0.012, 0.047, 0.058, 0.054),
+        (0.520, 0.098, 0.020, 0.045, 0.053, 0.061),
+        (0.470, 0.102, 0.034, 0.059, 0.056, 0.074),
+        (0.430, 0.103, 0.043, 0.067, 0.065, 0.075),
+        (0.380, 0.102, 0.046, 0.062, 0.061, 0.068),
+        (0.330, 0.101, 0.046, 0.049, 0.053, 0.053),
+        (0.280, 0.099, 0.045, 0.040, 0.046, 0.044),
+        (0.230, 0.096, 0.044, 0.032, 0.039, 0.037),
+        (0.190, 0.095, 0.043, 0.027, 0.036, 0.033),
+        (0.155, 0.092, 0.043, 0.027, 0.035, 0.031),
+        (0.120, 0.093, 0.046, 0.032, 0.044, 0.038),
     ]
+    # 27 anillos: 3 loops en la rodilla (0.607/0.590/0.573) y 3 en el tobillo (0.19/0.165/0.14)
+    LEG_Z = [0.795, 0.765, 0.735, 0.705, 0.675, 0.648, 0.625, 0.607, 0.590, 0.573, 0.555, 0.535,
+             0.510, 0.485, 0.455, 0.425, 0.395, 0.365, 0.335, 0.305, 0.275, 0.245, 0.215, 0.190,
+             0.165, 0.140, 0.120]
     # pie: (y, semiancho, altura del empeine, x centro)
     FOOT = [
-        (0.094, 0.028, 0.050, 0.103), (0.076, 0.034, 0.068, 0.103), (0.054, 0.036, 0.080, 0.103),
-        (0.032, 0.037, 0.082, 0.104), (0.010, 0.038, 0.076, 0.105), (-0.014, 0.040, 0.062, 0.106),
-        (-0.050, 0.042, 0.046, 0.108), (-0.085, 0.041, 0.036, 0.109), (-0.116, 0.033, 0.026, 0.110),
+        (0.094, 0.028, 0.052, 0.096), (0.076, 0.033, 0.072, 0.096), (0.054, 0.035, 0.084, 0.096),
+        (0.032, 0.036, 0.088, 0.097), (0.010, 0.037, 0.084, 0.098), (-0.014, 0.039, 0.074, 0.099),
+        (-0.050, 0.041, 0.060, 0.101), (-0.085, 0.040, 0.050, 0.102), (-0.116, 0.033, 0.042, 0.103),
     ]
     FOOT_HOLE = (1, 5)        # segmentos del tubo del pie donde se abre el agujero del tobillo
 
@@ -150,25 +174,31 @@ class Body:
         m = self.m
         A = self.ports['leg_hole']
         z0 = 0.835 * SC
-        c = np.array([0.100 * HIP * SC, -0.010 * SC, z0])
+        # el anillo L1 sigue la forma del primer anillo del muslo (sin escalón en la cadera)
+        c = np.array([self.LEG[0][1] * HIP * SC, self.LEG[0][2] * SC, z0])
 
         def place(P, k):
             p = np.mean(P, 0)
             d = p[:2] - c[:2]
             ang = np.arctan2(d[0], -d[1])          # 0 = delante
-            rx, ry = 0.093 * SC, 0.099 * SC
+            rx = 0.093 * SC
+            ry = (0.099 if np.cos(ang) >= 0 else 0.092) * SC
             q = c + np.array([np.sin(ang) * rx, -np.cos(ang) * ry, 0.0])
+            q[0] = max(q[0], 0.012 * SC)            # la cara interna no toca el plano de simetría
             q[2] = z0 + (p[2] - 0.875 * SC) * 0.4
             return q
         L1, poles = m.reduce_to(A, [0, H_TORSO], place, closed=True, group='leg')
         self.poles_expected['ingle/glúteo (reducción 20→16)'] = poles
         angles = self._angles_of(L1, c)
         prev = L1
-        for (z, cx, cy, rx, rf, rb) in self.LEG:
+        for (z, cx, cy, rx, rf, rb) in interp_table(self.LEG, self.LEG_Z):
             zz = z * SC
             cen = np.array([cx * HIP * SC if z > 0.6 else cx * SC, cy * SC, zz])
             ang = angles
-            pts = [cen + np.array([np.sin(a) * rx * SC, -np.cos(a) * (rf if np.cos(a) >= 0 else rb) * SC, 0])
+            # rótula: relieve delantero en los 3 loops de la rodilla
+            knee = 0.007 * SC * gauss(z - 0.598, 0.022)
+            pts = [cen + np.array([np.sin(a) * rx * SC,
+                                   -np.cos(a) * (rf if np.cos(a) >= 0 else rb) * SC - knee * gauss(np.sin(a / 2), 0.35), 0])
                    for a in ang]
             # relajar la distribución angular hacia uniforme a medida que bajamos
             angles = 0.75 * angles + 0.25 * self._uniform_like(angles)
@@ -197,10 +227,11 @@ class Body:
         for (y, w, h, cx) in self.FOOT:
             y *= SC; w *= SC; h *= SC; cx *= SC
             xs = np.linspace(cx + w, cx - w, 5)          # de fuera (+x) a dentro
-            top = [(x, y, h * (1 - 0.25 * ((x - cx) / w) ** 2)) for x in xs]
-            si = (cx - w * 1.05, y, h * 0.45)
-            bot = [(x, y, 0.0 if abs(x - cx) < w * 0.9 else 0.006 * SC) for x in xs[::-1]]
-            so = (cx + w * 1.05, y, h * 0.45)
+            top = [(x, y, h * (1 - 0.22 * ((x - cx) / w) ** 2)) for x in xs]
+            si = (cx - w * 1.12, y, h * 0.36)
+            xb = np.linspace(cx - w * 1.08, cx + w * 1.08, 5)   # suela algo más ancha que el empeine
+            bot = [(x, y, 0.0 if abs(x - cx) < w * 0.9 else 0.003 * SC) for x in xb]
+            so = (cx + w * 1.12, y, h * 0.36)
             pts = top + [si] + bot + [so]                  # 12: arriba 4, lado 2, abajo 4, lado 2
             rings.append(m.ring(pts, 'foot'))
         f0, f1 = self.FOOT_HOLE
@@ -210,7 +241,7 @@ class Body:
                     continue                            # agujero del tobillo (arriba, 4x4)
                 a, b = rings[i], rings[i + 1]
                 m.face(a[j], a[(j + 1) % 12], b[(j + 1) % 12], b[j])
-        m.cap_grid(rings[0][::-1][-1:] + rings[0][::-1][:-1], 4, 2, lift=-0.012 * SC, normal=(0, 1, 0), group='foot')
+        m.cap_grid(rings[0][4::-1] + rings[0][:4:-1], 4, 2, lift=-0.012 * SC, normal=(0, 1, 0), group='foot')
         m.cap_grid(rings[-1], 4, 2, lift=-0.012 * SC, normal=(0, -1, 0), group='foot')
         hole = ([rings[f0][j] for j in range(0, 5)] + [rings[i][4] for i in range(f0 + 1, f1)]
                 + [rings[f1][j] for j in range(4, -1, -1)] + [rings[i][0] for i in range(f1 - 1, f0, -1)])

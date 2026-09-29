@@ -1,0 +1,188 @@
+{
+ "verts": 1417,
+ "edges": 2810,
+ "faces": 1394,
+ "quads": 1394,
+ "tris": 0,
+ "ngons": 0,
+ "subdiv1_tris": 11152,
+ "boundary_edges": 44,
+ "nonmanifold_edges": 0,
+ "edges_gt2_faces": 0,
+ "loose_edges": 0,
+ "loose_verts": 0,
+ "poles_3": 16,
+ "poles_5": 12,
+ "poles_gt5": 0,
+ "pole_list_5": [
+  {
+   "co": [
+    0.0481,
+    -0.0922,
+    0.835
+   ],
+   "region": "torso/pelvis",
+   "joint": "cadera",
+   "joint_margin": 0.0525
+  },
+  {
+   "co": [
+    0.037,
+    0.0628,
+    0.8338
+   ],
+   "region": "torso/pelvis",
+   "joint": "cadera",
+   "joint_margin": 0.044
+  },
+  {
+   "co": [
+    0.137,
+    0.076,
+    0.051
+   ],
+   "region": "pie",
+   "joint": "tobillo",
+   "joint_margin": 0.0886
+  },
+  {
+   "co": [
+    0.069,
+    0.076,
+    0.051
+   ],
+   "region": "pie",
+   "joint": "tobillo",
+   "joint_margin": 0.0876
+  },
+  {
+   "co": [
+    0.146,
+    -0.014,
+    0.0465
+   ],
+   "region": "pie",
+   "joint": "tobillo",
+   "joint_margin": 0.1033
+  },
+  {
+   "co": [
+    0.066,
+    -0.014,
+    0.0465
+   ],
+   "region": "pie",
+   "joint": "tobillo",
+   "joint_margin": 0.1005
+  }
+ ],
+ "pole_list_3": [
+  {
+   "co": [
+    0.131,
+    0.094,
+    0.0375
+   ],
+   "region": "pie",
+   "joint": "tobillo",
+   "joint_margin": 0.1051
+  },
+  {
+   "co": [
+    0.103,
+    0.094,
+    0.05
+   ],
+   "region": "pie",
+   "joint": "tobillo",
+   "joint_margin": 0.0904
+  },
+  {
+   "co": [
+    0.075,
+    0.094,
+    0.006
+   ],
+   "region": "pie",
+   "joint": "tobillo",
+   "joint_margin": 0.1337
+  },
+  {
+   "co": [
+    0.103,
+    0.094,
+    0.0
+   ],
+   "region": "pie",
+   "joint": "tobillo",
+   "joint_margin": 0.1375
+  },
+  {
+   "co": [
+    0.143,
+    -0.116,
+    0.0195
+   ],
+   "region": "pie",
+   "joint": "tobillo",
+   "joint_margin": 0.1829
+  },
+  {
+   "co": [
+    0.077,
+    -0.116,
+    0.0195
+   ],
+   "region": "pie",
+   "joint": "tobillo",
+   "joint_margin": 0.1802
+  },
+  {
+   "co": [
+    0.077,
+    -0.116,
+    0.006
+   ],
+   "region": "pie",
+   "joint": "tobillo",
+   "joint_margin": 0.1897
+  },
+  {
+   "co": [
+    0.143,
+    -0.116,
+    0.006
+   ],
+   "region": "pie",
+   "joint": "tobillo",
+   "joint_margin": 0.1923
+  }
+ ],
+ "pole_list_gt5": [],
+ "poles_in_joint_zone": [],
+ "duplicate_verts": 0,
+ "duplicate_faces": 0,
+ "internal_faces": 0,
+ "degenerate_faces": 0,
+ "flipped_normals": 0,
+ "signed_volume": 0.03096,
+ "normals_outward": true,
+ "symmetry_error": 0.0,
+ "center_verts_off_plane": 0,
+ "tri_list": [],
+ "bbox": {
+  "x": [
+   -0.1921,
+   0.1921
+  ],
+  "z": [
+   0.0,
+   1.44
+  ]
+ },
+ "stage": 2,
+ "tag": "s2a",
+ "poles_expected": {
+  "ingle/glúteo (reducción 20→16)": 2
+ }
+}

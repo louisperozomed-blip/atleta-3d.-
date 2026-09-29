@@ -73,3 +73,61 @@ brazo 3×3 caras (12 vértices), borde superior abierto para el cuello.
   simetría 0. Las 76 aristas de borde son los puertos abiertos (piernas, brazos, cuello).
 - Loops: 3 anillos en la cintura (1.115-1.175), anillos concéntricos alrededor del pecho
   (1.235-1.312) y pliegue bajo el pecho en 1.235.
+
+---
+
+## Etapa 2 — piernas y pies
+
+Topología: el agujero de 20 vértices (R0 + entrepierna) se reduce a un anillo de 16 con dos
+quads de reducción (delante: ingle; detrás: pliegue del glúteo) → 2 polos de 5 por pierna en
+zonas planas. Pierna de 16 vértices hasta el tobillo. Pie = tubo de 12 vértices a lo largo de Y
+(arriba 4, lados 2, suela 4) con un agujero 4×4 en el empeine unido al tobillo por Bridge Edge
+Loops y tapas de rejilla 4×2 en talón y puntera.
+
+### s2a — primer bloqueo (17 anillos de pierna)
+- 1394 quads totales, 0 tris / n-gons. Polos: 12 de 5 y 16 de 3.
+- Diferencias (FRONT): pierna entera 6-9 mm demasiado hacia fuera (centro del muslo, rodilla y
+  tobillo); muslo interno a z 0.75-0.80 con 1.1 cm más de hueco que la hoja (en la hoja los
+  muslos casi se tocan); rodilla 5 mm más ancha por lado.
+- SIDE: espinilla 1.1-1.5 cm por detrás entre z 0.35 y 0.45; empeine y puntera bajos (a z 0.05
+  la puntera se queda 4 cm corta: el pie de la hoja es un bloque alto tipo zapatilla).
+- BACK: la figura de espaldas de la hoja tiene las piernas ~1.7 cm más juntas que la de frente
+  (inconsistencia del dibujo; se prioriza FRONT, que coincide con SIDE).
+- Error: la tapa del talón usaba un orden de anillo que no empezaba en una esquina de la
+  rejilla (esquinas desplazadas → polos de 3 en mitad de la tapa).
+- Densidad: 17 anillos daban ~4 cm entre loops; poca resolución para 3 loops en la rodilla.
+
+### s2b — ajuste a la silueta + densidad
+- Nuevo `scripts/fit_leg.py`: mide centro/semiancho (FRONT) y bordes delante/detrás (SIDE) en
+  cada anillo y propone la tabla corregida. La tabla LEG pasa a ser de claves, y los 27 anillos
+  se interpolan con Catmull-Rom (3 loops en la rodilla 0.607/0.590/0.573 y 3 en el tobillo
+  0.19/0.165/0.14).
+- Pie recentrado (x 0.096-0.103) y empeine/puntera más altos; orden de la tapa del talón corregido.
+- FRONT y SIDE dentro de ±2 mm de z 0.15 a 0.80 (ver `s2b_silhouette.png`). 1714 quads.
+- Diferencias: escalón visible en la cadera (z 0.83-0.87) porque el anillo de transición L1
+  estaba centrado en x 0.100 y el muslo en 0.093; los quads de la entrepierna muy pellizcados
+  (vértice interior de L1 casi en x = 0); la rodilla no tiene la rótula de la hoja.
+
+### s2c — cadera, entrepierna y rótula
+- L1 se coloca sobre la forma del primer anillo del muslo (centro, radios delante/detrás) y su
+  cara interna se limita a x ≥ 1.2 cm → transición cadera-muslo sin escalón.
+- Rótula: relieve delantero de 7 mm en los 3 loops de la rodilla.
+- Diferencias restantes: el pie visto de frente acaba en una punta redondeada (la Subdivision
+  redondea la suela); en la hoja el pie es un bloque con la suela más ancha que el empeine y la
+  puntera alta.
+
+### s2d — pie tipo bloque
+- Suela 8 % más ancha que el empeine, lados más bajos (36 % de la altura) y puntera más alta
+  (4.2 cm). FRONT a z 0.05: ±2 mm; SIDE a 0.05: +6/+2 mm.
+- IoU (zona 0-0.95): front 0.908, side 0.950, back 0.776 (back limitado por la inconsistencia
+  de la hoja).
+- Validación: 1714 quads, 0 tris, 0 n-gons, 0 polos >5, 0 aristas no manifold, 0 duplicados,
+  0 normales invertidas, simetría 0. Ningún polo dentro de la zona de pliegue de cadera,
+  rodilla o tobillo (`poles_in_joint_zone` vacío).
+- Polos justificados (por pierna):
+  - 2 polos de 5 en la reducción 20→16: ingle delantera (0.047, −0.094, 0.835) y pliegue del
+    glúteo (0.032, 0.062, 0.834), a 4.6-5.5 cm fuera de la zona de pliegue de la cadera.
+  - 4 polos de 5 en las esquinas del agujero del tobillo sobre el empeine (z ≈ 0.056), zona
+    rígida del pie, a >8 cm del tobillo.
+  - 8 polos de 3 en las esquinas de las tapas de talón y puntera (esquinas de un bloque, zona
+    que no se deforma).
