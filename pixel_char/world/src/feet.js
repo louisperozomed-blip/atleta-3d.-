@@ -52,6 +52,10 @@
       const fr = r.frames[f];
       return { feet: fr.feet.map((q) => ({ x: q.x * SC, y: q.y * SC })), grounded: anim === "walk" ? true : !!r.contact[f], contact: !!r.contact[f] };
     }
+    function anyFeet(anim, dir, f) {
+      const r = W.FEET && W.FEET[anim + "_" + DIRS[dir]];
+      return r ? r.frames[f].feet.map((q) => ({ x: q.x * SC, y: q.y * SC })) : null;
+    }
     // coordenadas de pantalla (en unidades de mundo) de un punto del plano del sprite
     function screenOf(base, R, cx, cy, sx, sy, camTheta) {
       const wx = base.x + R.x * cx * ch.unitsH * sx, wz = base.z + R.z * cx * ch.unitsH * sx;
@@ -62,7 +66,7 @@
     const warps = { A: [0, 0, 0, 0], B: [0, 0, 0, 0] };
 
     return {
-      st, warps,
+      st, warps, anyFeet,
       // base: punto del pivote del sprite en el mundo; sx, sy: escala del sprite
       update(dt, p, anim, dir, f, camTheta, base, sx, sy) {
         const R = { x: Math.cos(camTheta), z: -Math.sin(camTheta) };
@@ -98,7 +102,8 @@
           if (!st.anchor) {
             const q = feet[low];
             const s = screenOf(base, R, q.x, q.y, sx, sy, camTheta);
-            st.anchor = { fx: q.x, fy: q.y, sx: s[0], sy: s[1], d: [0, 0] };
+            st.anchor = { fx: q.x, fy: q.y, sx: s[0], sy: s[1], d: [0, 0],
+                          wx: base.gx + R.x * q.x * ch.unitsH * sx, wz: base.gz + R.z * q.x * ch.unitsH * sx };
             st.stance++;
             st.lastScreen = null;
           }

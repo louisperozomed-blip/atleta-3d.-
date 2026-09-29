@@ -70,7 +70,7 @@ def lowest_opaque(img):
 def main():
     out = {}
     dbg_rows = []
-    for anim in ("walk", "run"):
+    for anim in ("idle", "walk", "run", "jump"):
         for d in DIRS:
             frames = [np.asarray(Image.open(os.path.join(FR, f"{anim}_{d}_{i}.png"))) for i in range(6)]
             F = [boots(f) for f in frames]
@@ -104,6 +104,7 @@ def main():
     ISO = 0.64
     for key, rec in out.items():
         anim, d = key.split("_")
+        if anim not in ("walk", "run"): continue
         a = DIRS.index(d) * np.pi / 4
         mv = np.array([-np.sin(a), np.cos(a) * ISO]); mv /= np.linalg.norm(mv)
         fr = rec["frames"]
@@ -134,6 +135,9 @@ def main():
     WV = json.load(open(os.path.join(ROOT, "assets", "walk_variants.json")))
     for key, rec in out.items():
         anim, d = key.split("_")
+        if anim not in ("walk", "run"):
+            rec["contact"] = [int(x["grounded"]) for x in rec["frames"]]; rec["f_screen"] = 1.0; rec["art_cycle_u"] = 0.0
+            continue
         a = DIRS.index(d) * np.pi / 4
         ms = np.array([-np.sin(a), np.cos(a) * np.sin(EL)]); f = float(np.linalg.norm(ms)); ms /= f
         fr = rec["frames"]

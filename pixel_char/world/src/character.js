@@ -22,6 +22,8 @@
       uWarp: { value: new THREE.Vector4() },               // túnica: (amp x, amp y, belt v, hem v) — etapa 3
       uFootA: { value: new THREE.Vector4() }, uFootB: { value: new THREE.Vector4() },   // pies anclados (u, v, du, dv)
       uFootR: { value: new THREE.Vector2(7 / 120, 22 / 136) },                             // (sigma u, alto rodilla v)
+      uAO: { value: new THREE.Vector3(125 / 136, 34 / 136, 0) },                            // (v del suelo, alto v, fuerza)
+      uGround: { value: new THREE.Color(0, 0, 0) }, uBounce: { value: 0 },
     }]);
     uniforms.uColor.value = tex.color; uniforms.uNormal.value = tex.normal; uniforms.uSpec.value = tex.spec;
     const VS = `
@@ -54,6 +56,7 @@
       uniform sampler2D uColor, uNormal, uSpec;
       uniform vec4 uRect, uWarp, uFootA, uFootB;
       uniform vec2 uFootR;
+      uniform vec3 uAO, uGround; uniform float uBounce;
       // deformación de la pierna apoyada: 0 en la rodilla, 1 en la suela, gaussiana en horizontal
       vec2 footW(vec2 q, vec4 F) {
         if (F.z == 0.0 && F.w == 0.0) return vec2(0.0);
@@ -112,7 +115,11 @@
         // r128 no físico: irradiancia neta = color·intensidad. Las luces tiñen, pero con la
         // saturación algo contenida para no perder el crema y el naranja del personaje
         vec3 diffT = mix(vec3(dot(diff, vec3(0.333))), diff, 0.6);
-        vec3 col = c.rgb * diffT * uGain + (spec + rim) * 0.5;
+        // oclusión ambiental hacia el suelo (piernas y botas) + rebote del color de la baldosa
+        float hgt = uAO.x - q.y;                                   // altura sobre la suela (v)
+        float ao = mix(1.0 - uAO.z, 1.0, smoothstep(0.0, uAO.y, hgt));
+        vec3 col = c.rgb * diffT * uGain * ao + (spec + rim) * 0.5 * ao;
+        col += c.rgb * uGround * uBounce * (1.0 - smoothstep(0.0, uAO.y * 1.4, hgt)) * (0.35 + 0.65 * clamp(0.5 - 0.5 * n.y, 0.0, 1.0));
         // ajuste hacia la paleta del mundo: medios algo más fríos, sombras hacia violeta;
         // negros y altas luces (crema, naranja) se mantienen
         float lum = dot(col, vec3(0.299, 0.587, 0.114));
@@ -169,6 +176,19 @@
     const blob = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
       new THREE.MeshBasicMaterial({ map: blobTex, color: 0x05030a, transparent: true, depthWrite: false, opacity: 0.8, polygonOffset: true, polygonOffsetFactor: -2 }));
     blob.renderOrder = 1; scene.add(blob);
+    // Sombra de contacto de cada bota: pequeña, oscura y de borde firme
+    const bootTex = (function () {
+      const c = document.createElement("canvas"); c.width = c.height = 32;
+      const g = c.getContext("2d"), gr = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+      gr.addColorStop(0, "rgba(0,0,0,1)"); gr.addColorStop(0.55, "rgba(0,0,0,0.85)"); gr.addColorStop(0.8, "rgba(0,0,0,0.3)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = gr; g.fillRect(0, 0, 32, 32);
+      return new THREE.CanvasTexture(c);
+    })();
+    const boots = [0, 1].map(() => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
+        new THREE.MeshBasicMaterial({ map: bootTex, color: 0x020106, transparent: true, depthWrite: false, opacity: 0.9, polygonOffset: true, polygonOffsetFactor: -3 }));
+      m.renderOrder = 2; scene.add(m); return m;
+    });
 
     // Versión "sin integrar" para comparar: pegatina 2D encima del canvas (sin luz, sin
     // sombra, sin profundidad, a resolución completa)
@@ -179,7 +199,7 @@
 
     const st = { anim: "idle", dir: 0, dirWanted: 0, lastStep: 0, phase: 0, idleT: 0, time: 0, frame: 0, prevAnim: "idle" };
     const ch = {
-      mesh, mat, uniforms, st, meta, unitsV, unitsH, caster, blob, sticker, ghost, integrated: true,
+      mesh, mat, uniforms, st, meta, unitsV, unitsH, caster, blob, boots, sticker, ghost, integrated: true,
       frameRect(anim, dir, f) {
         const k = (ANIMS.indexOf(anim) * 8 + dir) * NF + f;
         const c = k % COLS, r = Math.floor(k / COLS);
@@ -306,7 +326,7 @@
         st.hgt = hgt;
         // pies anclados: el pivote del sprite en el mundo y la deformación de la pierna apoyada
         if (this.anchor) {
-          const base = { x: p.x + rx * sway + tx * 0.15, y: p.y + hgt - lift + bob, z: p.z + rz * sway + tz * 0.15 };
+          const base = { x: p.x + rx * sway + tx * 0.15, y: p.y + hgt - lift + bob, z: p.z + rz * sway + tz * 0.15, gx: p.x + rx * sway, gz: p.z + rz * sway };
           const wv = this.anchor.update(st.dt || 0, p, anim, st.dir, f, camTheta, base, sx, sy);
           uniforms.uFootA.value.fromArray(wv.A); uniforms.uFootB.value.fromArray(wv.B);
         }
@@ -315,13 +335,45 @@
         const srx = Math.cos(sa), srz = -Math.sin(sa);
         caster.rotation.set(0, sa, 0);
         caster.scale.set(w, h, 1);
-        caster.position.set(p.x + srx * ox, baseY, p.z + srz * ox);
+        const an = this.anchor && this.anchor.st.anchor;
+        if (W.FX.contact && an && !p.jump) {
+          // la sombra NACE en el pie apoyado: el plano gira alrededor de esa bota
+          const px0 = -PVX / FW * w;
+          caster.position.set(an.wx - srx * an.fx * unitsH * sx + srx * px0, baseY, an.wz - srz * an.fx * unitsH * sx + srz * px0);
+        } else caster.position.set(p.x + srx * ox, baseY, p.z + srz * ox);
         uniforms.uSunW.value.copy(sd);
         // contacto: se encoge y aclara con la altura del salto
         const air = hgt / W.CHAR_H, k = 1 / (1 + air * 2.2);
         blob.position.set(p.x, p.ground + 0.03, p.z);
-        blob.scale.set(0.95 * k, 1, 0.62 * k);
-        blob.material.opacity = 0.75 * k;
+        if (W.FX.contact) { blob.scale.set(0.7 * k, 1, 0.42 * k); blob.material.opacity = 0.32 * k; }
+        else { blob.scale.set(0.95 * k, 1, 0.62 * k); blob.material.opacity = 0.75 * k; }
+        // sombras de contacto por bota + oclusión en el sprite + rebote del color del suelo
+        const ft = W.FX.contact && this.anchor ? this.anchor.anyFeet(anim, st.dir, f) : null;
+        boots.forEach((m) => { m.visible = !!ft && this.integrated; });
+        uniforms.uAO.value.z = W.FX.contact ? 0.45 : 0;
+        uniforms.uBounce.value = W.FX.contact ? 0.35 : 0;
+        if (W.FX.contact) {
+          const ti = W.tileIndex(p.x, p.z);
+          if (ti >= 0) uniforms.uGround.value.setHex(W.T.col[ti]);
+        }
+        if (ft) {
+          const ref = Math.max(ft[0].y, ft[1].y);
+          const EL = W.CAM_EL, gx = p.x + rx * sway, gz = p.z + rz * sway;
+          ft.forEach((q, i) => {
+            let fx = q.x, lifted = Math.max(0, ref - q.y) * unitsV + hgt;
+            let X = gx + rx * fx * unitsH * sx, Z = gz + rz * fx * unitsH * sx;
+            // la bota anclada: su sombra donde está clavada
+            if (an && !p.jump && Math.hypot(q.x - an.fx, q.y - an.fy) < 0.5) { X = an.wx; Z = an.wz; lifted = 0; }
+            else if (q.y > ref - 1.5) { X += tx * (q.y - ref) * unitsH / Math.sin(EL); Z += tz * (q.y - ref) * unitsH / Math.sin(EL); }
+            const kk = 1 / (1 + lifted * 7);
+            const m = boots[i];
+            m.position.set(X, p.ground + 0.035, Z);
+            m.rotation.set(0, camTheta, 0);
+            m.scale.set(0.34 * kk, 1, 0.17 * kk);
+            m.material.opacity = 0.92 * kk * kk;
+          });
+          if (ft[0].x === ft[1].x && ft[0].y === ft[1].y) boots[1].visible = false;
+        }
         ghost.position.copy(mesh.position); ghost.rotation.copy(mesh.rotation); ghost.scale.copy(mesh.scale);
         mesh.visible = this.integrated; caster.visible = this.integrated; blob.visible = this.integrated; ghost.visible = this.integrated;
         if (!this.integrated) this.drawSticker(p, hgt - lift + bob, r);

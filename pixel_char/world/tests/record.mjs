@@ -46,6 +46,8 @@ async function record(fx, route, tag) {
   await page.evaluate(([fx, r]) => {
     Object.assign(W.FX, fx);
     W.teleport(r.x, r.z);
+    Object.assign(W.character.st, { phase: 0, idleT: 0, anim: "idle", frame: 0, lastStep: 0, wst: {} });
+    if (W.character.anchor) Object.assign(W.character.anchor.st, { anchor: null, release: null, key: "", frame: -1 });
     W.player.heading = Math.atan2(r.tz - r.z, r.tx - r.x);
     W.tick(1 / 30, 20);                      // se asienta la cámara
     W.slip.reset();
