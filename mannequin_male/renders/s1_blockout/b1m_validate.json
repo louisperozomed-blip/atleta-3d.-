@@ -1,0 +1,653 @@
+{
+ "verts": 1316,
+ "edges": 2628,
+ "faces": 1314,
+ "quads": 1314,
+ "tris": 0,
+ "ngons": 0,
+ "tris_triangulated": 2628,
+ "boundary_edges": 0,
+ "nonmanifold_edges": 0,
+ "edges_gt2_faces": 0,
+ "loose_edges": 0,
+ "loose_verts": 0,
+ "poles_3": 60,
+ "poles_5": 52,
+ "poles_gt5": 0,
+ "pole_list_5": [
+  {
+   "co": [
+    0.1558,
+    -0.0182,
+    1.3706
+   ],
+   "region": "torso/pelvis",
+   "joint": "hombro",
+   "joint_margin": 0.0375
+  },
+  {
+   "co": [
+    0.1595,
+    0.102,
+    1.3713
+   ],
+   "region": "torso/pelvis",
+   "joint": "hombro",
+   "joint_margin": 0.023
+  },
+  {
+   "co": [
+    0.1688,
+    0.009,
+    1.4633
+   ],
+   "region": "torso/pelvis",
+   "joint": "hombro",
+   "joint_margin": 0.0375
+  },
+  {
+   "co": [
+    0.1728,
+    0.1092,
+    1.4701
+   ],
+   "region": "brazo/hombro",
+   "joint": "hombro",
+   "joint_margin": 0.0509
+  },
+  {
+   "co": [
+    0.0409,
+    -0.0343,
+    0.88
+   ],
+   "region": "pierna",
+   "joint": "cadera",
+   "joint_margin": 0.0333
+  },
+  {
+   "co": [
+    0.0304,
+    0.0797,
+    0.88
+   ],
+   "region": "pierna",
+   "joint": "cadera",
+   "joint_margin": 0.0313
+  },
+  {
+   "co": [
+    0.3479,
+    -0.0455,
+    0.8455
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.071
+  },
+  {
+   "co": [
+    0.3479,
+    -0.0405,
+    0.845
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0699
+  },
+  {
+   "co": [
+    0.3482,
+    -0.0246,
+    0.8434
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0681
+  },
+  {
+   "co": [
+    0.3484,
+    -0.0037,
+    0.8413
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0697
+  },
+  {
+   "co": [
+    0.3485,
+    0.0012,
+    0.8408
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0707
+  },
+  {
+   "co": [
+    0.3227,
+    0.0012,
+    0.8374
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0705
+  },
+  {
+   "co": [
+    0.3227,
+    -0.0037,
+    0.8379
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0694
+  },
+  {
+   "co": [
+    0.3224,
+    -0.0196,
+    0.8395
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0678
+  },
+  {
+   "co": [
+    0.3224,
+    -0.0246,
+    0.84
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0678
+  },
+  {
+   "co": [
+    0.3221,
+    -0.0455,
+    0.8421
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0707
+  },
+  {
+   "co": [
+    0.3438,
+    -0.0594,
+    0.8768
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0501
+  },
+  {
+   "co": [
+    0.3444,
+    -0.0099,
+    0.8718
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0391
+  },
+  {
+   "co": [
+    0.3183,
+    -0.036,
+    0.8711
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0404
+  },
+  {
+   "co": [
+    0.318,
+    -0.0594,
+    0.8734
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0498
+  },
+  {
+   "co": [
+    0.3401,
+    -0.0565,
+    0.9045
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.029
+  },
+  {
+   "co": [
+    0.3406,
+    -0.0221,
+    0.901
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0121
+  },
+  {
+   "co": [
+    0.315,
+    -0.0046,
+    0.8958
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0125
+  },
+  {
+   "co": [
+    0.3144,
+    -0.0565,
+    0.9011
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0285
+  },
+  {
+   "co": [
+    0.1145,
+    0.0207,
+    1.5197
+   ],
+   "region": "torso/pelvis",
+   "joint": "hombro",
+   "joint_margin": 0.1069
+  },
+  {
+   "co": [
+    0.0634,
+    0.1309,
+    1.5338
+   ],
+   "region": "cuello",
+   "joint": "hombro",
+   "joint_margin": 0.1642
+  }
+ ],
+ "pole_list_3": [
+  {
+   "co": [
+    0.1343,
+    -0.0098,
+    1.4914
+   ],
+   "region": "torso/pelvis",
+   "joint": "hombro",
+   "joint_margin": 0.0836
+  },
+  {
+   "co": [
+    0.1021,
+    0.1566,
+    1.5104
+   ],
+   "region": "torso/pelvis",
+   "joint": "hombro",
+   "joint_margin": 0.1378
+  },
+  {
+   "co": [
+    0.1794,
+    -0.098,
+    0.0417
+   ],
+   "region": "pie",
+   "joint": "tobillo",
+   "joint_margin": 0.1994
+  },
+  {
+   "co": [
+    0.2495,
+    -0.098,
+    0.054
+   ],
+   "region": "pie",
+   "joint": "tobillo",
+   "joint_margin": 0.2055
+  },
+  {
+   "co": [
+    0.2606,
+    -0.098,
+    0.0152
+   ],
+   "region": "pie",
+   "joint": "tobillo",
+   "joint_margin": 0.2295
+  },
+  {
+   "co": [
+    0.1905,
+    -0.098,
+    0.0037
+   ],
+   "region": "pie",
+   "joint": "tobillo",
+   "joint_margin": 0.2223
+  },
+  {
+   "co": [
+    0.3441,
+    -0.0375,
+    0.8746
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0412
+  },
+  {
+   "co": [
+    0.3188,
+    -0.0007,
+    0.8675
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0405
+  },
+  {
+   "co": [
+    0.3202,
+    -0.071,
+    0.7727
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.1447
+  },
+  {
+   "co": [
+    0.3202,
+    -0.0594,
+    0.771
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.1428
+  },
+  {
+   "co": [
+    0.305,
+    -0.058,
+    0.7804
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.1342
+  },
+  {
+   "co": [
+    0.305,
+    -0.0696,
+    0.7821
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.1362
+  },
+  {
+   "co": [
+    0.3181,
+    -0.0475,
+    0.7627
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.148
+  },
+  {
+   "co": [
+    0.3182,
+    -0.0365,
+    0.7614
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.1474
+  },
+  {
+   "co": [
+    0.303,
+    -0.0353,
+    0.7708
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.1389
+  },
+  {
+   "co": [
+    0.3029,
+    -0.0462,
+    0.7721
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.1395
+  },
+  {
+   "co": [
+    0.3201,
+    -0.0232,
+    0.7653
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.1421
+  },
+  {
+   "co": [
+    0.3203,
+    -0.0122,
+    0.7643
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.1427
+  },
+  {
+   "co": [
+    0.3051,
+    -0.0112,
+    0.7738
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.1341
+  },
+  {
+   "co": [
+    0.3049,
+    -0.0222,
+    0.7747
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.1335
+  },
+  {
+   "co": [
+    0.3251,
+    0.0014,
+    0.7774
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.1302
+  },
+  {
+   "co": [
+    0.3253,
+    0.0118,
+    0.7769
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.1319
+  },
+  {
+   "co": [
+    0.3101,
+    0.0126,
+    0.7864
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.123
+  },
+  {
+   "co": [
+    0.3099,
+    0.0022,
+    0.7869
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.1213
+  },
+  {
+   "co": [
+    0.3145,
+    -0.0909,
+    0.8463
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0909
+  },
+  {
+   "co": [
+    0.3297,
+    -0.0942,
+    0.8466
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0929
+  },
+  {
+   "co": [
+    0.3264,
+    -0.1084,
+    0.8549
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0974
+  },
+  {
+   "co": [
+    0.3112,
+    -0.1051,
+    0.8546
+   ],
+   "region": "mano",
+   "joint": "muñeca",
+   "joint_margin": 0.0955
+  },
+  {
+   "co": [
+    0.0436,
+    -0.0181,
+    1.7762
+   ],
+   "region": "cabeza",
+   "joint": "hombro",
+   "joint_margin": 0.3695
+  },
+  {
+   "co": [
+    0.0436,
+    0.0578,
+    1.7788
+   ],
+   "region": "cabeza",
+   "joint": "hombro",
+   "joint_margin": 0.3665
+  }
+ ],
+ "pole_list_gt5": [],
+ "poles_in_joint_zone": [],
+ "duplicate_verts": 0,
+ "duplicate_faces": 0,
+ "internal_faces": 0,
+ "degenerate_faces": 0,
+ "flipped_normals": 0,
+ "signed_volume": 0.06561,
+ "normals_outward": true,
+ "symmetry_error": 0.0,
+ "self_intersections": 0,
+ "self_intersection_list": [],
+ "center_verts_off_plane": 0,
+ "tri_list": [],
+ "bbox": {
+  "x": [
+   -0.3487,
+   0.3487
+  ],
+  "z": [
+   0.0,
+   1.7982
+  ]
+ },
+ "tag": "b1m",
+ "transitions": [
+  [
+   "pelvis → muslo",
+   "fqqqqqqqqfqq",
+   "14 → 10 aristas"
+  ],
+  [
+   "puntera del pie",
+   "Grid Division",
+   "anillo de 10 → rejilla 2 × 3"
+  ],
+  [
+   "nudillos → palma",
+   "qqqfqqqqqqqfqq",
+   "16 → 12 aristas"
+  ],
+  [
+   "palma → muñeca",
+   "qfqqqqfqqq",
+   "12 → 8 aristas"
+  ],
+  [
+   "muñeca → palma",
+   "Bridge (8 = 8)",
+   "mismo número de aristas"
+  ],
+  [
+   "palma → dedos",
+   "Parallel Division",
+   "anillo de 16 = 4 bases de dedo + 3 membranas (quads paralelos)"
+  ],
+  [
+   "torso → cuello",
+   "qqfqqqfq",
+   "10 → 6 aristas"
+  ],
+  [
+   "coronilla",
+   "Grid Division",
+   "medio anillo de 6 + eje → rejilla 2 × 2"
+  ]
+ ],
+ "poles_by_design": {
+  "muslo (FourPointTriangles en ingle y pliegue del glúteo)": 2,
+  "dorso y palma (FourPointTriangles 16→12→8)": 4,
+  "base del cuello (FourPointTriangles 10→6)": 2
+ }
+}

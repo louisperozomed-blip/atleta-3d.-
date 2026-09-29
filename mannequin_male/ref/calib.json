@@ -1,0 +1,27 @@
+{
+ "front": {
+  "top": 30,
+  "ground": 1082,
+  "px_per_m": 584.44,
+  "axis_x": 334.5
+ },
+ "side": {
+  "top": 37,
+  "ground": 1080,
+  "px_per_m": 579.44,
+  "axis_x": 726.0
+ },
+ "back": {
+  "top": 37,
+  "ground": 1069,
+  "px_per_m": 573.33,
+  "axis_x": 1060.0
+ },
+ "canvas": {
+  "W": 600,
+  "H": 1080,
+  "px_per_m": 560.0,
+  "ground_row": 1040,
+  "height_m": 1.8
+ }
+}
