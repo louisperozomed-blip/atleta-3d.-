@@ -1,0 +1,157 @@
+[
+ {
+  "name": "[escritorio] resolución interna = css·dpr/px",
+  "ok": true,
+  "info": "366×233 (dpr 1, px3)"
+ },
+ {
+  "name": "[escritorio] recorrido → roots",
+  "ok": true,
+  "info": "1 puntos A*, llega en 10.1 s, zonas heart/sendero/roots, anims idle/walk/run, máx 70 draw calls / 139k tri"
+ },
+ {
+  "name": "[escritorio] recorrido → crystal",
+  "ok": true,
+  "info": "3 puntos A*, llega en 15.1 s, zonas roots/sendero/crystal, anims idle/walk/run, máx 70 draw calls / 133k tri"
+ },
+ {
+  "name": "[escritorio] recorrido → ponds",
+  "ok": true,
+  "info": "3 puntos A*, llega en 12.7 s, zonas crystal/sendero/ponds, anims idle/walk/run, máx 65 draw calls / 100k tri"
+ },
+ {
+  "name": "[escritorio] recorrido → ruins",
+  "ok": true,
+  "info": "6 puntos A*, llega en 14.5 s, zonas ponds/sendero/ruins, anims idle/walk/run, máx 55 draw calls / 75k tri"
+ },
+ {
+  "name": "[escritorio] recorrido → heart",
+  "ok": true,
+  "info": "2 puntos A*, llega en 11.7 s, zonas ruins/sendero/heart, anims idle/walk/run, máx 74 draw calls / 117k tri"
+ },
+ {
+  "name": "[escritorio] toque cercano → camina y para",
+  "ok": true,
+  "info": "idle,walk"
+ },
+ {
+  "name": "[escritorio] toque lejano (5.2 H) → corre y pasa a caminar",
+  "ok": true,
+  "info": "idle → walk → run → walk → idle"
+ },
+ {
+  "name": "[escritorio] rodea el árbol-corazón (obstáculo r=1.55)",
+  "ok": true,
+  "info": "4 puntos, distancia mínima al centro 2.19"
+ },
+ {
+  "name": "[escritorio] sube escalones (1.5 → 2.5) con suavidad",
+  "ok": true,
+  "info": "altura 1.50 → 2.50, mayor subida entre muestras 0.29"
+ },
+ {
+  "name": "[escritorio] ondas al pisar charcas",
+  "ok": true,
+  "info": "9 ondas creadas"
+ },
+ {
+  "name": "[escritorio] doble toque parado → salta en el sitio",
+  "ok": true,
+  "info": "desplazamiento 0.000 u"
+ },
+ {
+  "name": "[escritorio] SALTAR en marcha → salta hacia delante y levanta polvo",
+  "ok": true,
+  "info": "avance 2.75 u, polvo 2"
+ },
+ {
+  "name": "[escritorio] mantener pulsado sigue al dedo y termina en el último punto",
+  "ok": true,
+  "info": "final a 0.00 u del último punto"
+ },
+ {
+  "name": "[escritorio] girar cámara 90° desplaza la dirección 2 posiciones",
+  "ok": true,
+  "info": "6 → 0"
+ },
+ {
+  "name": "[escritorio] zoom y tamaño de píxel",
+  "ok": true,
+  "info": "zoom 1.60→2.00, ancho interno 366→275"
+ },
+ {
+  "name": "[escritorio] sin scroll ni zoom del navegador",
+  "ok": true,
+  "info": "{\"sx\":0,\"sy\":0,\"scale\":1}"
+ },
+ {
+  "name": "[escritorio] sin errores JS",
+  "ok": true,
+  "info": ""
+ },
+ {
+  "name": "[iphone] resolución interna = css·dpr/px",
+  "ok": true,
+  "info": "390×664 (dpr 3, px3)"
+ },
+ {
+  "name": "[iphone] toque cercano → camina y para",
+  "ok": true,
+  "info": "idle,walk"
+ },
+ {
+  "name": "[iphone] toque lejano (6.5 H) → corre y pasa a caminar",
+  "ok": true,
+  "info": "idle → walk → run → walk → idle"
+ },
+ {
+  "name": "[iphone] rodea el árbol-corazón (obstáculo r=1.55)",
+  "ok": true,
+  "info": "4 puntos, distancia mínima al centro 2.20"
+ },
+ {
+  "name": "[iphone] sube escalones (1.5 → 2.5) con suavidad",
+  "ok": true,
+  "info": "altura 1.50 → 2.50, mayor subida entre muestras 0.20"
+ },
+ {
+  "name": "[iphone] ondas al pisar charcas",
+  "ok": true,
+  "info": "6 ondas creadas"
+ },
+ {
+  "name": "[iphone] doble toque parado → salta en el sitio",
+  "ok": true,
+  "info": "desplazamiento 0.000 u"
+ },
+ {
+  "name": "[iphone] SALTAR en marcha → salta hacia delante y levanta polvo",
+  "ok": true,
+  "info": "avance 3.21 u, polvo 2"
+ },
+ {
+  "name": "[iphone] mantener pulsado sigue al dedo y termina en el último punto",
+  "ok": true,
+  "info": "final a 0.27 u del último punto"
+ },
+ {
+  "name": "[iphone] girar cámara 90° desplaza la dirección 2 posiciones",
+  "ok": true,
+  "info": "5 → 7"
+ },
+ {
+  "name": "[iphone] zoom y tamaño de píxel",
+  "ok": true,
+  "info": "zoom 1.60→2.00, ancho interno 390→292"
+ },
+ {
+  "name": "[iphone] sin scroll ni zoom del navegador",
+  "ok": true,
+  "info": "{\"sx\":0,\"sy\":0,\"scale\":1}"
+ },
+ {
+  "name": "[iphone] sin errores JS",
+  "ok": true,
+  "info": ""
+ }
+]

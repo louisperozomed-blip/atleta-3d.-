@@ -116,6 +116,21 @@
     mesh.receiveShadow = true;
     scene.add(mesh);
 
+    // Silueta cuando algo lo tapa: segunda pasada solo donde la profundidad es MAYOR
+    // (detrás de arcos, mesetas, copas), translúcida y en un tono frío del mundo.
+    const ghost = new THREE.Mesh(geo, new THREE.ShaderMaterial({
+      uniforms: { uColor: uniforms.uColor, uRect: uniforms.uRect },
+      vertexShader: `uniform vec4 uRect; varying vec2 vUv;
+        void main(){ vUv = vec2(uRect.x + uv.x * uRect.z, uRect.y + (1.0 - uv.y) * uRect.w);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `uniform sampler2D uColor; varying vec2 vUv;
+        void main(){ vec4 c = texture2D(uColor, vUv); if (c.a < 0.5) discard;
+          gl_FragColor = vec4(0.5, 0.85, 1.0, 0.42); }`,
+      depthTest: true, depthWrite: false, depthFunc: THREE.GreaterDepth, transparent: true,
+    }));
+    ghost.frustumCulled = false; ghost.renderOrder = 10;
+    scene.add(ghost);
+
     // Proyector de sombra: mismo frame, plano girado hacia el sol (un plano de cara a la
     // cámara casi no proyectaría sombra con el sol de lado). Invisible en la pasada de color.
     const casterDepth = new THREE.ShaderMaterial({
@@ -152,7 +167,7 @@
 
     const st = { anim: "idle", dir: 0, dirWanted: 0, lastStep: 0, phase: 0, idleT: 0, time: 0, frame: 0, prevAnim: "idle" };
     const ch = {
-      mesh, mat, uniforms, st, meta, unitsV, unitsH, caster, blob, sticker, integrated: true,
+      mesh, mat, uniforms, st, meta, unitsV, unitsH, caster, blob, sticker, ghost, integrated: true,
       frameRect(anim, dir, f) {
         const k = (ANIMS.indexOf(anim) * 8 + dir) * NF + f;
         const c = k % COLS, r = Math.floor(k / COLS);
@@ -282,7 +297,8 @@
         blob.position.set(p.x, p.ground + 0.03, p.z);
         blob.scale.set(0.95 * k, 1, 0.62 * k);
         blob.material.opacity = 0.75 * k;
-        mesh.visible = this.integrated; caster.visible = this.integrated; blob.visible = this.integrated;
+        ghost.position.copy(mesh.position); ghost.rotation.copy(mesh.rotation); ghost.scale.copy(mesh.scale);
+        mesh.visible = this.integrated; caster.visible = this.integrated; blob.visible = this.integrated; ghost.visible = this.integrated;
         if (!this.integrated) this.drawSticker(p, hgt - lift + bob, r);
         else if (sticker.style.display !== "none") sticker.style.display = "none";
       },

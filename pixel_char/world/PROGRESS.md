@@ -115,3 +115,40 @@ dirección espejo, zancada en [0.35, 0.7] H, contactos medidos solo si hay 2–3
 **Intermedios con flujo óptico (6 → 12 frames): descartados.** Con flujo DIS de OpenCV en ambos sentidos
 los intermedios muestran pies y bajo de túnica dobles y semitransparentes; el alfa intermedio es 2–4× el
 de los originales (E: 13.8 % frente a 3.5 %). Evidencia en `review/stage3/inbetween_eval.png`.
+
+## Etapa 4 — Controles y demo
+
+Demo publicada: https://claude.ai/artifact/ANHrkwwHE8urZjzme74NhG (`dist/index.html`, 2.6 MB).
+
+- `src/nav.js`: A* sobre la rejilla de 0.5 u (8 vecinos, sin cortar esquinas, desniveles > 0.5 no
+  transitables, coste extra junto a paredes) + suavizado por línea de visión con el radio del personaje.
+  Si el destino está bloqueado o aislado (meseta, laguna) va al punto alcanzable más cercano.
+  Entre las 5 zonas: todos los caminos llegan, 1–35 ms (Node).
+- `src/controls.js`: los mismos controles de la demo anterior: tocar = ir por A* (camina si está cerca,
+  corre si el camino supera 4 H y pasa a andar a 2.2 H del final); mantener > 170 ms o arrastrar =
+  seguir al dedo (re-planifica cada 0.2 s, corre a > 1.2 H); doble toque parado = salto en el sitio
+  (se anula el paseo del primer toque); SALTAR/Espacio = salto hacia delante en marcha; marcador que se
+  encoge y se desvanece. Movimiento con aceleración/frenado suaves, dirección con histéresis de 8° y paso
+  por las intermedias cada 40 ms (ya en `player.js`/`character.js`).
+- Botones pequeños: girar cámara ⟲ ⟳ (90°), zoom − +, tamaño de píxel (px1–px8), «andar A–E» y SALTAR.
+- Silueta translúcida del personaje cuando algo lo tapa (segunda pasada con `depthFunc = GreaterDepth`).
+
+Pruebas (`tests/e2e.mjs`, escritorio 1100×700 con ratón e iPhone 13 390×844 a 3x táctil):
+**31/31 OK** (`review/stage4/e2e_log.txt`): recorrido por las 5 zonas encadenando caminos A*
+(9–15 s por tramo, pasando por senderos, 54–73 draw calls y 72k–135k triángulos por frame), toque
+cercano (camina), toque lejano (idle → walk → run → walk → idle), rodear el árbol-corazón (distancia
+mínima 2.19 al centro), subir escalones de la meseta 1.5 → 2.5 sin saltos bruscos, ondas en charquitos,
+doble toque en el sitio (0 desplazamiento), SALTAR en marcha (avanza 3 u y levanta polvo), seguir al
+dedo y terminar en el último punto, girar cámara (dirección ±2), zoom y píxel, sin scroll/zoom del
+navegador y sin errores JS. Capturas en `review/stage4/`, GIF `review/stage4/recorrido.gif`.
+
+| Fallo encontrado | Corrección |
+|---|---|
+| En el tramo cristales → charcas se atascaba en una esquina (el giro limitado recorta la curva y roza celdas bloqueadas) y se rendía | Al atascarse 0.35 s re-planifica A* desde su posición (hasta 3 veces). |
+| La prueba de seguir al dedo medía el destino después de que la cámara se moviese | El destino se toma en el momento de soltar. |
+| En el GIF pasaba largo rato oculto detrás de una meseta alta | Silueta translúcida cuando está tapado; ruta del GIF por el claro y las charcas. |
+
+Rendimiento: en headless no hay GPU (SwiftShader, ~20 fps a 1x), así que no se puede medir los 60 fps del
+iPhone aquí. Presupuesto medido: ≤ 73 draw calls y ≤ 139k triángulos por frame (sombras incluidas),
+render a 1/3 de resolución (390×664 en un iPhone 13 con px3), 8 luces puntuales fijas, sombra 1024²,
+atlas del personaje de 1920×1632.

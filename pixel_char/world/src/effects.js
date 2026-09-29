@@ -179,10 +179,12 @@
     let ri = 0, di = 0;
     const fx = {
       ripple(x, y, z, size) {
+        W.__ripples = (W.__ripples || 0) + 1;
         const r = rings[ri++ % RING_N];
         r.m.position.set(x, y + 0.02, z); r.t = 0; r.life = 0.9; r.size = size || 0.6; r.m.visible = true;
       },
       dust(x, y, z, n) {
+        W.__dust = (W.__dust || 0) + 1;
         const pal = [[0.5, 0.95, 1], [1, 0.55, 0.9], [0.83, 1, 0.48]];
         for (let k = 0; k < n; k++) {
           const i = di++ % DUST_N, a = Math.random() * Math.PI * 2, s = 0.6 + Math.random() * 0.9;

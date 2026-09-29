@@ -50,6 +50,7 @@
       return d;
     }
     setPath(pts, opts) {
+      this.replans = 0;
       const wasIdle = !this.path.length && this.speed < 0.05 * W.CHAR_H && !this.jump;
       this.path = pts.slice();
       const d = this.remaining();
@@ -119,7 +120,16 @@
         let step = Math.min(this.speed * dt, d);
         const moved = this.tryMove(Math.cos(this.heading) * step, Math.sin(this.heading) * step);
         if (!moved && step > 0) this.stuck = (this.stuck || 0) + dt; else this.stuck = 0;
-        if (this.stuck > 0.6) { this.path = []; this.stuck = 0; }   // bloqueado: se rinde
+        if (this.stuck > 0.35) {
+          // atascado (al cortar una esquina): re-planifica desde aquí hasta el destino; tras 3 intentos se rinde
+          this.stuck = 0;
+          const goal = this.path[this.path.length - 1];
+          this.replans = (this.replans || 0) + 1;
+          if (this.replans <= 3 && W.findPath) {
+            const np = W.findPath(this.x, this.z, goal.x, goal.z);
+            if (np.length) { this.path = np; this.speed *= 0.5; } else this.path = [];
+          } else { this.path = []; }
+        }
         if (this.path.length === 1 && !this.following && Math.hypot(q.x - this.x, q.z - this.z) <= arriveR + 1e-3 && this.speed < 0.12 * walkV) {
           if (W.canStep(this.x, this.z, q.x, q.z)) { this.x = q.x; this.z = q.z; }
           this.path = []; this.speed = 0;
