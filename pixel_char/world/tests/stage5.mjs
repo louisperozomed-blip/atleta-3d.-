@@ -172,7 +172,10 @@ async function walkAlign(route, back) {
       const geo = an ? +((P.y - W.heightAt(an.px, an.pz)) * Math.cos(W.CAM_EL) / W.wpp).toFixed(2) : null;
       rows.push({ geo, t: +t.toFixed(3), d: an ? null : W.T5.align(), sinceCross: tCross == null ? null : +(t - tCross).toFixed(3), anim: W.character.st.anim, water: W.kindAt(W.player.x, W.player.z) === W.K.PUDDLE });
     }
-    const res = { rows, steps: W.stepLog.slice(), ripples: W.__ripples, final: [W.player.x, W.player.z], goal: [b.x, b.z], slip: W.slipStats() };
+    // ya parado: medida del render (el píxel más bajo del personaje sobre el suelo)
+    W.tick(1 / 60, 30);
+    const endIdle = W.T5.align();
+    const res = { endIdle, rows, steps: W.stepLog.slice(), ripples: W.__ripples, final: [W.player.x, W.player.z], goal: [b.x, b.z], slip: W.slipStats() };
     // parado en mitad del tramo (en la charca: dentro del agua)
     W.T5.reset((r.x + r.tx) / 2, (r.z + r.tz) / 2, W.player.heading);
     res.idleMid = { d: W.T5.align(), water: W.kindAt(W.player.x, W.player.z) === W.K.PUDDLE };
@@ -195,7 +198,7 @@ for (const gait of run("frenado") ? ["walk", "run"] : []) {
     W.T5.reset(r.x, r.z, Math.atan2(d[1], d[0]));
     W.player.setPath([{ x: r.tx, z: r.tz }], { noDelay: true });
     const trace = [];
-    let t = 0, prevV = 0, maxDec = 0, finalSnap = 0, overshoot = 0, dipMax = 0, settle = false, seq = [], slipStart = null, tStop = null;
+    let t = 0, prevV = 0, maxDec = 0, finalSnap = 0, snapLimit = 0, overshoot = 0, dipMax = 0, settle = false, seq = [], slipStart = null, tStop = null;
     const walkV = W.player.walkV;
     for (let i = 0; i < 1200; i++) {
       const p = W.player;
@@ -204,7 +207,7 @@ for (const gait of run("frenado") ? ["walk", "run"] : []) {
       const along = (p.x - r.x) * d[0] + (p.z - r.z) * d[1];
       overshoot = Math.max(overshoot, along - L);
       // la última muestra (llegada: de < 0.12·walkV a 0 en el punto exacto) se cuenta aparte
-      if (p.speed === 0 && prevV > 0 && !p.path.length) finalSnap = prevV;
+      if (p.speed === 0 && prevV > 0 && !p.path.length) { finalSnap = prevV; snapLimit = 0.12 * p.walkV; }
       else if (p.speed < prevV) maxDec = Math.max(maxDec, (prevV - p.speed) * 60);
       if (slipStart == null && p.speed < prevV - 1e-6 && p.speed < 0.95 * (gait === "run" ? p.runV || 99 : walkV)) slipStart = W.slip.samples.length;
       prevV = p.speed;
@@ -216,7 +219,7 @@ for (const gait of run("frenado") ? ["walk", "run"] : []) {
     }
     const brakeSlip = W.slip.samples.slice(slipStart || 0);
     return {
-      L, err: Math.hypot(W.player.x - r.tx, W.player.z - r.tz), overshoot, finalSnap, walkV, maxDecel: maxDec, decelLimit: 4.2 * W.CHAR_H * 1.6,
+      L, err: Math.hypot(W.player.x - r.tx, W.player.z - r.tz), overshoot, finalSnap, snapLimit, maxDecel: maxDec, decelLimit: 4.2 * W.CHAR_H * 1.6,
       settle, dipMax, seq: seq.join(">"), brakeSlip: { n: brakeSlip.length, max: Math.max(0, ...brakeSlip), sobre1: brakeSlip.filter((v) => v > 1).length },
       trace,
     };
@@ -239,7 +242,7 @@ for (const g of run("slip") ? ["walk", "run"] : []) {
 const dt2 = 2 / 60;   // una muestra cada 2 pasos de 1/60 s
 for (const e of out.escalones) {
   const geo = e.rows.filter((r) => r.geo != null).map((r) => r.geo);
-  const idle = e.rows.filter((r) => r.d != null).map((r) => Math.abs(r.d));
+  const idle = [...e.rows.filter((r) => r.d != null).map((r) => Math.abs(r.d)), Math.abs(e.endIdle)];
   const sink = geo.filter((g) => g < -1), flt = geo.filter((g) => g > 1);
   e.resumen = { apoyados: geo.length, hundido: sink.length, flotaS: +(flt.length * dt2).toFixed(3), flotaMax: flt.length ? Math.max(...flt) : 0, paradoMax: Math.max(...idle), resto: Math.max(0, ...geo.filter((g) => g <= 1).map(Math.abs)) };
   const R = e.resumen;
@@ -257,8 +260,8 @@ for (const c of out.charcas) {
   check(`charca: cada pisada en el agua es de tipo agua y deja su onda`, wSteps >= 2 && c.ripples >= wSteps, `${c.steps.length} pisadas (${c.steps.map((q) => q.kind[0]).join("")}), ${wSteps} en agua, ${c.ripples} ondas`);
 }
 for (const [g, f] of Object.entries(out.frenado)) {
-  check(`frenado ${g}: para exacto, sin pasarse, sin tirones`, f.err < 0.01 && f.overshoot < 0.01 && f.maxDecel <= f.decelLimit + 1e-3 && f.finalSnap <= 0.12 * f.walkV + 1e-6,
-    `error final ${f.err.toFixed(4)} u, se pasa ${Math.max(0, f.overshoot).toFixed(4)} u, deceleración máx ${f.maxDecel.toFixed(2)} u/s² (límite ${f.decelLimit.toFixed(2)}), última muestra ${f.finalSnap.toFixed(3)} u/s → 0 en el punto exacto`);
+  check(`frenado ${g}: para exacto, sin pasarse, sin tirones`, f.err < 0.01 && f.overshoot < 0.01 && f.maxDecel <= f.decelLimit + 1e-3 && f.finalSnap <= f.snapLimit + 1e-6,
+    `error final ${f.err.toFixed(4)} u, se pasa ${Math.max(0, f.overshoot).toFixed(4)} u, deceleración máx ${f.maxDecel.toFixed(2)} u/s² (límite ${f.decelLimit.toFixed(2)}), última muestra ${f.finalSnap.toFixed(3)} u/s (≤ ${f.snapLimit.toFixed(3)}, regla de llegada) → 0 en el punto exacto`);
   check(`frenado ${g}: asentamiento y hundimiento al parar`, f.settle && f.dipMax >= 1 && f.dipMax <= 3 && f.seq.endsWith("idle"), `${f.seq}, hundimiento ${f.dipMax.toFixed(2)} px`);
   check(`frenado ${g}: el pie no desliza al frenar`, f.brakeSlip.n > 0 && f.brakeSlip.max < 1, `${f.brakeSlip.n} muestras, máx ${f.brakeSlip.max.toFixed(3)} px, > 1 px: ${f.brakeSlip.sobre1}`);
 }
