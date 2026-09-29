@@ -206,7 +206,16 @@ class Figure:
         d1 = (el - sh) / np.linalg.norm(el - sh)
         d2 = (wr - el) / np.linalg.norm(wr - el)
 
-        def ring_at(center, axis, rs, rf, rb):
+        carve = {}
+        if self.stage >= 2:
+            # 'arm_carve' = [tramo ('upper'/'lower'), índices de anillo, ranuras k, dr, nota];
+            # k: 0 delante, 2 fuera, 4 detrás, 6 dentro (8 ranuras)
+            for seg, idx, ks, dr, _n in self.T.get('arm_carve', []):
+                for i in idx:
+                    for k in ks:
+                        carve[(seg, i, k)] = carve.get((seg, i, k), 0.0) + dr
+
+        def ring_at(center, axis, rs, rf, rb, key=None):
             a, s, f = frame(axis, (0, -1, 0))
             if s[0] < 0:
                 s = -s
@@ -214,12 +223,13 @@ class Figure:
             for k in range(N_ARM):
                 t = 2 * np.pi * k / N_ARM
                 c, sn = np.cos(t), np.sin(t)
-                out.append(center + f * c * (rf if c >= 0 else rb) + s * sn * rs)
+                d = carve.get((*key, k), 0.0) if key else 0.0
+                out.append(center + f * c * ((rf if c >= 0 else rb) + d) + s * sn * (rs + d))
             return out
         hole = self.arm_hole
         H = np.array([m.V[i] for i in hole])
         t0, rs0, rf0, rb0 = A['upper'][0]
-        T = np.array(ring_at(sh + (el - sh) * t0, d1, rs0, rf0, rb0))
+        T = np.array(ring_at(sh + (el - sh) * t0, d1, rs0, rf0, rb0, ('upper', 0)))
         T = T[best_alignment(H, T)]
         prev = hole
         rings = [hole]
@@ -244,12 +254,12 @@ class Figure:
         m.bridge(prev, r)
         prev = r
         rings.append(r)
-        for (t, rs, rf, rb) in A['upper'][1:]:
-            pts = ring_at(sh + (el - sh) * t, d1, rs, rf, rb)
+        for i, (t, rs, rf, rb) in enumerate(A['upper'][1:], 1):
+            pts = ring_at(sh + (el - sh) * t, d1, rs, rf, rb, ('upper', i))
             prev = self._next_ring(prev, pts)
             rings.append(prev)
-        for (t, rs, rf, rb) in A['lower']:
-            pts = ring_at(el + (wr - el) * t, d2, rs, rf, rb)
+        for i, (t, rs, rf, rb) in enumerate(A['lower']):
+            pts = ring_at(el + (wr - el) * t, d2, rs, rf, rb, ('lower', i))
             prev = self._next_ring(prev, pts)
             rings.append(prev)
         self.arm_rings = rings

@@ -209,3 +209,60 @@ La etapa no añade caras: solo mueve vértices y cambia qué anillo cierra el ag
 Pendiente para etapas siguientes:
 - Los bloques del recto se leen menos que en la hoja: sus planos son más grandes que los 5 cm entre anillos. Se reforzará al revisar la densidad del torso en la etapa 6 si hace falta.
 - Deltoides y brazo más finos de volumen que en la hoja (etapa 3).
+
+## Etapa 3: brazos y piernas (`renders/s3_limbs/`)
+
+### Talla por planos de los miembros
+
+Como el torso: los vértices de cada anillo se desplazan sin cambiar la topología.
+- **Brazo** (`arm_carve`): anillos de 8 ranuras; k = 0 delante, 2 fuera, 4 detrás, 6 dentro.
+- **Pierna** (`leg_carve`): rango de z y de ángulo; 0° delante, 90° fuera, 180° detrás, 270° dentro.
+
+| músculo / hito | dónde | desplazamiento |
+|---|---|---|
+| deltoides: cúpula y masa lateral | húmero t 0.16–0.28, ranuras 1–3 | +6…8 mm |
+| inserción del deltoides (V) | t 0.48, fuera | −4 mm |
+| bíceps y su pico / tendón | t 0.48–0.68 delante; t 0.86 | +8 (+4) mm; −4 mm |
+| tríceps (herradura) | t 0.28–0.68 detrás | +8 (+4) mm |
+| codo estrecho / olécranon | t 0.94–1.0 a los lados; detrás | −4 mm; +4 mm |
+| braquiorradial y flexores | antebrazo t 0.07–0.45, fuera-delante / dentro | reparto 3-7-3 mm y 2-6 mm |
+| antebrazo hacia la muñeca | t 0.70–0.88 | −2 mm |
+| recto femoral / vasto lateral | z 0.62–0.80 delante / fuera | +6 / +4 mm |
+| vasto medial (lágrima) | z 0.58–0.66 dentro | +8 mm |
+| rótula plana, rodilla estrecha | z 0.50–0.57 | −4 mm |
+| tendón rotuliano / hueco poplíteo | z 0.46–0.50 delante / 0.53–0.57 detrás | −6 / −8 mm |
+| gemelo y cabeza interna | z 0.38–0.47 detrás / detrás-dentro | +10 / +6 mm |
+| cresta de la tibia / tendón de Aquiles | z 0.20–0.45 delante / 0.20–0.28 detrás | +3 / −6 mm |
+
+Tras la talla se ajustan radios y centros de brazo y pierna contra las siluetas con `fit.py leg,arm` (dos pasadas).
+
+### Loops en articulaciones
+
+Anillos cuyo centro cae cerca del centro articular:
+
+| articulación | loops | radio de búsqueda |
+|---|---|---|
+| hombro | 4 | 7 cm |
+| codo | 4 | 5 cm |
+| muñeca | 3 | 3.5 cm |
+| rodilla | 3 (0.59, 0.55, 0.51) | 5 cm |
+| tobillo | 3 (0.17, 0.15, 0.13) | 5 cm |
+
+El tobillo tenía 2 loops: en l3e se añadió el anillo de z 0.15 (+20 quads en la malla completa).
+
+### Iteraciones
+
+| iter | caras | front | side | back | cambio |
+|---|---|---|---|---|---|
+| l3a | 1314 | 0.924 / 93 % | 0.927 / 88 % | 0.894 / 87 % | Punto de partida (t2g). |
+| l3b | 1314 | 0.919 / 90 % | 0.917 / 86 % | 0.894 / 84 % | Primera talla de brazo y pierna, sin reajustar. |
+| l3c | 1314 | 0.925 / 92 % | 0.925 / 88 % | 0.893 / 87 % | Dos pasadas de `fit.py leg,arm`. (El json guardado es de un recálculo posterior.) |
+| l3d | 1314 | – | – | – | Glúteo algo menos saliente (en SIDE sobraban 1.4–2 cm a z 0.86–0.92). Medido solo en la zona 0.80–0.96. |
+| l3e | 1334 | 0.925 / 92 % | 0.925 / 88 % | 0.894 / 86 % | Anillo extra de tobillo (z 0.15): 3 loops. |
+| l3f | 1334 | 0.925 / 92 % | 0.926 / 89 % | 0.894 / 86 % | Muslo: el anillo de 0.76 tenía radio delantero 0.098 entre 0.092 y 0.068 (valor de la etapa 1 fuera del ajuste). Hacía un escalón en el cuádriceps y los +3 cm de SIDE a 0.74–0.76; ahora baja suave. |
+| l3g | **1334** | **0.926 / 92 %** | **0.926 / 89 %** | **0.894 / 87 %** | Braquiorradial repartido en 3 anillos: desaparece el «puño» bajo el codo. |
+
+Validación de l3g:
+- 1334 quads, 0 triángulos, 0 n-gons, 0 polos de más de 5;
+- 0 polos en zonas de articulación, 0 autointersecciones, 0 aristas abiertas;
+- simetría exacta.
