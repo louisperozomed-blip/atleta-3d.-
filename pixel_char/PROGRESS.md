@@ -57,3 +57,49 @@ direcciones S, SW, W, NW, N, NE, E, SE. Comparativas: `review/stage2_compare_{id
 | Normal | Sobel sobre la altura; convención OpenGL/Unity, **verde hacia arriba** (+Y arriba): n = normalize(−∂h/∂x, +∂h/∂y_img, 1). Fuera de la figura, normal plana (128,128,255). |
 | Primer intento | El especular del pecho negro salía casi tan alto como el casco (el refuerzo por «parte superior» pesaba mucho) y el crema parecía cromado → más peso al contexto (vecindad con metal vs. con tela verde/bordado) y crema 0.62–0.82. |
 | Especular | Crema/dorado metálico 0.62–0.82, negro de casco y juntas hasta 0.92 (se separa de la tela negra por el contexto), bordado naranja 0.15, tela verde 0.05. |
+
+Cambio de disposición del atlas (hecho al empezar la etapa 3): 16 celdas por fila en orden lineal
+anim → dirección → frame (3840×3264), para que quepa en texturas de 4096 px (iPhones antiguos).
+`sprites.json` incluye además `foot_lift` (altura del pie pintada en cada frame, usada por el salto).
+
+## Etapa 3 — Demo (HTML + WebGL, un solo archivo)
+
+Fuente: `demo/template.html`; empaquetado: `tools/build_demo.py` → `demo/index.html` (6.4 MB, texturas
+WebP en base64: color q92 con alfa, normal q92, especular q85).
+
+- Render WebGL2 (con respaldo WebGL1), todo en alfa premultiplicado, mipmaps limitados a 3 niveles para
+  no mezclar frames vecinos. `highp` en los fragment shaders: con `mediump` las UV de un atlas de 3840 px
+  tienen error de varios texels (además Chrome lo rechazaba: precisión distinta de `uRect` en VS/FS).
+- Luz por píxel: difusa envolvente (respeta el sombreado pintado), ambiente hemisférico, Blinn-Phong con
+  dureza según la máscara especular, luz de borde fina en el lado que mira a la luz. Luz cálida que gira
+  14°/s; al tocar el ángulo se fija.
+- Sombra proyectada: la silueta del frame actual se tumba en el suelo en dirección opuesta a la luz
+  (paralelogramo afín, UV exactas), difuminado creciente con la distancia a los pies (9 muestras) y más
+  clara lejos de ellos; más una sombra de contacto elíptica. En el salto ambas se quedan en el suelo,
+  se encogen y se aclaran con la altura.
+- Suelo en perspectiva isométrica: pantalla = (x, z·0.64), la misma proporción que las baldosas de las
+  hojas, así las diagonales NE/NW/SE/SW coinciden con las de los sprites.
+- Movimiento en coordenadas continuas con dt: aceleración 5 H/s², frenado v = √(2·a·d), giro máx.
+  11 rad/s (frena en giros cerrados), marcha 1.05 H/s, carrera 2.7 H/s; correr si el punto está a más de
+  4 H y pasar a andar a 2.2 H. Anticipación de 0.1 s al arrancar desde parado (gira en el sitio).
+- Fase de la animación = distancia recorrida / zancada (0.72 H andando, 1.35 H corriendo) → los pies no
+  patinan a ninguna velocidad. Bob vertical de 2 golpes por ciclo.
+- Dirección: la más cercana de 8 con histéresis de 8°, y los cambios avanzan de una en una cada 40 ms.
+- Salto: impulso (frame 0) → vuelo de 0.62 s con altura parabólica (0.5 H) → aterrizaje con squash.
+  La subida pintada en los frames (`foot_lift`) se descuenta y se sustituye por la física, así la
+  subida es continua. En el sitio si está parado, hacia delante si se mueve.
+- Doble toque: si el primer toque había arrancado desde parado, se anula ese paseo (vuelve al punto de
+  partida, < 0.1 H gracias a la anticipación) y salta en el sitio.
+- Mantener pulsado (> 170 ms o arrastrar > 12 px): sigue al dedo (corre a > 1.2 H, anda a < 0.7 H,
+  se para a 0.18 H); al soltar termina en el último punto.
+- Panel plegable «Ajustes»: normal maps on/off, luz girando, ángulo, intensidad, escala, velocidad, fps.
+- Móvil: `touch-action: none`, viewport sin zoom, `gesturestart`/`dblclick`/`contextmenu` bloqueados,
+  sin selección ni menú de pulsación larga, `100dvh`, áreas seguras; canvas a devicePixelRatio (máx. 3).
+
+Correcciones tras las pruebas (etapa 4, aplicadas aquí):
+| Problema | Corrección |
+|---|---|
+| Seguir al dedo se quedaba 1.5–3 H por detrás (solo corría a > 3 H) | Umbrales de seguimiento 1.2 H / 0.7 H. |
+| Doble toque parado se desplazaba ~11 px antes de saltar | Anticipación de 0.1 s + vuelta al punto de partida al anular. |
+| Se detenía hasta 4 px antes del punto | Radio de llegada 0.004 H y encaje exacto al parar. |
+| En iPhone el personaje ocupaba el 45 % del ancho y rozaba el borde | 36 % del ancho, margen lateral 0.48 H. |

@@ -132,8 +132,9 @@ def build():
     names = [(an, d, i) for an in ANIMS for d in DIRS for i in range(NFRAMES)]
     first = np.asarray(Image.open(os.path.join(FRAMES, frame_name(*names[0]) + ".png")))
     FH, FW = first.shape[:2]
-    # Atlas: 12 columnas (2 direcciones × 6 frames) × 16 filas (4 anims × 4 pares)
-    COLS, ROWS = 12, 16
+    # Atlas: orden lineal anim -> dirección -> frame, 16 celdas por fila
+    # (3840×3264: cabe en texturas de 4096 px, límite de iPhones antiguos)
+    COLS, ROWS = 16, 12
     atlas = {k: np.zeros((ROWS * FH, COLS * FW, c), np.uint8) for k, c in (("color", 4), ("normal", 3), ("specular", 1))}
     atlas["normal"][..., 0:2] = 128
     atlas["normal"][..., 2] = 255
@@ -150,8 +151,8 @@ def build():
         Image.fromarray(srgb).save(os.path.join(NDIR, n + "_s.png"))
         Image.fromarray(np.clip(h * 255, 0, 255).astype(np.uint8)).save(os.path.join(NDIR, n + "_h.png"))
         ai, di = ANIMS.index(an), DIRS.index(d)
-        r = ai * 4 + di // 2
-        c = (di % 2) * NFRAMES + i
+        k = (ai * len(DIRS) + di) * NFRAMES + i
+        r, c = divmod(k, COLS)
         y, x = r * FH, c * FW
         atlas["color"][y:y + FH, x:x + FW] = rgba
         atlas["normal"][y:y + FH, x:x + FW] = nrgb
@@ -174,10 +175,16 @@ def build():
         "direction_angles_deg": {d: k * 45 for k, d in enumerate(DIRS)},
         "direction_note": "ángulo en pantalla medido desde S (abajo) en sentido horario: S=0, SW=45, W=90, NW=135, N=180, NE=225, E=270, SE=315",
         "animations": {an: {"fps": FPS[an], "frames": NFRAMES, "loop": an != "jump"} for an in ANIMS},
-        "layout": "celda (fila, col): fila = anim_index*4 + dir_index//2, col = (dir_index%2)*6 + frame",
+        "layout": "índice k = (anim_index*8 + dir_index)*6 + frame; fila = k // 16, columna = k % 16",
+        "columns": COLS,
         "frames": rects,
         "corrections": nm["corrections"],
     }
+    # altura del pie por frame (px de textura por encima del pivote; >0 = en el aire).
+    # La demo la usa para sustituir la subida "pintada" del salto por una física suave.
+    import json as _j
+    vs = _j.load(open(os.path.join(BUILD, "verify_stats.json")))
+    meta["foot_lift"] = {k: [max(0, -b) for b in v["B"]] for k, v in vs.items()}
     json.dump(meta, open(os.path.join(OUT, "sprites.json"), "w"), indent=1)
     print("atlas", meta["atlas_size"], "frame", meta["frame_size"])
 

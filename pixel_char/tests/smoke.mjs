@@ -1,0 +1,12 @@
+import { chromium } from "playwright";
+const url = "file://" + process.argv[2];
+const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
+const page = await browser.newPage({ viewport: { width: 1000, height: 700 }, deviceScaleFactor: 1 });
+page.on("console", (m) => console.log("console:", m.type(), m.text()));
+page.on("pageerror", (e) => console.log("pageerror:", e.message));
+await page.goto(url);
+await page.waitForFunction(() => window.__demo && window.__demo.ready, null, { timeout: 60000 });
+await page.waitForTimeout(800);
+console.log(JSON.stringify(await page.evaluate(() => window.__demo.state())));
+await page.screenshot({ path: process.argv[3] });
+await browser.close();
