@@ -36,6 +36,11 @@
     get H() { return W.CHAR_H; }
     get walkV() {
       let v = P.walkSpeed;
+      // pies anclados: la velocidad de marcha sale de los pies (u/s por dirección)
+      if (W.FX && W.FX.anchor && W.locoParams && W.character) {
+        const lp = W.locoParams("walk", W.character.st.dir);
+        if (lp) return lp.v * (W.speedMul || 1);
+      }
       // variante E: la velocidad se ajusta a la zancada medida de la dirección que se ve
       if (W.walkMode === "E" && W.WALK_DATA && W.character) {
         const d = ["S", "SW", "W", "NW", "N", "NE", "E", "SE"][W.character.st.dir];

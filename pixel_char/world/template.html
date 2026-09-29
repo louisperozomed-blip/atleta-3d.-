@@ -54,6 +54,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     const T = { color: tex(c), normal: tex(n), spec: tex(s) };
     document.getElementById("loading").remove();
     if (A.walk) W.WALK_DATA = A.walk;
+    if (A.feet) W.FEET = A.feet;
     W.start({ tex: T, meta: A.meta });
   }).catch((e) => { document.getElementById("loading").textContent = "Error: " + e; });
 })();

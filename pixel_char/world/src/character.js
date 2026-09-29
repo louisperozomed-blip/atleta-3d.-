@@ -20,6 +20,8 @@
       uRect: { value: new THREE.Vector4() }, uSunW: { value: new THREE.Vector3() },
       uNormalAmt: { value: 1 }, uGrade: { value: 0.6 }, uGain: { value: 1.12 },
       uWarp: { value: new THREE.Vector4() },               // túnica: (amp x, amp y, belt v, hem v) — etapa 3
+      uFootA: { value: new THREE.Vector4() }, uFootB: { value: new THREE.Vector4() },   // pies anclados (u, v, du, dv)
+      uFootR: { value: new THREE.Vector2(7 / 120, 22 / 136) },                             // (sigma u, alto rodilla v)
     }]);
     uniforms.uColor.value = tex.color; uniforms.uNormal.value = tex.normal; uniforms.uSpec.value = tex.spec;
     const VS = `
@@ -50,13 +52,23 @@
       #include <shadowmap_pars_fragment>
       #include <fog_pars_fragment>
       uniform sampler2D uColor, uNormal, uSpec;
-      uniform vec4 uRect, uWarp;
+      uniform vec4 uRect, uWarp, uFootA, uFootB;
+      uniform vec2 uFootR;
+      // deformación de la pierna apoyada: 0 en la rodilla, 1 en la suela, gaussiana en horizontal
+      vec2 footW(vec2 q, vec4 F) {
+        if (F.z == 0.0 && F.w == 0.0) return vec2(0.0);
+        float wv = smoothstep(F.y - uFootR.y, F.y - uFootR.y * 0.2, q.y);
+        float wh = exp(-pow((q.x - F.x) / uFootR.x, 2.0));
+        return F.zw * wv * wh;
+      }
       uniform float uNormalAmt, uGrade, uGain;
       varying vec2 vUv; varying vec2 vQ; varying vec3 vViewPos;
       void main() {
         // deformación de la túnica (etapa 3): desplaza el muestreo en la franja cintura-bajo
-        vec2 uv = vUv;
-        float vv = 1.0 - vQ.y;
+        vec2 q = vec2(vQ.x, 1.0 - vQ.y);
+        q -= footW(q, uFootA) + footW(q, uFootB);
+        vec2 uv = vec2(uRect.x + q.x * uRect.z, uRect.y + q.y * uRect.w);
+        float vv = q.y;
         float band = smoothstep(uWarp.z, uWarp.z + 0.12, vv) * (1.0 - smoothstep(uWarp.w - 0.08, uWarp.w, vv));
         uv.x -= uWarp.x * band * band * uRect.z;
         uv.y -= uWarp.y * band * uRect.w;
@@ -189,7 +201,7 @@
         return Math.atan2(xp * rz + zp * tz, xp * rx + zp * tx);
       },
       update(dt, p, camTheta, camThetaTarget) {
-        st.time += dt;
+        st.time += dt; st.dt = dt;
         const H = W.CHAR_H, walkV = p.walkV;
         // --- animación -------------------------------------------------------
         let anim;
@@ -203,7 +215,9 @@
         }
         if (anim !== st.anim) { if (anim === "idle") st.idleT = 0; st.anim = anim; }
         if (anim === "walk" || anim === "run") {
-          const stride = W.walkStride(W.walkMode, st.dir, anim) * H;
+          let stride = W.walkStride(W.walkMode, st.dir, anim) * H;
+          const lp = W.FX.anchor && W.locoParams ? W.locoParams(anim, st.dir) : null;
+          if (lp) stride = (anim === "walk" ? lp.v : p.runV) * 6 / lp.fps;     // u por ciclo a cadencia fija
           st.phase = (st.phase + (p.realSpeed || p.speed) * dt / stride) % 1;
         } else if (anim === "idle") st.idleT += dt;
         // velocidad angular del rumbo (la túnica reacciona a los giros)
@@ -240,6 +254,11 @@
           else if (t < P.jumpPrep + P.jumpAir) { const u = (t - P.jumpPrep) / P.jumpAir; f = u < 0.2 ? 1 : u < 0.45 ? 2 : u < 0.72 ? 3 : 4; }
           else f = 5;
         } else if (anim === "idle") f = Math.floor(st.idleT * meta.animations.idle.fps) % NF;
+        else if (W.FX.anchor && W.locoParams && W.locoParams(anim, st.dir)) {
+          const w = W.locoParams(anim, st.dir).weights; let acc = 0; f = 5;
+          for (let i = 0; i < 6; i++) { acc += w[i]; if (st.phase < acc) { f = i; st.fi = { f: i, u: (st.phase - (acc - w[i])) / w[i] }; break; } }
+          if (!st.fi || st.fi.f !== f) st.fi = { f, u: 0.5 };
+        }
         else if (anim === "walk") { st.fi = W.walkFrameFor(W.walkMode, st.dir, st.phase); f = st.fi.f; }
         else f = Math.floor(st.phase * NF) % NF;
         st.frame = f;
@@ -285,6 +304,12 @@
         const baseY = p.y + hgt - lift + bob + oy;
         mesh.position.set(p.x + rx * (ox + sway) + tx * 0.15, baseY, p.z + rz * (ox + sway) + tz * 0.15);
         st.hgt = hgt;
+        // pies anclados: el pivote del sprite en el mundo y la deformación de la pierna apoyada
+        if (this.anchor) {
+          const base = { x: p.x + rx * sway + tx * 0.15, y: p.y + hgt - lift + bob, z: p.z + rz * sway + tz * 0.15 };
+          const wv = this.anchor.update(st.dt || 0, p, anim, st.dir, f, camTheta, base, sx, sy);
+          uniforms.uFootA.value.fromArray(wv.A); uniforms.uFootB.value.fromArray(wv.B);
+        }
         // proyector de sombra: mismo tamaño, girado de cara al sol
         const sd = W.SUN_DIR, sa = Math.atan2(sd.x, sd.z);
         const srx = Math.cos(sa), srz = -Math.sin(sa);
@@ -303,6 +328,7 @@
         else if (sticker.style.display !== "none") sticker.style.display = "none";
       },
     };
+    ch.anchor = W.makeFootAnchor ? W.makeFootAnchor(ch) : null;
     return ch;
   };
 })();

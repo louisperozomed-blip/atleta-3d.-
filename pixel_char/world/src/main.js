@@ -155,8 +155,15 @@
     W.fps = 0;
     const zoneEl = $("zone");
     let lastZone = "";
+    // Paso de simulación: frame() en tiempo real; W.tick(dt) avanza a paso fijo cuando W.manual
+    // (pruebas y GIF deterministas: el antes y el después ven exactamente el mismo recorrido)
     function frame() {
-      const dt = Math.min(0.05, clock.getDelta());
+      const rdt = Math.min(0.05, clock.getDelta());
+      if (!W.manual) step(rdt);
+      requestAnimationFrame(frame);
+    }
+    W.tick = function (dt, n) { for (let i = 0; i < (n || 1); i++) step(dt); };
+    function step(dt) {
       t += dt; W.U.uTime.value = t;
       if (W.controlsUpdate) W.controlsUpdate(dt);
       player.update(dt);
@@ -176,7 +183,7 @@
       const EL = W.CAM_EL;
       cam.position.set(Math.sin(ui.theta) * Math.cos(EL), Math.sin(EL), Math.cos(ui.theta) * Math.cos(EL)).multiplyScalar(40).add(camT);
       cam.lookAt(camT); cam.updateMatrixWorld();
-      const wpp = (cam.top - cam.bottom) / rh;
+      const wpp = (W.wpp = (cam.top - cam.bottom) / rh);
       rv.setFromMatrixColumn(cam.matrixWorld, 0); uv.setFromMatrixColumn(cam.matrixWorld, 1);
       const tr = camT.dot(rv), tu = camT.dot(uv);
       cam.position.addScaledVector(rv, Math.round(tr / wpp) * wpp - tr).addScaledVector(uv, Math.round(tu / wpp) * wpp - tu);
@@ -203,7 +210,6 @@
       if (fpsT > 0.5) { W.fps = fpsN / fpsT; fpsN = 0; fpsT = 0; }
       const zn = W.zoneAt(player.x, player.z);
       if (zn !== lastZone && zoneEl) { lastZone = zn; zoneEl.textContent = (W.ZONES[zn] && W.ZONES[zn].name) || "Sendero"; }
-      requestAnimationFrame(frame);
     }
     // teletransporte (pruebas y depuración)
     W.teleport = function (x, z) { player.x = x; player.z = z; player.y = player.ground = W.heightAt(x, z); player.path = []; player.speed = 0; W.camSnap = true; };

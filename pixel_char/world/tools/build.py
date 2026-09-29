@@ -6,7 +6,7 @@ import base64, io, json, os, re, sys
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ORDER = ["core.js", "terrain.js", "props.js", "effects.js", "player.js", "walk.js", "character.js", "interact.js", "nav.js", "controls.js", "main.js"]
+ORDER = ["core.js", "terrain.js", "props.js", "effects.js", "player.js", "walk.js", "feet.js", "character.js", "interact.js", "nav.js", "controls.js", "main.js"]
 
 
 def webp(path, **kw):
@@ -28,6 +28,12 @@ def main():
         "spec": webp(os.path.join(A, "spec.png"), quality=88),
         "meta": json.load(open(os.path.join(A, "atlas.json"))),
     }
+    feet = os.path.join(A, "feet.json")
+    if os.path.exists(feet):
+        F = json.load(open(feet))
+        # solo lo que usa el anclaje (pies de cada frame y si está en el suelo)
+        assets["feet"] = {k: {"frames": [{"feet": fr["feet"], "grounded": fr["grounded"], "lowest": fr["lowest"]} for fr in v["frames"]],
+                              "contact": v["contact"], "f": v["f_screen"], "art": v["art_cycle_u"]} for k, v in F.items()}
     extra = os.path.join(A, "walk_variants.json")
     if os.path.exists(extra): assets["walk"] = json.load(open(extra))
     scripts = []
