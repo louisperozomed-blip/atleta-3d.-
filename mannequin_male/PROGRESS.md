@@ -435,3 +435,59 @@ Por lado; el Mirror los duplica: 23 + 23 de valencia 5 y 27 + 27 de valencia 3.
   - la espalda más ancha en BACK;
   - la perspectiva del pie en SIDE;
   - el hueco de la axila (etapa 1).
+
+## Etapa 7: deformación, exportación, visor y README
+
+### Test de deformación con esqueleto temporal (`scripts/deform_test.py`, `renders/s7_deform/`)
+
+**Esqueleto provisional.**
+- Huesos: cadera, 2 de columna, cuello, cabeza, y por lado clavícula, húmero, antebrazo, mano, muslo, pierna y pie.
+- Las articulaciones se sacan de `tables.json` (hombro, codo, muñeca, rodilla a z 0.55, tobillo a z 0.13).
+- Pesos automáticos (bone heat) suavizados: factor 0.5, 6 pasadas. Probé 3, 6 y 10 pasadas: los cruces del codo bajan de 28 a 24 y a 20, y a partir de 6 la cadera pierde más volumen (−4.9 % → −5.6 %).
+- Al terminar se borran el esqueleto, el modificador y los grupos de vértices: el entregable no lleva rig.
+
+**Medidas en cada pose.**
+- Autointersecciones: pares de caras sin vértices comunes que se cruzan.
+- Caras aplastadas: área menor que el 25 % de la de reposo.
+- Cambio de volumen total.
+- Grosor mínimo del miembro en un disco de ±3 cm alrededor de la articulación, para detectar pinzamientos.
+
+| pose | autointersecciones | aplastadas | volumen | grosor (reposo → pose) |
+|---|---|---|---|---|
+| codos y rodillas a 90° | 24: 12 por codo, 0 en rodillas | 2 | −1.8 % | codo 7.7 → 11.0 cm · rodilla 10.3 → 11.3 cm |
+| brazo arriba 180° (clavícula 25° + húmero) | 0 | 0 | +1.7 % | hombro 17.2 → 10.3 cm (plano oblicuo del hombro, no pérdida: el volumen sube) |
+| cadera a 90° (una pierna recta, la otra con rodilla a 90°) | 0 | 1 | −4.9 % | muslo 19.8 → 18.8 cm |
+| torsión 35° (lumbar 15° + torácica 20°, cuello 20°) | 0 | 0 | −1.0 % | 20.4 → 20.8 cm |
+
+- **Codo.** Los cruces están en el pliegue interior, donde el bíceps y el braquiorradial se tocan. Es lo propio del skinning lineal con pesos automáticos cuando el pivote va en el centro del brazo.
+  - No hay pérdida de volumen ni estrechamiento: el disco del codo pasa de 7.7 a 11 cm.
+  - Se deja para la fase de rig (pintar pesos o corrección de forma). La topología ya da 4 loops en el codo.
+- **Torsión.** Se comprobó numéricamente que la pose se aplica: el pecho gira 0.611 rad (35°) y el hombro se desplaza 14 cm hacia atrás. En la vista 3/4 el torso girado queda casi de frente a la cámara.
+- Montaje: `renders/s7_deform/d7b_montage.jpg` (cuerpo entero y primeros planos de cada pose).
+
+### Exportación (`scripts/export.py`, `export/`)
+
+- Se aplica el Mirror y se recalculan las normales. Sombreado plano y material de arcilla; no queda ningún modificador.
+- Se borran cámaras y luces.
+- La validación se repite sobre la malla final (`mannequin_male_stats.json`): 1 566 quads, 0 triángulos, 0 n-gons, 0 no manifold, 0 autointersecciones, simetría 0.
+- **Comprobación reimportando** cada archivo en una escena vacía:
+  - `.blend`: 1 566 quads, 1 568 vértices, alto 1.797 m, sin modificadores, 0 caras suaves, sin otros objetos.
+  - `.fbx`: 1 566 quads, 1 568 vértices, sin modificadores, 0 caras suaves (Y arriba: 0.693 × 1.797 × 0.283 en ejes locales).
+  - `.glb`: 3 132 triángulos. glTF solo guarda triángulos, y los vértices se separan (6 220) para mantener las normales planas. Mismas dimensiones.
+
+### Visor web (`web/`)
+
+- `template.html` más `mannequin_male.json`: `build_viewer.py` genera `index.html`, autocontenido (76 KB).
+- **three.js r128.**
+  - Arcilla con `flatShading`.
+  - Aristas solo de los quads: 3 132 segmentos, sin las diagonales de la triangulación.
+  - Luz principal arriba a la izquierda del espectador, como la hoja.
+- **Cámaras.**
+  - Frente, perfil y espalda son ortográficas, como las vistas de la hoja (el perfil mira desde −X y deja el frente a la derecha).
+  - 3/4 en perspectiva, con órbita.
+  - Regla de 8 cabezas vertical que gira para mirar a la cámara.
+- La figura se encaja en el hueco libre entre los paneles de la interfaz, así que en móvil no la tapan.
+- Colores como tokens para tema claro y oscuro.
+- **Prueba con Playwright** (Chromium): escritorio 1280×800 en tema claro y móvil 390×844 táctil en tema oscuro, las 4 cámaras.
+  - En ambos: 1 566 quads y 3 132 aristas cargados, sin desbordamiento horizontal y sin errores.
+  - El único fallo de red era Google Fonts, bloqueado a propósito en la prueba: la red de este entorno no alcanza los CDN. three.js r128 se sirvió desde una copia de npm con la misma versión.

@@ -1,0 +1,271 @@
+<title>Maniquí masculino facetado</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Maqueta: escenario 3D a pantalla completa; ficha técnica arriba, cámaras abajo, capas a la derecha */
+:root {
+  --bg: #e9e7e3;          /* papel de taller, gris cálido */
+  --stage: #d7d4ce;       /* fondo del escenario 3D */
+  --panel: rgba(250, 249, 247, 0.86);
+  --fg: #1d1e21;
+  --muted: #62646b;
+  --line: #bdb9b1;
+  --accent: #2f5f9e;      /* azul de plano: regla y selección */
+  --accent-fg: #ffffff;
+  --edge: #26272b;        /* aristas del modelo */
+  --ruler: #2f5f9e;
+  --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141518; --stage: #1b1c20; --panel: rgba(30, 31, 36, 0.86); --fg: #ecebe8; --muted: #9a9ca3;
+    --line: #3a3c43; --accent: #8fb3ea; --accent-fg: #0f1a2c; --edge: #0c0c0e; --ruler: #8fb3ea; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141518; --stage: #1b1c20; --panel: rgba(30, 31, 36, 0.86); --fg: #ecebe8; --muted: #9a9ca3;
+  --line: #3a3c43; --accent: #8fb3ea; --accent-fg: #0f1a2c; --edge: #0c0c0e; --ruler: #8fb3ea; color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 14px; overflow: hidden; }
+.app { position: relative; height: 100%; }
+#stage { position: absolute; inset: 0; background: var(--stage); }
+#stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.hud { position: absolute; inset: 0; pointer-events: none; display: grid;
+  grid-template-rows: auto 1fr auto; padding-block: 16px; padding-inline: 16px; gap: 12px; }
+.hud > * { pointer-events: auto; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; backdrop-filter: blur(6px); }
+header.card { justify-self: start; max-width: min(460px, 100%); padding: 12px 14px; display: grid; gap: 8px; }
+h1 { margin: 0; font-family: var(--f-display); font-weight: 600; font-size: 22px; letter-spacing: 0.01em; line-height: 1.1; text-wrap: balance; }
+.sub { margin: 0; color: var(--muted); line-height: 1.45; }
+dl.specs { margin: 0; display: grid; grid-template-columns: repeat(4, auto); gap: 4px 16px; justify-content: start; }
+.specs div { display: grid; gap: 1px; min-width: 0; }
+.specs dt { font-family: var(--f-display); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.specs dd { margin: 0; font-family: var(--f-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.bottom { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px; }
+.seg { display: inline-flex; padding: 3px; gap: 2px; }
+.seg button, .toggles label { font: 600 13px/1 var(--f-display); letter-spacing: 0.06em; text-transform: uppercase; }
+.seg button { border: 0; background: transparent; color: var(--fg); padding: 9px 12px; border-radius: 4px; cursor: pointer; min-width: 44px; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+.seg button:focus-visible, .toggles input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.toggles { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 10px 12px; }
+.toggles label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--fg); }
+.toggles input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.hint { font-size: 12px; color: var(--muted); padding: 0 2px; }
+.err { position: absolute; inset: 0; display: grid; place-items: center; padding-inline: 24px; text-align: center; color: var(--muted); }
+@media (max-width: 560px) {
+  h1 { font-size: 19px; }
+  dl.specs { grid-template-columns: repeat(2, auto); }
+  .sub { display: none; }
+  .bottom { flex-direction: column; align-items: stretch; }
+  .seg { justify-content: space-between; }
+  .seg button { flex: 1; padding-inline: 6px; }
+}
+</style>
+
+<div class="app">
+  <div id="stage" aria-label="Vista 3D del maniquí; arrastra para girar, rueda o pellizco para acercar"></div>
+  <div class="hud">
+    <header class="card">
+      <h1>Maniquí masculino facetado</h1>
+      <p class="sub">Base mesh low/mid poly de 1.80 m y 8 cabezas, modelado desde la hoja de referencia. Una malla cerrada, simétrica, de quads, con sombreado plano.</p>
+      <dl class="specs">
+        <div><dt>Caras</dt><dd id="s-faces">1 566</dd></div>
+        <div><dt>Quads</dt><dd id="s-quads">100 %</dd></div>
+        <div><dt>Altura</dt><dd id="s-h">1.797 m</dd></div>
+        <div><dt>Cabeza</dt><dd id="s-head">0.225 m</dd></div>
+      </dl>
+    </header>
+    <div></div>
+    <div class="bottom">
+      <div class="card seg" role="group" aria-label="Cámara">
+        <button type="button" id="cam-front" data-view="front" aria-pressed="false">Frente</button>
+        <button type="button" id="cam-side" data-view="side" aria-pressed="false">Perfil</button>
+        <button type="button" id="cam-back" data-view="back" aria-pressed="false">Espalda</button>
+        <button type="button" id="cam-q34" data-view="q34" aria-pressed="true">3/4</button>
+      </div>
+      <div class="card toggles">
+        <label><input type="checkbox" id="t-edges" checked><span>Aristas</span></label>
+        <label><input type="checkbox" id="t-ruler" checked><span>Regla 8 cabezas</span></label>
+        <label><input type="checkbox" id="t-spin"><span>Girar</span></label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const MESH = /*MESH_JSON*/null;
+(function () {
+  const stage = document.getElementById('stage');
+  if (!window.THREE || !THREE.OrbitControls) {
+    stage.innerHTML = '<p class="err">No se pudo cargar three.js. Comprueba la conexión y recarga la página.</p>';
+    return;
+  }
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const H = 1.80, HEAD = H / 8;
+
+  // --- malla: quads -> triángulos para la superficie, aristas SOLO de los quads (sin diagonales)
+  const V = MESH.v, Q = MESH.q;
+  const pos = new Float32Array(Q.length / 4 * 6 * 3);
+  let k = 0;
+  const put = (i) => { pos[k++] = V[3 * i]; pos[k++] = V[3 * i + 2]; pos[k++] = -V[3 * i + 1]; }; // Z arriba -> Y arriba
+  for (let f = 0; f < Q.length; f += 4) {
+    const a = Q[f], b = Q[f + 1], c = Q[f + 2], d = Q[f + 3];
+    put(a); put(b); put(c); put(a); put(c); put(d);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.computeVertexNormals();                        // sin índices: normal por cara (plano)
+  const seen = new Set(), ep = [];
+  for (let f = 0; f < Q.length; f += 4) {
+    for (let e = 0; e < 4; e++) {
+      const a = Q[f + e], b = Q[f + (e + 1) % 4], key = a < b ? a + '_' + b : b + '_' + a;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      for (const i of [a, b]) ep.push(V[3 * i], V[3 * i + 2], -V[3 * i + 1]);
+    }
+  }
+  const egeo = new THREE.BufferGeometry();
+  egeo.setAttribute('position', new THREE.Float32BufferAttribute(ep, 3));
+  document.getElementById('s-faces').textContent = (Q.length / 4).toLocaleString('es-ES');
+  let zmax = 0; for (let i = 2; i < V.length; i += 3) zmax = Math.max(zmax, V[i]);
+  document.getElementById('s-h').textContent = zmax.toFixed(3) + ' m';
+
+  // --- escena
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  stage.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  const clay = new THREE.MeshStandardMaterial({ color: 0xb9b5ae, roughness: 0.85, metalness: 0,
+    flatShading: true, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+  const body = new THREE.Mesh(geo, clay);
+  scene.add(body);
+  const edgeMat = new THREE.LineBasicMaterial({ color: css('--edge'), transparent: true, opacity: 0.85 });
+  const edges = new THREE.LineSegments(egeo, edgeMat);
+  scene.add(edges);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x4a4640, 0.55));
+  const key = new THREE.DirectionalLight(0xffffff, 0.95);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.25);
+  scene.add(key, fill, key.target, fill.target);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(0.55, 48), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.12 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = 0.001;
+  scene.add(floor);
+
+  // --- regla de 8 cabezas (gira para mirar a la cámara, siempre al lado derecho de la figura)
+  const ruler = new THREE.Group();
+  const rmat = new THREE.LineBasicMaterial({ color: css('--ruler') });
+  const rp = [0, 0, 0, 0, H, 0];
+  for (let i = 0; i <= 8; i++) { const y = i * HEAD, w = i % 2 ? 0.03 : 0.05; rp.push(0, y, 0, -w, y, 0); }
+  const rgeo = new THREE.BufferGeometry(); rgeo.setAttribute('position', new THREE.Float32BufferAttribute(rp, 3));
+  ruler.add(new THREE.LineSegments(rgeo, rmat));
+  const labels = [];
+  function label(text, y) {
+    const c = document.createElement('canvas'); c.width = 128; c.height = 64;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, transparent: true }));
+    sp.scale.set(0.09, 0.045, 1); sp.position.set(0.055, y, 0); sp.userData = { c, text };
+    ruler.add(sp); labels.push(sp);
+  }
+  function drawLabels() {
+    const col = css('--ruler');
+    for (const sp of labels) {
+      const { c, text } = sp.userData, g = c.getContext('2d');
+      g.clearRect(0, 0, c.width, c.height);
+      g.fillStyle = col; g.font = '600 40px "Barlow Condensed", "Arial Narrow", sans-serif';
+      g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(text, 4, 32);
+      sp.material.map.needsUpdate = true;
+    }
+  }
+  for (let i = 1; i <= 8; i++) label(String(i), (8 - i + 0.5) * HEAD);
+  label('1.80 m', H + 0.035);
+  scene.add(ruler);
+
+  // --- cámaras: ortográficas para las vistas de la hoja, perspectiva para 3/4
+  const persp = new THREE.PerspectiveCamera(30, 1, 0.05, 50);
+  const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.05, 50);
+  let cam = persp, view = 'q34', spin = false;
+  const target = new THREE.Vector3(0, 0.9, 0);
+  const controls = new THREE.OrbitControls(persp, renderer.domElement);
+  controls.target.copy(target); controls.enableDamping = true; controls.minDistance = 1; controls.maxDistance = 12;
+  const oc = new THREE.OrbitControls(ortho, renderer.domElement);
+  oc.target.copy(target); oc.enableDamping = true; oc.enabled = false; oc.minZoom = 0.5; oc.maxZoom = 6;
+  const DIRS = { front: [0, 0, 1], side: [-1, 0, 0], back: [0, 0, -1], q34: [0.62, 0.12, 0.78] };  // perfil desde -X: el frente queda a la derecha, como en la hoja
+
+  // hueco libre entre los paneles del HUD: en pantallas estrechas la ficha y los botones tapan el
+  // escenario, así que la figura se encaja entre ambos (1.95 m de alto y 1.25 m de ancho con la regla)
+  const hdr = document.querySelector('header.card'), bot = document.querySelector('.bottom');
+  let fit = { ppm: 1, cy: 0.9 };
+  function freeArea() {
+    const w = stage.clientWidth, h = stage.clientHeight, narrow = w < 700;
+    const t = narrow ? hdr.getBoundingClientRect().bottom + 8 : 12;
+    const b = narrow ? bot.getBoundingClientRect().top - 8 : h - 12;
+    const ppm = Math.min((b - t) / 1.95, w / 1.25);
+    const cy = 0.9 + ((t + b) / 2 - h / 2) / ppm;      // centro del mundo que cae en el centro de la pantalla
+    return { w, h, ppm, cy };
+  }
+  function size() {
+    const w = stage.clientWidth, h = stage.clientHeight, a = w / Math.max(h, 1);
+    renderer.setSize(w, h, false);
+    persp.aspect = a; persp.updateProjectionMatrix();
+    fit = freeArea();
+    const half = h / 2 / fit.ppm;
+    ortho.left = -half * a; ortho.right = half * a; ortho.top = half; ortho.bottom = -half; ortho.updateProjectionMatrix();
+  }
+  function setView(v) {
+    view = v;
+    document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+    const d = new THREE.Vector3(...DIRS[v]).normalize();
+    target.set(0, fit.cy, 0);
+    if (v === 'q34') {
+      cam = persp; controls.enabled = true; oc.enabled = false;
+      const dist = fit.h / (2 * fit.ppm * Math.tan(THREE.MathUtils.degToRad(persp.fov / 2)));
+      persp.position.copy(target).addScaledVector(d, dist); controls.target.copy(target); controls.update();
+    } else {
+      cam = ortho; controls.enabled = false; oc.enabled = true;
+      ortho.zoom = 1; ortho.position.copy(target).addScaledVector(d, 6); ortho.up.set(0, 1, 0);
+      oc.target.copy(target); ortho.updateProjectionMatrix(); oc.update();
+    }
+  }
+  document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+  const tE = document.getElementById('t-edges'), tR = document.getElementById('t-ruler'), tS = document.getElementById('t-spin');
+  tE.addEventListener('change', () => { edges.visible = tE.checked; });
+  tR.addEventListener('change', () => { ruler.visible = tR.checked; });
+  tS.addEventListener('change', () => { spin = tS.checked; });
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  function theme() {
+    renderer.setClearColor(new THREE.Color(css('--stage')), 1);
+    edgeMat.color.set(css('--edge')); rmat.color.set(css('--ruler')); drawLabels();
+  }
+  new MutationObserver(theme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', theme);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawLabels);
+
+  const right = new THREE.Vector3(), fwd = new THREE.Vector3();
+  function frame() {
+    requestAnimationFrame(frame);
+    if (spin && !reduce.matches) {
+      body.rotation.y += 0.006; edges.rotation.y = body.rotation.y;
+    }
+    (cam === persp ? controls : oc).update();
+    // luz principal arriba a la izquierda del espectador (como la hoja), relleno al lado contrario
+    cam.getWorldDirection(fwd); right.crossVectors(fwd, cam.up).normalize();
+    key.position.copy(target).addScaledVector(right, -2).addScaledVector(fwd, -3).add(new THREE.Vector3(0, 3, 0));
+    fill.position.copy(target).addScaledVector(right, 2.5).addScaledVector(fwd, -2);
+    key.target.position.copy(target); fill.target.position.copy(target);
+    // regla: vertical, girada solo alrededor de Y para mirar a la cámara, a la derecha de la figura
+    const rh = new THREE.Vector3(right.x, 0, right.z).normalize();
+    ruler.rotation.set(0, Math.atan2(-rh.z, rh.x), 0);
+    ruler.position.set(0, 0, 0).addScaledVector(rh, 0.46);
+    renderer.render(scene, cam);
+  }
+  window.addEventListener('resize', () => { size(); setView(view); });
+  size(); theme(); setView('q34'); frame();
+  window.__viewer = { setView, quads: Q.length / 4, edges: ep.length / 6 };
+})();
+</script>
