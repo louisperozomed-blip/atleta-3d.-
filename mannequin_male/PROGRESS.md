@@ -320,3 +320,53 @@ Validación de h4i:
 - 0 autointersecciones, 0 aristas abiertas, simetría exacta.
 
 Total de caras: 1314, por debajo del objetivo de 1 500–3 000. Se sube en la etapa 5 con los planos de la cabeza y, si hace falta, con un loop más de nudillos en la etapa 6.
+
+## Etapa 5: cuello y cabeza (`renders/s5_head/`)
+
+### Topología
+
+- **Cuello y cabeza.**
+  - El medio anillo pasa de 6 a 8 aristas (16 alrededor).
+  - Ranuras: línea media (barbilla y nariz), cara, pómulo/mandíbula, sien/ángulo de la mandíbula, oreja, detrás de la oreja, parietal, occipital y nuca.
+  - Así la cara tiene sus planos (frente, pómulo, lateral) sin ojos ni boca, como pide la hoja.
+- **Torso → cuello.**
+  - Linear Stepping 10 → 8 con un solo FourPointTriangle en la clavícula (`qqfqqqqqq`); antes eran dos (10 → 6).
+  - El polo de 5 queda en la base del cuello, delante: al girar o inclinar la cabeza trabaja el esternocleidomastoideo, por encima. Por eso no está en zona de pliegue.
+- **Coronilla.**
+  - Grid Division 2 × 3: medio anillo de 8 aristas más un vértice sobre el eje.
+  - Dos vértices interiores bajo la cima, para una tapa plana y achaflanada como la de la hoja.
+
+### Forma (`head_carve`, `neck_carve`, tablas de cuello y cabeza)
+
+- **Mandíbula.**
+  - El último anillo del cuello ya no es horizontal: delante sube a z 1.61, bajo la mandíbula y detrás de la barbilla.
+  - El plano inferior de la mandíbula baja de ese anillo a la barbilla (z 1.593, y −0.042), como en la vista SIDE de la hoja.
+  - El borde de la mandíbula sube hacia el ángulo, bajo la oreja. El reparto es +1 cm en el anillo de la barbilla y +0.8 cm en el siguiente: si todo lo subía un solo anillo, se cruzaba con el de encima (8 autointersecciones en n5c).
+- **Anchos del cuello.**
+  - El anillo alto del cuello es más estrecho (0.049) que la mandíbula (0.0555): en n5c era más ancho y cortaba la mandíbula por los lados.
+  - La nuca sigue el perfil trasero de la hoja: y 0.117 → 0.101 → 0.097.
+- **Cara**:
+  - plano frontal (ranuras de cara y pómulo adelantadas 3–6 mm);
+  - pómulo +5 mm;
+  - arco superciliar +7 mm;
+  - cuña de la nariz +12 mm;
+  - sienes planas (−4 mm).
+- **Cráneo** más cúbico: superelipse de potencia 3.6 en los anillos altos.
+- **Cuello**: esternocleidomastoideo +4 mm y tráquea +3 mm.
+
+### Iteraciones
+
+IoU / % dentro de ±1 cm. n5a–n5d se midieron en la zona de la cabeza (1.44–1.82); n5e en el cuerpo entero.
+
+| iter | caras | front | side | back | cambio |
+|---|---|---|---|---|---|
+| n5a | 1314 | 0.965 / 97 % | 0.955 / 93 % | 0.873 / 83 % | Punto de partida: medio anillo de 6 y cabeza redonda. |
+| n5b | 1356 | 0.970 / 97 % | 0.946 / 92 % | 0.906 / 75 % | Medio anillo de 8, paso torso → cuello 10 → 8, coronilla 2 × 3 y talla de la cara. |
+| n5c | 1356 | 0.969 / 97 % | 0.933 / 92 % | 0.899 / 75 % | Cuello inclinado bajo la mandíbula. 6 autointersecciones (cuello más ancho que la mandíbula). |
+| n5d | 1356 | 0.968 / 97 % | 0.934 / 92 % | 0.895 / 72 % | Cuello más estrecho; subida del ángulo de la mandíbula repartida entre dos anillos. 0 autointersecciones. |
+| n5e | **1356** | **0.923 / 91 %** | **0.928 / 88 %** | **0.888 / 84 %** | Perfil de la nuca y cráneo más cúbico (cuerpo entero). |
+
+- BACK en la zona de la cabeza baja al 72–75 %: la hoja dibuja la nuca y el trapecio más anchos en BACK que en FRONT, la misma diferencia de la etapa 1.
+- Validación de n5e:
+  - 1356 quads, 0 triángulos, 0 n-gons, 0 polos de más de 5;
+  - 0 autointersecciones, simetría exacta.

@@ -24,8 +24,10 @@ HOLE_SLOTS = (4, 6)           # y las ranuras 4..6 (66°..110°)
 HAND_TWIST = 5.0             # grados de pronación: en la hoja el dorso mira hacia fuera (vista SIDE)
 N_LEG = 10
 N_ARM = 8
-H_NECK = 6                    # medio anillo de cuello y cabeza (12 alrededor)
-NECK_ANG = np.radians([0, 28, 58, 90, 122, 152, 180])
+H_NECK = 8                    # medio anillo de cuello y cabeza (16 alrededor)
+# ranuras: 0 línea media (barbilla / nariz), 22 cara, 45 pómulo / mandíbula, 68 sien / ángulo de la
+# mandíbula, 90 oreja, 112 detrás de la oreja, 135 parietal, 158 occipital, 180 nuca
+NECK_ANG = np.radians([0, 22, 45, 68, 90, 112, 135, 158, 180])
 
 
 def g(x, s):
@@ -362,48 +364,74 @@ class Figure:
         m = self.m
         m.tag = 'neck'
         top = self.R[-1]
+        carve = {}
+        if self.stage >= 2:
+            # 'neck_carve' / 'head_carve' = [filas, ranuras, dr (normal del anillo), dz, nota]
+            for part in ('neck', 'head'):
+                for rows, slots, dr, dz, _n in self.T.get(part + '_carve', []):
+                    for i in rows:
+                        for k in slots:
+                            a0, b0 = carve.get((part, i, k), (0.0, 0.0))
+                            carve[(part, i, k)] = (a0 + dr, b0 + dz)
 
-        def ring_pts(row, power=2.2):
+        def ring_pts(row, power, part, i):
             zf, zb, w, yf, yb = row
             out = []
-            for th in NECK_ANG:
+            for k, th in enumerate(NECK_ANG):
                 x, y = superellipse(th, w, yf, yb, 2 / power)
                 z = zf + (zb - zf) * (1 - np.cos(th)) / 2
-                out.append(np.array([x, y, z]))
+                dr, dz = carve.get((part, i, k), (0.0, 0.0))
+                if dr:
+                    if k in (0, len(NECK_ANG) - 1):
+                        n = np.array([0.0, -1.0 if k == 0 else 1.0])
+                    else:
+                        p0 = superellipse(th - 0.01, w, yf, yb, 2 / power)
+                        p1 = superellipse(th + 0.01, w, yf, yb, 2 / power)
+                        t = (p1 - p0) / np.linalg.norm(p1 - p0)
+                        n = np.array([-t[1], t[0]])
+                        if n @ (np.array([x, y]) - [0, 0.5 * (yf + yb)]) < 0:
+                            n = -n
+                    x, y = x + dr * n[0], y + dr * n[1]
+                out.append(np.array([x, y, z + dz]))
             out[0][0] = out[-1][0] = 0.0
             return out
         N = self.T['neck']
-        base = ring_pts(N[0], 2.0)
-        # torso (10 aristas) -> cuello (6): 2 FourPointTriangles, en la clavícula y en el trapecio
-        N0, poles = m.step(top, ['q', 'q', 'f', 'q', 'q', 'q', 'f', 'q'], lambda k, P: base[k],
+        base = ring_pts(N[0], 2.0, 'neck', 0)
+        # torso (10 aristas) -> cuello (8): un FourPointTriangle en la clavícula (fuera del pliegue
+        # del cuello; al girar la cabeza trabaja el esternocleidomastoideo, por encima)
+        N0, poles = m.step(top, ['q', 'q', 'f', 'q', 'q', 'q', 'q', 'q', 'q'], lambda k, P: base[k],
                            closed=False, name='torso → cuello')
-        self.poles['base del cuello (FourPointTriangles 10→6)'] = poles
+        self.poles['base del cuello (FourPointTriangle 10→8, clavícula)'] = poles
         prev = N0
-        for row in N[1:]:
-            r = m.ring(ring_pts(row, 2.0))
+        for i, row in enumerate(N[1:], 1):
+            r = m.ring(ring_pts(row, 2.0, 'neck', i))
             m.bridge(prev, r, closed=False)
             prev = r
         m.tag = 'head'
         Hd = []
-        for row in self.T['head']:
-            r = m.ring(ring_pts(row, 2.4))
+        for i, row in enumerate(self.T['head']):
+            power = 2.4 if i < 3 else 3.6              # cráneo más cúbico, como la hoja
+            r = m.ring(ring_pts(row, power, 'head', i))
             m.bridge(prev, r, closed=False)
             prev = r
             Hd.append(r)
         self.head_rings = Hd
-        # coronilla: Grid Division 2 × 2 del medio anillo (6 aristas) + línea central
+        # coronilla: Grid Division 2 × 3 del medio anillo (8 aristas) + un vértice sobre el eje
         V = m.V
         t = prev
         zt = self.T['top_z']
-        c1 = m.v((0.0, 0.5 * (V[t[0]][1] + V[t[-1]][1]) - 0.004, zt))
-        m1 = m.v(0.5 * (V[t[3]] + V[c1]) + np.array([0, 0, 0.006]))
-        # rejilla: fila 0 = t0 t1 t2 ; fila 1 = cA m1 t3 ; fila 2 = t6 t5 t4
-        cA = c1
-        g_ = [[t[0], t[1], t[2]], [cA, m1, t[3]], [t[6], t[5], t[4]]]
+        cA = m.v((0.0, 0.5 * (V[t[0]][1] + V[t[-1]][1]) - 0.004, zt))
+        # columnas de la rejilla: (t0 cA t8) sobre el eje, (t1 m1 t7), (t2 m2 t6), (t3 t4 t5)
+        def mid(a_, b_, sx, zz):
+            p = 0.5 * (V[a_] + V[b_])
+            return m.v((p[0] * sx, p[1], zz))
+        m1 = mid(t[1], t[7], 1.0, zt - 0.002)
+        m2 = mid(t[2], t[6], 1.0, zt - 0.010)
+        g_ = [[t[0], t[1], t[2], t[3]], [cA, m1, m2, t[4]], [t[8], t[7], t[6], t[5]]]
         for r in range(2):
-            for cc in range(2):
+            for cc in range(3):
                 m.face(g_[r][cc], g_[r][cc + 1], g_[r + 1][cc + 1], g_[r + 1][cc])
-        m.log.append(('coronilla', 'Grid Division', 'medio anillo de 6 + eje → rejilla 2 × 2'))
+        m.log.append(('coronilla', 'Grid Division', 'medio anillo de 8 + eje → rejilla 2 × 3'))
 
 
 def rotate_to(a, b, v):
