@@ -89,14 +89,14 @@ class Body:
         (1.205, 1.205, 0.096, -0.103, 0.033),
         (1.235, 1.235, 0.104, -0.102, 0.045),   # pliegue bajo el pecho
         (1.262, 1.262, 0.112, -0.100, 0.056),
-        (1.288, 1.288, 0.119, -0.098, 0.066),
-        (1.312, 1.312, 0.122, -0.094, 0.076),
-        (1.336, 1.340, 0.123, -0.088, 0.083),   # axila (fila inferior del agujero del brazo)
-        (1.365, 1.375, 0.125, -0.076, 0.088),
-        (1.392, 1.410, 0.126, -0.058, 0.088),
-        (1.407, 1.440, 0.116, -0.036, 0.080),   # borde superior: clavícula delante, C7 detrás
+        (1.292, 1.292, 0.119, -0.098, 0.067),
+        (1.318, 1.320, 0.122, -0.093, 0.077),   # axila (fila inferior del agujero del brazo)
+        (1.345, 1.350, 0.124, -0.086, 0.084),
+        (1.371, 1.381, 0.126, -0.073, 0.088),
+        (1.395, 1.414, 0.131, -0.056, 0.088),   # borde superior del agujero (acromion)
+        (1.410, 1.444, 0.112, -0.034, 0.080),   # sobre el hombro: clavícula delante, C7 detrás
     ]
-    ARM_ROWS = (16, 19)      # el agujero del brazo ocupa las filas R16-R19 (3 bandas)
+    ARM_ROWS = (15, 18)      # el agujero del brazo ocupa las filas R15-R18 (3 bandas); R19 pasa por encima
     ARM_SEGS = (7, 10)       # y los segmentos 7..10 del medio anillo (3 segmentos)
 
     def torso(self):
@@ -267,26 +267,51 @@ class Body:
     def arms(self):
         m = self.m
         hole = self.ports['arm_hole']
-        sh = np.array([0.162, -0.008, 1.360]) * SC
+        sh = np.array([0.164, -0.008, 1.345]) * SC
         el = np.array([0.228, 0.002, 1.135]) * SC
         wr = np.array([0.310, -0.004, 0.960]) * SC
         d1 = (el - sh) / np.linalg.norm(el - sh)
         d2 = (wr - el) / np.linalg.norm(wr - el)
-        # A0: extrusión del agujero hacia fuera (arranque del deltoides)
-        A0 = m.ring([m.V[i] + np.array([0.026, 0, 0.004]) * SC for i in hole], 'arm')
-        m.bridge(hole, A0)
-        # (t en el segmento, radio lateral, delante, detrás)
         # (t en el segmento, radio lateral, delante, detrás); 3 loops en el codo (t 0.90/1.00/0.08)
-        UPPER = [(0.02, 0.041, 0.050, 0.052), (0.13, 0.037, 0.046, 0.048), (0.26, 0.033, 0.042, 0.044),
-                 (0.40, 0.031, 0.039, 0.040), (0.55, 0.030, 0.036, 0.036), (0.70, 0.030, 0.033, 0.033),
-                 (0.82, 0.029, 0.031, 0.032), (0.91, 0.028, 0.030, 0.031), (1.00, 0.028, 0.029, 0.031)]
+        UPPER = [(0.24, 0.036, 0.045, 0.047), (0.40, 0.031, 0.039, 0.040), (0.55, 0.030, 0.036, 0.036),
+                 (0.70, 0.030, 0.033, 0.033), (0.82, 0.029, 0.031, 0.032), (0.91, 0.028, 0.030, 0.031),
+                 (1.00, 0.028, 0.029, 0.031)]
         LOWER = [(0.08, 0.030, 0.029, 0.030), (0.20, 0.033, 0.030, 0.029), (0.34, 0.031, 0.028, 0.027),
                  (0.48, 0.029, 0.026, 0.025), (0.62, 0.026, 0.023, 0.022), (0.76, 0.023, 0.020, 0.019),
                  (0.89, 0.019, 0.018, 0.017), (1.00, 0.018, 0.019, 0.017)]
-        prev = A0
-        for (t, rs, rf, rb) in UPPER:
-            ring = full_ring(sh + (el - sh) * t, d1 if t > 0.05 else (d1 * 0.6 + np.array([0.8, 0, 0])),
-                             rs * SC, rf * SC, rb * SC, n=N_ARM)
+        # raíz del brazo (deltoides): loft desde el agujero del torso hasta el primer anillo del
+        # húmero. Cada vértice sigue una curva de Bézier que sale perpendicular al torso (+X) y llega
+        # alineada con el brazo; 4 anillos intermedios con el relieve del deltoides arriba y fuera.
+        t0, rs0, rf0, rb0 = UPPER[0]
+        T = full_ring(sh + (el - sh) * t0, d1, rs0 * SC, rf0 * SC, rb0 * SC, n=N_ARM)
+        H = np.array([m.V[i] for i in hole])
+        order = best_alignment(H, T)
+        T = np.array([T[k] for k in order])
+        n_out = np.array([1.0, 0, 0])
+        cT = T.mean(0)
+        prev = hole
+        for sv in (0.22, 0.45, 0.68, 0.87):
+            pts = []
+            for p0, p3 in zip(H, T):
+                up = max(0.0, (p0[2] - H[:, 2].mean()) / (H[:, 2].max() - H[:, 2].mean()))
+                p1 = p0 + (n_out * (0.035 + 0.025 * up) + np.array([0, 0, 0.004]) * up) * SC
+                p2 = p3 - d1 * 0.045 * SC
+                u = 1 - sv
+                q = u ** 3 * p0 + 3 * u * u * sv * p1 + 3 * u * sv * sv * p2 + sv ** 3 * p3
+                c = H.mean(0) * (1 - sv) + cT * sv
+                rad = q - c
+                rad = rad / (np.linalg.norm(rad) + 1e-9)
+                top = max(0.0, rad @ np.array([0.7, 0, 0.7]))       # arriba y fuera
+                q = q + rad * np.sin(np.pi * sv) * (0.004 + 0.009 * top) * SC
+                pts.append(q)
+            ring = m.ring(pts, 'arm')
+            m.bridge(prev, ring)
+            prev = ring
+        ring = m.ring(list(T), 'arm')
+        m.bridge(prev, ring)
+        prev = ring
+        for (t, rs, rf, rb) in UPPER[1:]:
+            ring = full_ring(sh + (el - sh) * t, d1, rs * SC, rf * SC, rb * SC, n=N_ARM)
             prev = self._next_ring(prev, ring, 'arm')
         for (t, rs, rf, rb) in LOWER:
             ring = full_ring(el + (wr - el) * t, d2, rs * SC, rf * SC, rb * SC, n=N_ARM)

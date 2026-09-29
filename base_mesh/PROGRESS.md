@@ -388,3 +388,66 @@ Rediseño completo de cuello y cabeza en un módulo nuevo, `scripts/head.py`:
   comisuras interiores de la boca, 2 en las esquinas interiores del nasolabial, 4 en la concha de
   la oreja y 2 en las esquinas de la tapa del cráneo. Todos están en la cara o la oreja, que no
   tienen articulación: son las esquinas de los insets que crean los loops concéntricos.
+
+## It2 · Etapa 2 — hombro y axila
+
+Test de deformación ampliado (`scripts/deform_test.py`, montaje con `scripts/deform_montage.py`):
+5 poses (codos y rodillas a 90°; **brazo levantado 180°** = clavícula 25° + húmero 138° desde la
+A-pose; **brazo hacia delante 90°**; **columna** 30° hacia delante y 10° de lado con **cuello**
+25° y cabeza 15°; **cadera a 90°** sentada). Para cada pose mide sobre la jaula deformada las
+auto-intersecciones (pares de caras que se cruzan; "junto a la articulación" = a menos de 15 cm)
+y las caras aplastadas (área < 25 % de la de reposo). Los pesos automáticos se suavizan 3 veces
+(factor 0.5), que es el paso estándar al preparar un rig; sin eso el test medía los escalones del
+bone heat y no la topología. Resultados: `renders/it2_2_hombro/*_deform.json` y `*_deform.jpg`.
+
+Referencia con la topología anterior (`d2base`, mismos pesos suavizados): brazo arriba 16
+intersecciones (8 en el hombro) con un pliegue en V en la parte delantera del hombro; brazo
+adelante 0; columna y cuello 0.
+
+### h2a/d2a — medición inicial
+- Sin suavizar pesos: brazo arriba 22 intersecciones (11 en el hombro). En los primeros planos,
+  la raíz del brazo es un tubo recto que sale del agujero y gira de golpe hacia abajo: en reposo
+  hay un escalón en la axila y, al levantar el brazo, la parte alta del deltoides se dobla
+  en V contra el trapecio (entre el cuello y el brazo había una sola fila de caras).
+
+### h2b — 3 loops extra en la raíz del brazo
+- Tres anillos concéntricos entre el agujero y el brazo. Brazo arriba: 28 / 14. No ayuda: el
+  pliegue está encima del agujero, no alrededor.
+
+### h2c — agujero del brazo una fila más abajo
+- El agujero pasa a las filas R15-R18 y el anillo R19 cruza por encima del hombro (trapecio →
+  acromion); las filas del pecho alto se recolocan (axila a z 1.318). La reducción del cuello se
+  mueve a la clavícula y al trapecio (segmentos 4 y 12, zonas planas).
+- **Error**: 30 auto-intersecciones en reposo en la axila: el primer anillo del brazo seguía a
+  z 1.36 y su parte baja quedaba por debajo del nuevo borde de la axila. Hombro bajado a z 1.345:
+  0 intersecciones.
+
+### h2d — deltoides por loft
+- La raíz del brazo se rehace como un loft: 4 anillos entre el agujero y el primer anillo del
+  húmero (t 0.24). Cada vértice sigue una curva de Bézier que sale perpendicular al torso y
+  llega alineada con el brazo, con el relieve del deltoides arriba y fuera. Ya no hay escalón en
+  la axila (primeros planos `h2i_hombro_*.png`).
+- Test (pesos suavizados, `d2e`): brazo arriba 12 (6 en el hombro), adelante 0, columna 0.
+
+### h2e/h2f — fila extra en el trapecio (descartada)
+- Una fila de caras entre el borde del torso y la base del cuello no cambiaba el resultado
+  (12 / 6) y costaba 32 quads: se quitó.
+
+### h2g → h2i — silueta del hombro
+- Con el loft, el hombro quedó 2-3 cm estrecho a z 1.40 (±0.157 frente a ±0.175 de la hoja).
+  h2h lo ensanchó (más salida y relieve arriba): ±0.183, pero el brazo a 180° volvía a 24 / 12
+  intersecciones (más volumen que choca con el trapecio). h2i es el punto intermedio: FRONT a
+  z 1.40 ±0.176 (hoja ±0.175) y brazo arriba 16 / 8.
+- **Resultado del test (d2i)**: brazo arriba 16 intersecciones (8 en el hombro), brazo adelante
+  0, columna y cuello 0, 2 caras aplastadas. Mismo número que la topología anterior con el brazo
+  arriba, pero sin el pliegue en V. Lo que queda es contacto entre el deltoides del brazo levantado
+  y el trapecio, que en un rig de producción se corrige con pesos pintados o un corrective shape.
+  Con el brazo adelante la axila se estira sin pellizcos.
+- Validación: 3 086 quads, 0 tris, 0 n-gons, 0 polos >5, 0 no manifold, 0 duplicados,
+  0 auto-intersecciones, 0 normales invertidas, simetría 0. IoU (0.9-1.5): front 0.917,
+  side 0.954, back 0.929.
+- Polos del hombro (por lado): 4 de 5 en las esquinas del agujero del brazo (axila delante y
+  detrás a z 1.319; borde del acromion delante y detrás a z 1.40-1.41). Están a 2.8-6 cm fuera de
+  la zona de giro del hombro. Base del cuello: 2 de 5 y 2 de 3 (la reducción ya no está en las
+  esquinas del agujero). Es un polo más por lado que en la etapa 1 de esta iteración, a cambio
+  de tener superficie de trapecio y acromion sobre el deltoides.

@@ -44,7 +44,7 @@ TOP_Z = 1.703
 # cuello: anillos inclinados (zf, zb, semiancho, y delante, y detrás)
 NECK = [(1.428, 1.458, 0.058, -0.018, 0.068), (1.450, 1.478, 0.046, -0.020, 0.064),
         (1.468, 1.497, 0.044, -0.023, 0.061), (1.486, 1.516, 0.045, -0.022, 0.058)]
-NECK_SPECIALS = [7, 10]           # reducción 32 -> 24: las esquinas superiores del agujero del brazo
+NECK_SPECIALS = [4, 12]           # reducción 32 -> 24 en la clavícula y el trapecio (zonas planas)
 
 # regiones de la rejilla (filas i entre ROWS[i] y ROWS[i+1], segmentos j entre TH[j] y TH[j+1])
 EYE = dict(rows=(8, 10), segs=(1, 3))
