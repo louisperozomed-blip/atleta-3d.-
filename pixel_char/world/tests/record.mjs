@@ -17,7 +17,7 @@ await page.waitForFunction(() => window.W && W.ready, null, { timeout: 90000 });
 await page.evaluate(() => { W.manual = true; W.ui.zoom = 3.2; W.resize(); document.querySelector(".bar").style.display = "none"; document.querySelector(".hud").style.display = "none"; });
 
 // recorridos: dirección de pantalla -> rumbo en el mundo (cámara a 45°)
-const routes = await page.evaluate(() => {
+const routes = await page.evaluate((L) => {
   const th = W.ui.thetaT, R = [Math.cos(th), -Math.sin(th)], T = [Math.sin(th), Math.cos(th)];
   const dirs = { lado: [R[0], R[1]], diagonal: [0.7071 * (R[0] + T[0]), 0.7071 * (R[1] + T[1])] };
   const out = {};
@@ -34,12 +34,12 @@ const routes = await page.evaluate(() => {
         for (const o of W.obstacles) if (ok && Math.hypot(o.x - px, o.z - pz) < 3.2) ok = false;
         for (let a = 0; a < 8 && ok; a++) { const qx = px + Math.cos(a) * 2.2, qz = pz + Math.sin(a) * 2.2; if (W.heightAt(qx, qz) > h + 0.01) ok = false; }
       }
-      if (ok && Math.abs(x) < 30 && Math.abs(z) < 30 && W.lineClear({ x, z }, { x: x + d[0] * 5.6, z: z + d[1] * 5.6 }) && W.kindAt(x, z) !== W.K.WATER) best = { x, z, tx: x + d[0] * 5, tz: z + d[1] * 5 };
+      if (ok && Math.abs(x) < 30 && Math.abs(z) < 30 && W.lineClear({ x, z }, { x: x + d[0] * 5.6, z: z + d[1] * 5.6 }) && W.kindAt(x, z) !== W.K.WATER) best = { x, z, tx: x + d[0] * L, tz: z + d[1] * L };
     }
     out[name] = best;
   }
   return out;
-});
+}, +(process.env.ROUTE_LEN || 5));
 console.log("recorridos", JSON.stringify(routes));
 
 async function record(fx, route, tag) {

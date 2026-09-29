@@ -35,7 +35,8 @@
         const s = W.U.uSteps.value[stepSlot++ % 4];
         s.x = e.x; s.y = e.z; s.z = W.U.uTime.value; s.w = run ? 1 : 0.8;
         // peso: el cuerpo se hunde en el contacto
-        st.dipT = 0; st.dipA = run ? 2.0 : 1.5;
+        const fresh = st.dipT != null && st.dipT < 0.05 ? st.dipA : 0;
+        st.dipT = 0; st.dipA = Math.max(run ? 2.0 : 1.5, fresh);
         if (W.sfx) W.sfx.step(kind, run ? 1 : 0.7);
         W.__steps = (W.__steps || 0) + 1;
         (W.stepLog || (W.stepLog = [])).push({ t: W.U.uTime.value, kind });

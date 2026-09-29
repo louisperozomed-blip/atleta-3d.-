@@ -85,7 +85,10 @@
     }
     update(dt) {
       const H = W.CHAR_H, walkV = this.walkV, runV = this.runV;
-      const accel = P.accel * H * (W.speedMul || 1), decel = P.decel * H * (W.speedMul || 1);
+      let accel = P.accel * H * (W.speedMul || 1);
+      const decel = P.decel * H * (W.speedMul || 1);
+      // inercia: arranque más pesado, llega a la velocidad de la marcha en ~0.25 s
+      if (W.FX && W.FX.inertia) accel = (this.gait === "run" ? runV : walkV) / 0.25;
       const x0 = this.x, z0 = this.z;
       if (this.jump) {
         const J = this.jump;

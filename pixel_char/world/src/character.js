@@ -239,7 +239,14 @@
           else anim = p.speed > runUp ? "run" : (p.speed > walkUp ? "walk" : "idle");
           if (anim === "idle" && p.path.length && p.speed > 0.01 * H) anim = "walk";
         }
-        if (anim !== st.anim) { if (anim === "idle") st.idleT = 0; st.anim = anim; }
+        if (anim !== st.anim) {
+          // inercia: al pararse, 1-2 frames de asentamiento (frame de contacto + el cuerpo se hunde)
+          if (anim === "idle" && (st.anim === "walk" || st.anim === "run") && W.FX.inertia) {
+            st.settle = { t: 0, from: st.anim, frame: (W.FEET && W.FEET[st.anim + "_" + meta.directions[st.dir]] ? W.FEET[st.anim + "_" + meta.directions[st.dir]].contact.indexOf(1) : 0) };
+            st.dipT = 0; st.dipA = 2.4;
+          }
+          if (anim === "idle") st.idleT = 0; st.anim = anim;
+        }
         if (anim === "walk" || anim === "run") {
           let stride = W.walkStride(W.walkMode, st.dir, anim) * H;
           const lp = W.FX.anchor && W.locoParams ? W.locoParams(anim, st.dir) : null;
@@ -279,7 +286,11 @@
           if (t < P.jumpPrep) f = 0;
           else if (t < P.jumpPrep + P.jumpAir) { const u = (t - P.jumpPrep) / P.jumpAir; f = u < 0.2 ? 1 : u < 0.45 ? 2 : u < 0.72 ? 3 : 4; }
           else f = 5;
-        } else if (anim === "idle") f = Math.floor(st.idleT * meta.animations.idle.fps) % NF;
+        } else if (anim === "idle" && st.settle && st.settle.t < 0.16) {
+          st.settle.t += dt;
+          this.place(p, camTheta, st.settle.from, Math.max(0, st.settle.frame));
+          return;
+        } else if (anim === "idle") { st.settle = null; f = Math.floor(st.idleT * meta.animations.idle.fps) % NF; }
         else if (W.FX.anchor && W.locoParams && W.locoParams(anim, st.dir)) {
           const w = W.locoParams(anim, st.dir).weights; let acc = 0; f = 5;
           for (let i = 0; i < 6; i++) { acc += w[i]; if (st.phase < acc) { f = i; st.fi = { f: i, u: (st.phase - (acc - w[i])) / w[i] }; break; } }
@@ -323,6 +334,15 @@
           if (st.dipT > 0.5) st.dipT = null;
         }
         st.dipPx = dip;
+        // inclinación leve hacia la dirección de avance al correr (en pantalla)
+        let lean = 0;
+        if (W.FX.inertia && anim === "run") {
+          const hx = Math.cos(p.heading), hz = Math.sin(p.heading);
+          const xp = hx * Math.cos(camTheta) - hz * Math.sin(camTheta);
+          lean = 0.045 * xp * Math.min(1, p.speed / Math.max(p.runV, 1e-3));
+        }
+        st.lean = (st.lean || 0) + (lean - (st.lean || 0)) * Math.min(1, (st.dt || 0) * 8);
+        uniforms.uBody.value.z = st.lean;
         uniforms.uBody.value.x = W.wpp ? -dip * W.wpp / unitsH / FH : 0;
         if (anim === "run" && !W.FX.impact) bob = 0.026 * W.CHAR_H * Math.pow(Math.sin(st.phase * 2 * Math.PI), 2);
         if (anim === "walk" && st.wfx) { bob = W.FX.impact ? 0 : st.wfx.bob * W.CHAR_H; sway = st.wfx.sway * W.CHAR_H; wsx = st.wfx.sx; wsy = st.wfx.sy;
