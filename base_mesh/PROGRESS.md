@@ -587,3 +587,59 @@ polos solo se pueden quitar por parejas (un 3 y un 5). Revisión de cada grupo:
 Ningún polo cae dentro de la zona de giro de hombro, codo, muñeca, cadera, rodilla o tobillo
 (`poles_in_joint_zone` vacío). Los de las manos están en las membranas y las puntas, no en los
 3 loops de cada nudillo.
+
+## It2 · Etapa 6 — UVs
+
+Las islas y las costuras se definen al modelar, no a posteriori:
+- `HalfMesh` guarda una etiqueta por cara (`FT`, la de `m.tag` al crearla) y una lista de aristas
+  de costura (`m.seam`). `build.py` las pasa a Blender (atributo de cara `island` + `Mark Seam`)
+  y el Mirror las copia al otro lado.
+- `scripts/uv.py`: marca también las aristas entre islas distintas (y entre el lado izquierdo y el
+  derecho), Unwrap (Angle Based), Minimize Stretch, Average Islands Scale, cabeza ×1.6 y Pack
+  Islands. `stats()` rasteriza las caras en el espacio UV (2048²) para contar solapes, cuenta
+  caras con la UV invertida y calcula la densidad de texel por cara (√área UV / área 3D).
+- `scripts/uv_unwrap.py` desenvuelve la jaula y renderiza con una textura de cuadrícula (32×32
+  celdas con 8×8 zonas de color); `scripts/uv_layout.py` dibuja el mapa y marca en rojo los solapes.
+
+Costuras (todas en zonas poco visibles):
+- **Costados del torso** (θ 90°): de la cadera a la axila y del acromion al cuello. El torso son
+  dos islas (delante / detrás), cada una cruza el eje sin costura.
+- **Interior de los brazos**: desde el fondo de la axila hasta la muñeca.
+- **Interior de las piernas**: de la entrepierna al tobillo (camino más corto por aristas desde el
+  primer anillo de la pierna hasta la entrepierna). La entrepierna, sobre el eje, separa las dos
+  piernas.
+- **Detrás del cuello y de la cabeza**: línea de la nuca hasta la coronilla.
+- Contornos de isla: base del cuello (clavícula / trapecio), **bajo la mandíbula** (cuello /
+  cabeza), hombro (loft del brazo / torso), muñeca, tobillo, borde de la pierna (ingle y pliegue
+  del glúteo).
+- Mano: dorso y palma separados por el contorno lateral; cada dedo en 2 islas (dorso / palma,
+  cortado por sus laterales y por la línea de los nudillos); el pulgar en una isla cortada por la
+  línea que mira a la palma.
+
+### u6a — primer unwrap
+- 12 islas, 0 caras invertidas, densidad del cuerpo 0.94-0.98 y cabeza 1.51. **14 310 píxeles
+  solapados**, todos dentro de las islas de dorso y palma de las manos: al aplanar la mano
+  entera, los dedos se montan unos sobre otros (en rojo en `u6a_uv_layout.jpg`).
+
+### u6b — Conformal
+- Peor (14 703 píxeles, variación de densidad de la pierna 0.40). Se vuelve a Angle Based.
+
+### u6c/u6d — un par de islas por dedo
+- Cada dedo en dos islas (dorso / palma): quedaban 189 píxeles en el dorso del pulgar (el pulgar
+  está girado y el reparto dorso/palma por la normal salía irregular). El pulgar pasa a ser una
+  sola isla cortada por su lado palmar: **0 píxeles solapados**, 30 islas.
+
+### u6e — pie aparte
+- La pierna tenía una variación de densidad de 0.27 por el pie (tubo con puntera). Pie en isla
+  propia con la costura en el tobillo: pierna 0.13, pero pie 0.44.
+
+### u6f — Minimize Stretch
+- 200 iteraciones de Minimize Stretch después del unwrap: cabeza 0.26 → 0.17, pie 0.44 → 0.23,
+  torso delante 0.09, detrás 0.14, pierna 0.11, brazo 0.11; dedos 0.06-0.09.
+- **Resultado**: 32 islas, **0 píxeles solapados**, 0 caras fuera de [0,1], 0 caras con la UV
+  invertida, 72 % del espacio UV usado. Densidad de texel (relativa a la mediana del cuerpo):
+  todas las islas del cuerpo entre 0.944 y 0.968; **cabeza 1.53×**. Mapa: `u6f_uv_layout.png`
+  (islas en color) y `u6f_uv_checker.png` (sobre la cuadrícula); renders con la cuadrícula:
+  `u6f_checker_*.png` y `u6f_uv_montage.jpg`.
+- La geometría no cambia (validación `u6f_geo_validate.json`: todo en 0). La jaula tiene 3 390
+  quads; el LOD0 tiene 27 120 triángulos.

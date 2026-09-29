@@ -1,0 +1,70 @@
+{
+ "islands": 12,
+ "uv_overlap_pixels": 14310,
+ "uv_faces_out_of_bounds": 0,
+ "uv_flipped_faces": 0,
+ "uv_space_used": 0.659,
+ "texel_density": {
+  "brazo_L": {
+   "faces": 228,
+   "density": 0.966,
+   "variation": 0.127
+  },
+  "brazo_R": {
+   "faces": 228,
+   "density": 0.966,
+   "variation": 0.127
+  },
+  "cabeza": {
+   "faces": 542,
+   "density": 1.507,
+   "variation": 0.264
+  },
+  "cuello": {
+   "faces": 124,
+   "density": 0.963,
+   "variation": 0.151
+  },
+  "dorso_mano_L": {
+   "faces": 111,
+   "density": 0.973,
+   "variation": 0.071
+  },
+  "dorso_mano_R": {
+   "faces": 111,
+   "density": 0.974,
+   "variation": 0.066
+  },
+  "palma_L": {
+   "faces": 110,
+   "density": 0.974,
+   "variation": 0.066
+  },
+  "palma_R": {
+   "faces": 110,
+   "density": 0.975,
+   "variation": 0.065
+  },
+  "pierna_L": {
+   "faces": 578,
+   "density": 0.942,
+   "variation": 0.267
+  },
+  "pierna_R": {
+   "faces": 578,
+   "density": 0.942,
+   "variation": 0.267
+  },
+  "torso_delante": {
+   "faces": 298,
+   "density": 0.968,
+   "variation": 0.109
+  },
+  "torso_detras": {
+   "faces": 372,
+   "density": 0.962,
+   "variation": 0.166
+  }
+ },
+ "seams": 523
+}

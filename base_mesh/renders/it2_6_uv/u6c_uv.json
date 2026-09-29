@@ -1,0 +1,170 @@
+{
+ "islands": 32,
+ "uv_overlap_pixels": 189,
+ "uv_faces_out_of_bounds": 0,
+ "uv_flipped_faces": 0,
+ "uv_space_used": 0.666,
+ "texel_density": {
+  "anular_dorso_L": {
+   "faces": 18,
+   "density": 0.977,
+   "variation": 0.011
+  },
+  "anular_dorso_R": {
+   "faces": 18,
+   "density": 0.977,
+   "variation": 0.011
+  },
+  "anular_palma_L": {
+   "faces": 19,
+   "density": 0.975,
+   "variation": 0.07
+  },
+  "anular_palma_R": {
+   "faces": 19,
+   "density": 0.975,
+   "variation": 0.07
+  },
+  "brazo_L": {
+   "faces": 228,
+   "density": 0.97,
+   "variation": 0.127
+  },
+  "brazo_R": {
+   "faces": 228,
+   "density": 0.97,
+   "variation": 0.127
+  },
+  "cabeza": {
+   "faces": 542,
+   "density": 1.512,
+   "variation": 0.264
+  },
+  "cuello": {
+   "faces": 124,
+   "density": 0.967,
+   "variation": 0.151
+  },
+  "dorso_mano_L": {
+   "faces": 21,
+   "density": 0.981,
+   "variation": 0.024
+  },
+  "dorso_mano_R": {
+   "faces": 21,
+   "density": 0.981,
+   "variation": 0.024
+  },
+  "indice_dorso_L": {
+   "faces": 18,
+   "density": 0.977,
+   "variation": 0.008
+  },
+  "indice_dorso_R": {
+   "faces": 18,
+   "density": 0.977,
+   "variation": 0.008
+  },
+  "indice_palma_L": {
+   "faces": 19,
+   "density": 0.974,
+   "variation": 0.076
+  },
+  "indice_palma_R": {
+   "faces": 19,
+   "density": 0.975,
+   "variation": 0.055
+  },
+  "medio_dorso_L": {
+   "faces": 18,
+   "density": 0.977,
+   "variation": 0.007
+  },
+  "medio_dorso_R": {
+   "faces": 18,
+   "density": 0.977,
+   "variation": 0.007
+  },
+  "medio_palma_L": {
+   "faces": 19,
+   "density": 0.975,
+   "variation": 0.059
+  },
+  "medio_palma_R": {
+   "faces": 19,
+   "density": 0.974,
+   "variation": 0.079
+  },
+  "menique_dorso_L": {
+   "faces": 18,
+   "density": 0.977,
+   "variation": 0.009
+  },
+  "menique_dorso_R": {
+   "faces": 18,
+   "density": 0.977,
+   "variation": 0.009
+  },
+  "menique_palma_L": {
+   "faces": 19,
+   "density": 0.975,
+   "variation": 0.069
+  },
+  "menique_palma_R": {
+   "faces": 19,
+   "density": 0.976,
+   "variation": 0.054
+  },
+  "palma_L": {
+   "faces": 19,
+   "density": 0.979,
+   "variation": 0.041
+  },
+  "palma_R": {
+   "faces": 19,
+   "density": 0.979,
+   "variation": 0.041
+  },
+  "pierna_L": {
+   "faces": 578,
+   "density": 0.946,
+   "variation": 0.267
+  },
+  "pierna_R": {
+   "faces": 578,
+   "density": 0.946,
+   "variation": 0.267
+  },
+  "pulgar_dorso_L": {
+   "faces": 18,
+   "density": 0.979,
+   "variation": 0.068
+  },
+  "pulgar_dorso_R": {
+   "faces": 18,
+   "density": 0.979,
+   "variation": 0.068
+  },
+  "pulgar_palma_L": {
+   "faces": 15,
+   "density": 0.989,
+   "variation": 0.075
+  },
+  "pulgar_palma_R": {
+   "faces": 15,
+   "density": 0.989,
+   "variation": 0.08
+  },
+  "torso_delante": {
+   "faces": 298,
+   "density": 0.972,
+   "variation": 0.109
+  },
+  "torso_detras": {
+   "faces": 372,
+   "density": 0.965,
+   "variation": 0.166
+  }
+ },
+ "seams": 557
+}

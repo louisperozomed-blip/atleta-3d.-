@@ -14,6 +14,7 @@ import sys
 
 import bpy
 import bmesh
+import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -71,7 +72,56 @@ def build_object(stage):
     full.free()
     if vol < 0:
         me.flip_normals()
+    tag_islands(obj, b)
     return obj, b
+
+
+ISLANDS = {'torso_front': 1, 'torso_back': 2, 'neck': 3, 'head': 4, 'leg': 5, 'arm': 6,
+           'hand_d': 7, 'hand_p': 8, 'foot': 9}
+
+
+def tag_islands(obj, b):
+    """Atributo de cara 'island' (isla UV) y costuras: las marcadas al modelar (costados, interior
+    de brazos y piernas, nuca...) y todas las aristas entre caras de islas distintas. La mano se
+    separa en dorso y palma según la normal de cada cara (los laterales de los dedos: el que mira
+    al pulgar va con el dorso y el otro con la palma)."""
+    me = obj.data
+    m = b.m
+    hf = getattr(b, 'hand_frame', None)
+    codes = []
+    for poly, tag in zip(me.polygons, m.FT):
+        finger = tag.startswith('finger') if tag else False
+        if tag in ('hand', 'hand_web') or finger:
+            w, f = hf['w'], hf['f']
+            n = np.array(poly.normal)
+            dn = float(n @ w)
+            dors = tag == 'hand_web' or dn > 0.45 or (abs(dn) <= 0.45 and float(n @ f) > 0)
+            if tag == 'finger4':                         # pulgar: una sola isla (costura propia)
+                codes.append(28)
+                continue
+            if finger:                                   # cada dedo: isla de dorso y de palma
+                codes.append(20 + 2 * int(tag[6:]) + (0 if dors else 1))
+                continue
+            tag = 'hand_d' if dors else 'hand_p'
+        codes.append(ISLANDS.get(tag, 0))
+    attr = me.attributes.get('island') or me.attributes.new('island', 'INT', 'FACE')
+    attr.data.foreach_set('value', codes)
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.faces.ensure_lookup_table()
+    bm.verts.ensure_lookup_table()
+    seams = {frozenset(e) for e in m.seams}
+    n_seam = 0
+    for e in bm.edges:
+        key = frozenset(v.index for v in e.verts)
+        fs = e.link_faces
+        diff = len(fs) == 2 and codes[fs[0].index] != codes[fs[1].index]
+        if key in seams or diff:
+            e.seam = True
+            n_seam += 1
+    bm.to_mesh(me)
+    bm.free()
+    b.n_seam_half = n_seam
 
 
 def full_bmesh(obj, subsurf=False):

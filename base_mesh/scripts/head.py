@@ -131,12 +131,15 @@ def neck_head(body):
         zf, zb, rx, yf, yb = row
         return [ring_point(t, zf, zb, rx, yf, yb, power=2.0) * SC for t in TH]
     base = tilted(NECK[0])
+    m.tag = 'neck'
     N0, poles = m.reduce_to(A, NECK_SPECIALS, lambda P, k: base[k], closed=False, group='neck')
     body.poles_expected['base del cuello (32→24)'] = poles
     prev = N0
+    m.seam(A[-1], N0[-1])                          # costura UV por detrás del cuello (eje trasero)
     for row in NECK[1:]:
         ring = m.ring(tilted(row), 'neck')
         m.bridge(prev, ring, closed=False)
+        m.seam(prev[-1], ring[-1])
         prev = ring
     # ------------------------------------------------------------ rejilla de la cabeza
     param = {}
@@ -149,6 +152,10 @@ def neck_head(body):
             ring.append(v)
         G.append(ring)
     m.bridge(prev, G[0], closed=False)
+    m.seam(prev[-1], G[0][-1])
+    m.tag = 'head'
+    for i in range(len(ROWS) - 1):                 # costura UV por detrás de la cabeza (nuca -> coronilla)
+        m.seam(G[i][-1], G[i + 1][-1])
     fidx = {}
     for i in range(len(ROWS) - 1):
         for j in range(HJ):
@@ -309,6 +316,11 @@ def _cap(m, top):
         row.append(side)
         grid.append(row)
     grid.append([top[n], top[n - 1], top[n - 2], top[n - 3]])
+    for r in range(rows, 0, -1):                   # la costura trasera sigue hasta la coronilla
+        a_, b_ = grid[r][0], grid[r - 1][0]
+        m.seam(a_, b_)
+        if V[b_][1] <= 0.5 * (P0[1] + P1[1]):
+            break
     for r in range(rows):
         for c in range(cols):
             m.face(grid[r][c], grid[r][c + 1], grid[r + 1][c + 1], grid[r + 1][c])

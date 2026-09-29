@@ -17,6 +17,9 @@ class HalfMesh:
     def __init__(self):
         self.V = []
         self.F = []
+        self.FT = []              # etiqueta de cada cara (isla UV / bloque): la de self.tag al crearla
+        self.tag = None
+        self.seams = set()        # aristas de costura UV (pares de vértices)
         self.groups = {}          # nombre -> set de índices de vértice (para bloques/etapas)
 
     # -------------------------------------------------------------- vértices y anillos
@@ -34,6 +37,16 @@ class HalfMesh:
     def face(self, *idx):
         assert len(set(idx)) == len(idx), idx
         self.F.append(tuple(idx))
+        self.FT.append(self.tag)
+
+    def remove_face(self, quad):
+        k = next((i for i, f in enumerate(self.F) if set(f) == set(quad)), None)
+        if k is not None:
+            self.F.pop(k)
+            self.FT.pop(k)
+
+    def seam(self, a, b):
+        self.seams.add(frozenset((a, b)))
 
     # -------------------------------------------------------------- bridges
     def bridge(self, a, b, closed=True):
@@ -128,7 +141,7 @@ class HalfMesh:
         P = np.array([self.V[i] for i in quad])
         c = P.mean(0)
         new = [self.v(c + (p - c) * scale + offset, group) for p in P]
-        self.F = [f for f in self.F if set(f) != set(quad)]
+        self.remove_face(quad)
         for i in range(4):
             j = (i + 1) % 4
             self.face(quad[i], quad[j], new[j], new[i])
@@ -187,6 +200,7 @@ class HalfMesh:
         remap = {o: n for n, o in enumerate(used)}
         self.V = [self.V[i] for i in used]
         self.F = [tuple(remap[i] for i in f) for f in self.F]
+        self.seams = {frozenset(remap[i] for i in e) for e in self.seams if all(i in remap for i in e)}
         self.groups = {g: {remap[i] for i in s if i in remap} for g, s in self.groups.items()}
         return remap
 

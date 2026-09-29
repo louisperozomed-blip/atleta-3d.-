@@ -134,7 +134,13 @@ class Body:
                 if r0 <= i < r1 and s0 <= j < s1:
                     continue                  # agujero del brazo
                 self.torso_fidx[i, j] = len(m.F)
+                m.tag = 'torso_front' if j < H_TORSO // 2 else 'torso_back'
                 m.face(R[i][j], R[i][j + 1], R[i + 1][j + 1], R[i + 1][j])
+        # costura UV del costado (θ = 90°): del borde de la pierna a la axila y del acromion al cuello
+        side = H_TORSO // 2
+        for i in range(r0):
+            m.seam(R[i][side], R[i + 1][side])
+        m.seam(R[r1][side], R[r1 + 1][side])
         # cadena de la entrepierna sobre el plano de simetría (de detrás hacia delante)
         cz = PR.CROTCH_Z * SC
         c3 = m.v((0, 0.052 * SC, cz - 0.004), 'torso')
@@ -199,7 +205,13 @@ class Body:
             q[0] = max(q[0], 0.012 * SC)            # la cara interna no toca el plano de simetría
             q[2] = z0 + (p[2] - 0.875 * SC) * 0.4
             return q
+        m.tag = 'leg'
         L1, poles = m.reduce_to(A, [0, H_TORSO], place, closed=True, group='leg')
+        # la entrepierna está sobre el plano de simetría: costura entre la pierna izquierda y derecha
+        chain = [A[H_TORSO]] + A[H_TORSO + 1:] + [A[0]]
+        for a_, b_ in zip(chain[:-1], chain[1:]):
+            m.seam(a_, b_)
+        self.leg_rings = [L1]
         self.poles_expected['ingle/glúteo (reducción 20→16)'] = poles
         angles = self._angles_of(L1, c)
         prev = L1
@@ -216,8 +228,17 @@ class Body:
             angles = 0.75 * angles + 0.25 * self._uniform_like(angles)
             ring = m.ring(pts, 'leg')
             m.bridge(prev, ring)
+            self.leg_rings.append(ring)
             prev = ring
         self.foot(prev)
+        # costura por el interior de la pierna y del pie: el vértice de L1 más cercano al eje y su
+        # misma posición en todos los anillos (van alineados), y el camino más corto hasta la entrepierna
+        k = int(np.argmin([m.V[v][0] for v in L1]))
+        for r_a, r_b in zip(self.leg_rings[:-1], self.leg_rings[1:]):
+            m.seam(r_a[k], r_b[k])
+        path = self._edge_path(L1[k], set(chain), 'leg')
+        for a_, b_ in zip(path[:-1], path[1:]):
+            m.seam(a_, b_)
 
     # glúteos: 2 insets de la región trasera de la pelvis (hasta el eje) -> loop alrededor de los
     # glúteos cuyo tramo inferior es el pliegue del glúteo, y un segundo loop que redondea el lóbulo
@@ -229,6 +250,7 @@ class Body:
         m, R = self.m, self.R
         (i0, i1), (j0, j1) = self.GLUTE_ROWS, self.GLUTE_SEGS
         region = [self.torso_fidx[i, j] for i in range(i0, i1) for j in range(j0, j1)]
+        m.tag = 'torso_back'
         vmap = {R[i][j]: (i, j) for i in range(i0, i1 + 1) for j in range(j0, j1 + 1)}
         loops = []
         for _ in self.GLUTE_LOOPS:
@@ -264,6 +286,36 @@ class Body:
                 m.V[v] = p + np.array([0, 0.022 * w, 0]) * SC
         self.glute_loops = [l for l, _ in loops]
 
+    def _edge_path(self, start, targets, tag):
+        """Camino más corto (por aristas, en longitud) de `start` a cualquier vértice de `targets`,
+        usando solo aristas de caras con la etiqueta `tag`."""
+        import heapq
+        m = self.m
+        adj = {}
+        for f, t in zip(m.F, m.FT):
+            if t != tag:
+                continue
+            for i in range(len(f)):
+                a_, b_ = f[i], f[(i + 1) % len(f)]
+                adj.setdefault(a_, set()).add(b_)
+                adj.setdefault(b_, set()).add(a_)
+        dist, prev, pq = {start: 0.0}, {}, [(0.0, start)]
+        while pq:
+            d, v = heapq.heappop(pq)
+            if v in targets:
+                path = [v]
+                while path[-1] != start:
+                    path.append(prev[path[-1]])
+                return path[::-1]
+            if d > dist[v]:
+                continue
+            for w in adj.get(v, ()):
+                nd = d + np.linalg.norm(m.V[w] - m.V[v])
+                if nd < dist.get(w, 1e9):
+                    dist[w], prev[w] = nd, v
+                    heapq.heappush(pq, (nd, w))
+        raise ValueError('sin camino')
+
     def _angles_of(self, ring, c):
         a = []
         for i in ring:
@@ -293,6 +345,7 @@ class Body:
 
     def foot(self, ankle):
         m = self.m
+        m.tag = 'foot'                                    # isla UV propia (costura en el tobillo)
         prev = ankle
         n = len(ankle)
         e = 2.0 / 2.6                                     # superelipse: suela y empeine más planos
@@ -310,6 +363,7 @@ class Body:
                 p[2] = max(p[2], 0.0)                     # suela en el suelo
                 pts.append(p)
             prev = self._next_ring(prev, pts, 'foot')
+            self.leg_rings.append(prev)
         # puntera: Grid Fill 4×4 empezando en una esquina del anillo
         V = [m.V[i] for i in prev]
         start = int(np.argmax([(p[0] - np.mean([q[0] for q in V])) + (p[2] - np.mean([q[2] for q in V]))
@@ -328,6 +382,8 @@ class Body:
     def arms(self):
         m = self.m
         hole = self.ports['arm_hole']
+        m.tag = 'arm'
+        arm_rings = [hole]
         sh = np.array([0.164, -0.008, 1.345]) * SC
         el = np.array([0.228, 0.002, 1.135]) * SC
         wr = np.array([0.310, -0.004, 0.960]) * SC
@@ -368,15 +424,24 @@ class Body:
             ring = m.ring(pts, 'arm')
             m.bridge(prev, ring)
             prev = ring
+            arm_rings.append(ring)
         ring = m.ring(list(T), 'arm')
         m.bridge(prev, ring)
         prev = ring
+        arm_rings.append(ring)
         for (t, rs, rf, rb) in UPPER[1:]:
             ring = full_ring(sh + (el - sh) * t, d1, rs * SC, rf * SC, rb * SC, n=N_ARM)
             prev = self._next_ring(prev, ring, 'arm')
+            arm_rings.append(prev)
         for (t, rs, rf, rb) in LOWER:
             ring = full_ring(el + (wr - el) * t, d2, rs * SC, rf * SC, rb * SC, n=N_ARM)
             prev = self._next_ring(prev, ring, 'arm')
+            arm_rings.append(prev)
+        # costura UV por el interior del brazo: desde el fondo de la axila hasta la muñeca
+        k = int(np.argmin([m.V[v][2] for v in hole]))
+        for r_a, r_b in zip(arm_rings[:-1], arm_rings[1:]):
+            m.seam(r_a[k], r_b[k])
+        m.tag = 'hand'
         self.hand(prev, wr, d2)
 
     def _next_ring(self, prev, pts, group):
@@ -392,6 +457,7 @@ class Body:
         h = (tip - wr) / np.linalg.norm(tip - wr)
         a, s, f = frame(h, (0, -1, 0))          # f = hacia el pulgar (delante), s = lateral
         w_axis = s if s[0] > 0 else -s          # dorso hacia fuera (+X)
+        self.hand_frame = dict(w=w_axis, f=f, h=h)
 
         def palm_ring(cen, width, thick, n_top):
             us = np.linspace(width / 2, -width / 2, n_top + 1)
@@ -416,15 +482,19 @@ class Body:
         # membranas entre dedos
         D = K[:8]
         Pm = K[8:][::-1]                     # P0..P7
+        m.tag = 'hand_web'
         for k in range(3):
             m.face(D[2 * k + 1], D[2 * k + 2], Pm[2 * k + 2], Pm[2 * k + 1])
+        m.tag = 'hand'
         lengths = [0.068, 0.076, 0.071, 0.057]
         spread = [0.035, 0.010, -0.015, -0.045]   # casi paralelos, con separación (como la hoja)
         for k in range(4):
             quad = [D[2 * k], D[2 * k + 1], Pm[2 * k + 1], Pm[2 * k]]
             dirf = h + f * spread[k] - w_axis * 0.10
+            m.tag = f'finger{k}'
             self._finger(quad, dirf / np.linalg.norm(dirf), lengths[k] * SC, 0.0085 * SC, 0.0080 * SC,
                          segs=self.FINGER_SEGS, curl=-w_axis * (0.22 + 0.04 * k))
+        m.tag = 'hand'
         # pulgar: sale de la cara lateral entre Pa0 y Pa1 del lado del índice
         side = None
         best = -1e9
@@ -437,8 +507,13 @@ class Body:
                 best, side = sc, q
         # sale casi perpendicular al lado de la palma (metacarpo) y se curva hacia abajo
         tdir = f * 1.0 + h * 0.0 - w_axis * 0.30
-        self._finger(side, tdir / np.linalg.norm(tdir), 0.054 * SC, 0.011 * SC, 0.010 * SC,
+        m.tag = 'finger4'
+        rings = self._finger(side, tdir / np.linalg.norm(tdir), 0.054 * SC, 0.011 * SC, 0.010 * SC,
                      base_scale=0.80, segs=self.THUMB_SEGS, curl=h * 1.3 - f * 0.2 - w_axis * 0.10)
+        # el pulgar es una sola isla UV: tubo cortado por la línea que mira a la palma
+        k = int(np.argmin([m.V[v] @ w_axis for v in rings[0]]))
+        for r_a, r_b in zip(rings[:-1], rings[1:]):
+            m.seam(r_a[k], r_b[k])
 
     # anillos de cada dedo (fracción de su longitud): 3 loops en cada nudillo.
     # MCP = cara base + 0.07 + 0.14; PIP 0.42/0.48/0.54; DIP 0.74/0.79/0.84; punta.
@@ -456,8 +531,9 @@ class Body:
         m = self.m
         P = np.array([m.V[i] for i in quad])
         base = P.mean(0)
-        m.F = [f for f in m.F if set(f) != set(quad)]     # extrusión: la cara base desaparece
+        m.remove_face(quad)                                # extrusión: la cara base desaparece
         prev = quad
+        rings = [list(quad)]
         n0 = np.cross(P[1] - P[0], P[3] - P[0])
         n0 /= np.linalg.norm(n0)
         if n0 @ d < 0:
@@ -472,7 +548,9 @@ class Body:
             ring = m.ring([base + off + rotate_to(n0, tan, (p - base) * scale) for p in P], 'hand')
             m.bridge(prev, ring)
             prev = ring
+            rings.append(ring)
         m.face(*prev)
+        return rings
 
     # ================================================================== 4. cuello y cabeza
     def neck_head(self):
