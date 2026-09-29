@@ -239,3 +239,74 @@ cuencas, arco superciliar, barbilla, mandíbula).
     y trapecio detrás). Zona plana entre cuello y hombro, a >8 cm del giro del hombro.
   - 4 polos de 5 en la base de la oreja y 4 de 3 en sus esquinas (bloque de la oreja, no se deforma).
   - 2 polos de 3 en las esquinas de la tapa del cráneo (coronilla, no se deforma).
+
+---
+
+## Etapa 5 — unión y limpieza final
+
+La media malla ya es un único bloque continuo (torso → piernas/pies, brazos/manos, cuello/cabeza
+unidos por Bridge Edge Loops y reducciones); en esta etapa se aplica el Mirror (clipping +
+merge) y se valida la malla completa como sólido cerrado. Se añadió a `validate.py` un test de
+auto-intersecciones con BVH (pares de caras que se cruzan sin compartir vértices).
+
+### s5a — primera validación de la malla cerrada
+- 2636 quads, 0 aristas de borde, 0 no manifold, 0 duplicados, 0 normales invertidas.
+- **Error**: 4 auto-intersecciones (2 por mano): la primera sección del pulgar atravesaba la
+  cara de la palma que tiene debajo, porque el anillo de nudillos (8 cm) era más ancho que la
+  palma (5.8 cm) y esa cara se abría hacia delante justo bajo el pulgar.
+
+### s5b — mano sin intersecciones
+- Palma más ancha (6.6 cm, anatómicamente ≈ ancho de nudillos) y nudillos algo más estrechos
+  del lado del índice; el pulgar sale casi perpendicular y se curva hacia abajo después.
+  0 auto-intersecciones.
+- Diferencia vista en BACK/SIDE: los glúteos se ven como una masa alta (máximo a z 0.955) que se
+  funde con el muslo; en la hoja el máximo está más bajo (~0.93) y termina en un pliegue marcado
+  a ~0.87. SIDE a z 0.90: −9 mm.
+
+### s5c — glúteo más bajo y pliegue inferior
+- Relieve del glúteo centrado en z 0.935, caída inferior corta (σ 0.042) y surco interglúteo
+  hasta 0.87; R0/R1 1 cm más atrás y L1 más adentro por detrás (pliegue bajo el glúteo).
+- SIDE a 0.90: 0 mm. Pero a 1.00 el glúteo quedó 1.3 cm corto (subía poco).
+
+### s5d — parte alta del glúteo
+- Caída superior del relieve más larga (σ 0.095): SIDE a 1.00 −9 mm → dentro del margen del resto.
+
+### s5e — altura final
+- La coronilla de la jaula estaba a 1.694 m y la del LOD0 a 1.693 (la Subdivision encoge): la
+  tapa del cráneo sube a 1.704 → **LOD0 mide 1.701 m**.
+- Silueta final (`renders/final_silhouette.png`): FRONT y SIDE dentro de ±2 mm en toda la
+  pierna, ±7 mm en torso y cabeza; brazos ±1 cm (la hoja dibuja el brazo FRONT 1 cm más estrecho
+  que el BACK). Diferencias que se aceptan: dedos más juntos que en la hoja (−2 cm de abertura a
+  z 0.85-0.90), piernas BACK 1.5-2 cm más separadas porque la figura BACK de la hoja no coincide
+  con la FRONT.
+- IoU cuerpo entero: front 0.924, side 0.949, back 0.860.
+- Validación final (jaula y LOD0, `export/base_mesh_stats.json`): 0 n-gons, 0 triángulos,
+  0 polos >5, 0 aristas no manifold, 0 normales invertidas, 0 vértices/caras duplicados,
+  0 caras internas o degeneradas, 0 auto-intersecciones, simetría 0 (LOD0 3.6e-7 m),
+  ningún polo en zona de pliegue. 72 polos de 3 y 64 de 5, todos justificados en las etapas
+  anteriores.
+- Presupuesto: jaula 2 636 quads (objetivo 2 500-3 500), LOD0 10 544 quads = 21 088 triángulos
+  (objetivo 20k-28k).
+- Hard edges: ninguno. La malla es orgánica y todo el sombreado es suave; las aristas vivas de
+  la hoja (estilo facetado) son del render de referencia, no de la topología.
+
+### Test de deformación (temporal)
+- Esqueleto de 19 huesos con pesos automáticos (ningún grupo quedó sin pesos). Pose: codos y
+  rodillas a 90°, hombros 30° de abducción + 20° de flexión, caderas 35° de flexión + 12° de
+  abducción. Renders: `renders/deform_test.png` (front / side / 3-4) y primeros planos del codo
+  y la rodilla con la jaula deformada.
+- Resultado: rodilla y codo se doblan sin pellizcos ni caras invertidas y mantienen el volumen
+  (los 3 loops reparten el pliegue); la axila y la ingle estiran de forma uniforme. En el
+  interior del codo la compresión es la normal de los pesos automáticos (se ajustaría al pintar
+  pesos, fuera de esta fase).
+- El esqueleto, el modificador Armature y los grupos de vértices se borran al final del script
+  (comprobado en la salida: `ARMATURE BORRADO: True modificadores: ['SUBSURF']`); el script no
+  guarda nada.
+
+### Exportación
+- `scripts/export.py`: aplica el Mirror, recalcula normales, guarda `export/base_mesh.blend` con la
+  Subdivision nivel 1 sin aplicar, exporta LOD1 (jaula) y LOD0 (Subdivision aplicada) a FBX y
+  GLB y los JSON del visor. Reimportados en Blender: LOD1 2 638 vértices / 2 636 caras, LOD0
+  10 546 / 10 544 (FBX) y 5 272 / 21 088 triángulos (GLB), escala 1.
+- Visor web nuevo: `web/visor_base_mesh.html` (LOD0/LOD1, arcilla / + wire / solo wire con las
+  aristas de los quads, cámaras front/side/back/3-4 y regla de 8 cabezas).

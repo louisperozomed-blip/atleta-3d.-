@@ -76,8 +76,8 @@ class Body:
     # (z delante, z detrás, semiancho x, y delante, y detrás). Medidas de la hoja (FRONT/SIDE);
     # el pecho y los glúteos se añaden como relieves (bumps) sobre la caja torácica / pelvis.
     TORSO = [
-        (0.875, 0.875, 0.182, -0.095, 0.100),   # R0: borde del agujero de la pierna
-        (0.905, 0.905, 0.187, -0.100, 0.112),
+        (0.875, 0.875, 0.182, -0.095, 0.104),   # R0: borde del agujero de la pierna
+        (0.905, 0.905, 0.187, -0.100, 0.116),
         (0.935, 0.935, 0.185, -0.094, 0.110),
         (0.965, 0.965, 0.177, -0.089, 0.110),
         (0.995, 0.995, 0.165, -0.094, 0.106),
@@ -112,9 +112,9 @@ class Body:
                 return (0.10 * b, -b, -0.15 * b)
 
             def glute(t, p):
-                sz = 0.075 if z > 0.955 else 0.05
-                g = gauss(t - (np.pi - 0.60), 0.45) * gauss(z - 0.955, sz) * PR.GLUTE
-                cleft = gauss(t - np.pi, 0.20) * gauss(z - 0.95, 0.06) * 0.016
+                sz = 0.095 if z > 0.935 else 0.042
+                g = gauss(t - (np.pi - 0.60), 0.45) * gauss(z - 0.935, sz) * PR.GLUTE
+                cleft = gauss(t - np.pi, 0.20) * gauss(z - 0.93, 0.06) * 0.018
                 return (0.1 * g, g - cleft, 0)
             return (breast, glute)
         R = []
@@ -193,7 +193,7 @@ class Body:
             d = p[:2] - c[:2]
             ang = np.arctan2(d[0], -d[1])          # 0 = delante
             rx = 0.093 * SC
-            ry = (0.099 if np.cos(ang) >= 0 else 0.092) * SC
+            ry = (0.099 if np.cos(ang) >= 0 else 0.086) * SC   # detrás: pliegue bajo el glúteo
             q = c + np.array([np.sin(ang) * rx, -np.cos(ang) * ry, 0.0])
             q[0] = max(q[0], 0.012 * SC)            # la cara interna no toca el plano de simetría
             q[2] = z0 + (p[2] - 0.875 * SC) * 0.4
@@ -316,7 +316,7 @@ class Body:
             return dors + palm
         # anillo de nudillos (16): dorso D0..D7 (del índice al meñique) + palma P7..P0
         kc = wr + h * 0.085 * SC
-        us = np.array([0.040, 0.023, 0.019, 0.002, -0.002, -0.019, -0.023, -0.040]) * SC
+        us = np.array([0.037, 0.021, 0.017, 0.001, -0.003, -0.019, -0.023, -0.038]) * SC
         K = m.ring([kc + f * u + w_axis * 0.012 * SC for u in us]
                    + [kc + f * u - w_axis * 0.011 * SC for u in us[::-1]], 'hand')
 
@@ -324,7 +324,7 @@ class Body:
             return np.mean(P, 0) - h * 0.040 * SC
         Pa1, poles = m.reduce_to(K, [4, 11], place, closed=True, group='hand')
         self.poles_expected['dorso/palma (12→16)'] = poles
-        Pa0 = palm_ring(wr + h * 0.012 * SC, 0.058 * SC, 0.026 * SC, 5)
+        Pa0 = palm_ring(wr + h * 0.014 * SC, 0.066 * SC, 0.026 * SC, 5)
         order = best_alignment([m.V[i] for i in Pa1], Pa0)
         Pa0 = m.ring([Pa0[k] for k in order], 'hand')
         m.bridge(Pa0, Pa1)
@@ -352,9 +352,9 @@ class Body:
             if sc > best:
                 best, side = sc, q
         # sale casi perpendicular al lado de la palma (metacarpo) y se curva hacia abajo
-        tdir = f * 0.80 + h * 0.45 - w_axis * 0.35
+        tdir = f * 0.95 + h * 0.12 - w_axis * 0.30
         self._finger(side, tdir / np.linalg.norm(tdir), 0.050 * SC, 0.011 * SC, 0.010 * SC,
-                     segs=(0.30, 0.60, 0.82, 1.0), curl=h * 0.55 - w_axis * 0.10)
+                     segs=(0.30, 0.60, 0.82, 1.0), curl=h * 0.75 - w_axis * 0.10)
 
     def _bridge_ring_to_ring(self, a, b):
         order = best_alignment([self.m.V[i] for i in a], [self.m.V[i] for i in b])
@@ -398,7 +398,7 @@ class Body:
             (1.627, 1.643, 0.072, -0.089, 0.090),   # H6: frente
             (1.653, 1.663, 0.067, -0.081, 0.082),
             (1.675, 1.680, 0.053, -0.060, 0.063)]
-    TOP_Z = 1.694
+    TOP_Z = 1.704
 
     def neck_head(self):
         m = self.m

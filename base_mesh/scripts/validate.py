@@ -124,6 +124,13 @@ def validate(bm, expect_closed=True):
         _, _, d = kd.find(Vector((-v.co.x, v.co.y, v.co.z)))
         err = max(err, d)
     r['symmetry_error'] = err
+    # auto-intersecciones: pares de caras que se cruzan sin compartir vértices
+    from mathutils.bvhtree import BVHTree
+    bvh = BVHTree.FromBMesh(bm, epsilon=0.0)
+    pairs = [(a, b) for a, b in bvh.overlap(bvh) if a < b
+             and not (set(v.index for v in bm.faces[a].verts) & set(v.index for v in bm.faces[b].verts))]
+    r['self_intersections'] = len(pairs)
+    r['self_intersection_list'] = [[[round(c, 3) for c in bm.faces[i].calc_center_median()] for i in ab] for ab in pairs[:10]]
     r['center_verts_off_plane'] = 0
     # triángulos/n-gons: lista para justificar
     r['tri_list'] = [[round(c, 4) for c in f.calc_center_median()] for f in bm.faces if len(f.verts) == 3][:20]
@@ -136,7 +143,7 @@ def validate(bm, expect_closed=True):
 def summary(r):
     keys = ['verts', 'faces', 'quads', 'tris', 'ngons', 'subdiv1_tris', 'poles_3', 'poles_5', 'poles_gt5',
             'boundary_edges', 'nonmanifold_edges', 'edges_gt2_faces', 'duplicate_verts', 'duplicate_faces',
-            'internal_faces', 'degenerate_faces', 'flipped_normals', 'normals_outward', 'symmetry_error']
+            'internal_faces', 'degenerate_faces', 'self_intersections', 'flipped_normals', 'normals_outward', 'symmetry_error']
     s = '\n'.join(f'  {k:18s} {r[k]}' for k in keys)
     s += f"\n  polos en zona de articulación: {len(r['poles_in_joint_zone'])}"
     for p in r['poles_in_joint_zone']:

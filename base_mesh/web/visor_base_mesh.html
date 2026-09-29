@@ -1,0 +1,309 @@
+<title>Base Mesh Femenino</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: el modelo a pantalla completa sobre el gris de la hoja de modelado; ficha técnica arriba
+   a la izquierda y barra de control abajo, como las etiquetas FRONT / SIDE / BACK de la hoja. */
+:root {
+  --bg: #3a3b3d;            /* gris carbón de la hoja de referencia */
+  --panel: rgba(46, 47, 50, 0.9);
+  --fg: #e9e7e2;
+  --muted: #a3a29d;
+  --accent: #d9b77a;        /* ocre de lápiz de modelado */
+  --ok: #8fc79a;
+  --line: rgba(233, 231, 226, 0.14);
+  --clay: #a6a6a4;
+  --wire: #151618;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #c9c8c4; --panel: rgba(240, 239, 235, 0.9); --fg: #24262a; --muted: #5d5f63;
+    --accent: #9a6a1c; --ok: #2f7d41; --line: rgba(36, 38, 42, 0.16); --clay: #b3b3b0; --wire: #2a2c30;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #c9c8c4; --panel: rgba(240, 239, 235, 0.9); --fg: #24262a; --muted: #5d5f63;
+  --accent: #9a6a1c; --ok: #2f7d41; --line: rgba(36, 38, 42, 0.16); --clay: #b3b3b0; --wire: #2a2c30;
+  color-scheme: light;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); overflow: hidden; }
+#stage { position: fixed; inset: 0; }
+#status[hidden] { display: none; }
+#stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+#status {
+  position: fixed; inset: 0; display: grid; place-items: center; padding-inline: 24px; text-align: center;
+  font-family: var(--display); font-size: 18px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--muted); pointer-events: none;
+}
+
+.sheet {
+  position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); left: 16px;
+  width: min(300px, calc(100vw - 32px));
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 12px 14px; backdrop-filter: blur(6px); display: grid; gap: 8px;
+}
+.sheet h1 {
+  margin: 0; font-family: var(--display); font-weight: 600; font-size: 22px;
+  letter-spacing: 0.12em; text-transform: uppercase; text-wrap: balance;
+}
+.sheet h1 span { color: var(--accent); }
+.meta { font-size: 12px; color: var(--muted); }
+table { border-collapse: collapse; width: 100%; font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+th, td { padding: 2px 0; text-align: right; }
+th:first-child, td:first-child { text-align: left; color: var(--muted); font-weight: 400; }
+thead th { font-family: var(--display); font-weight: 500; letter-spacing: 0.1em; font-size: 12px; color: var(--muted); }
+tr.cur td:not(:first-child), thead th.cur { color: var(--accent); }
+.checks { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip {
+  font-family: var(--mono); font-size: 11px; padding: 1px 6px; border-radius: 4px;
+  border: 1px solid var(--line); color: var(--ok);
+}
+details summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+details p { margin: 6px 0 0; font-size: 12px; line-height: 1.45; color: var(--muted); max-width: 60ch; }
+
+.bar {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  width: min(760px, calc(100vw - 32px));
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; backdrop-filter: blur(6px);
+}
+.group { display: flex; align-items: center; gap: 6px; min-width: 0; flex-wrap: wrap; }
+.group > span { font-family: var(--display); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button {
+  font-family: var(--display); font-weight: 500; font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase;
+  background: transparent; color: var(--fg); border: 0; padding: 6px 11px; cursor: pointer;
+}
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button:hover { color: var(--accent); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
+.seg button:focus-visible, .tog input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tog { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.tog input { accent-color: var(--accent); }
+@media (max-width: 520px) {
+  .sheet { padding: 10px 12px; }
+  .sheet h1 { font-size: 18px; }
+  details, .checks, .meta { display: none; }
+  table { font-size: 11px; }
+  .seg button { padding: 6px 8px; font-size: 13px; }
+}
+</style>
+
+<div id="stage"></div>
+<div id="status">Cargando malla…</div>
+
+<header class="sheet">
+  <h1>Base mesh <span>femenino</span></h1>
+  <div class="meta">1,70 m · 8 cabezas · A-pose · solo quads</div>
+  <table aria-label="Conteo de polígonos por LOD">
+    <thead><tr><th></th><th id="h-LOD0">LOD0</th><th id="h-LOD1">LOD1</th></tr></thead>
+    <tbody>
+      <tr><td>quads</td><td>10 544</td><td>2 636</td></tr>
+      <tr><td>triángulos</td><td>21 088</td><td>5 272</td></tr>
+      <tr><td>vértices</td><td>10 546</td><td>2 638</td></tr>
+    </tbody>
+  </table>
+  <div class="checks" aria-label="Validación de la jaula">
+    <span class="chip">0 n-gons</span><span class="chip">0 tris</span><span class="chip">0 polos &gt;5</span>
+    <span class="chip">0 no manifold</span><span class="chip">0 duplicados</span><span class="chip">0 normales invertidas</span>
+    <span class="chip">0 auto-intersecciones</span><span class="chip">simetría 0</span>
+  </div>
+  <details>
+    <summary>Polos y topología</summary>
+    <p>72 polos de 3 y 64 de 5, todos fuera de las zonas de pliegue: ingle y pliegue del glúteo,
+      axilas, base del cuello, dorso/palma, membranas de los dedos, puntas de los dedos, empeine,
+      talón y puntera, oreja y coronilla. 3 loops en rodilla, codo, tobillo y cintura.</p>
+  </details>
+</header>
+
+<section class="bar" aria-label="Controles del visor">
+  <div class="group"><span>LOD</span>
+    <div class="seg" role="group" aria-label="Nivel de detalle">
+      <button type="button" id="lod-LOD0" aria-pressed="true">LOD0</button>
+      <button type="button" id="lod-LOD1" aria-pressed="false">LOD1</button>
+    </div>
+  </div>
+  <div class="group"><span>Vista</span>
+    <div class="seg" role="group" aria-label="Modo de visualización">
+      <button type="button" id="mode-clay" aria-pressed="false">Arcilla</button>
+      <button type="button" id="mode-both" aria-pressed="true">+ Wire</button>
+      <button type="button" id="mode-wire" aria-pressed="false">Wire</button>
+    </div>
+  </div>
+  <div class="group"><span>Cámara</span>
+    <div class="seg" role="group" aria-label="Cámara">
+      <button type="button" id="cam-front" aria-pressed="false">Front</button>
+      <button type="button" id="cam-side" aria-pressed="false">Side</button>
+      <button type="button" id="cam-back" aria-pressed="false">Back</button>
+      <button type="button" id="cam-34" aria-pressed="true">3/4</button>
+    </div>
+  </div>
+  <label class="tog" for="spin"><input id="spin" type="checkbox"> Girar</label>
+  <label class="tog" for="heads"><input id="heads" type="checkbox" checked> Regla 8 cabezas</label>
+</section>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const stage = document.getElementById('stage');
+const statusEl = document.getElementById('status');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(28, 1, 0.05, 50);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 0.6; controls.maxDistance = 9;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x55524c, 1.7));
+const key = new THREE.DirectionalLight(0xffffff, 1.7);
+key.position.set(-2.5, 4, 3.5); scene.add(key);
+const rim = new THREE.DirectionalLight(0xffffff, 0.6);
+rim.position.set(3, 2, -3); scene.add(rim);
+
+const root = new THREE.Group();
+scene.add(root);
+const clayMat = new THREE.MeshStandardMaterial({
+  color: css('--clay'), roughness: 0.82, metalness: 0,
+  polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1,
+});
+const wireMat = new THREE.LineBasicMaterial({ color: css('--wire'), transparent: true, opacity: 0.75 });
+const wireOnlyMat = new THREE.LineBasicMaterial({ color: css('--fg'), transparent: true, opacity: 0.55 });
+
+// regla de proporciones: 8 cabezas de 1,70 / 8 m, como la columna de la hoja
+const ruler = new THREE.Group();
+{
+  const H = 1.70, pts = [];
+  pts.push(-0.52, 0, 0, -0.52, H, 0);
+  for (let i = 0; i <= 8; i++) { const y = H * i / 8; pts.push(-0.56, y, 0, -0.44, y, 0); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  ruler.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: css('--accent'), transparent: true, opacity: 0.7 })));
+  const floorG = new THREE.RingGeometry(0.0, 0.42, 48);
+  const floor = new THREE.Mesh(floorG, new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.18, depthWrite: false }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = 0.0005; scene.add(floor);
+}
+scene.add(ruler);
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h;
+  camera.fov = w < 560 ? 36 : 28; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+// JSON exportado por scripts/export.py: v = xyz (Blender, Z arriba, frente -Y), q = quads
+function buildLOD(data) {
+  const n = data.v.length / 3, pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {                    // Blender (x, y, z) -> three (x, z, -y)
+    pos[3 * i] = data.v[3 * i]; pos[3 * i + 1] = data.v[3 * i + 2]; pos[3 * i + 2] = -data.v[3 * i + 1];
+  }
+  const q = data.q, tri = [], edges = new Set(), lines = [];
+  for (let f = 0; f < q.length; f += 4) {
+    const a = q[f], b = q[f + 1], c = q[f + 2], d = q[f + 3];
+    tri.push(a, b, c, a, c, d);
+    for (const [u, v] of [[a, b], [b, c], [c, d], [d, a]]) {
+      const k = u < v ? u * 1e6 + v : v * 1e6 + u;
+      if (!edges.has(k)) { edges.add(k); lines.push(u, v); }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setIndex(tri); g.computeVertexNormals();
+  const lg = new THREE.BufferGeometry();
+  lg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  lg.setIndex(lines);
+  const group = new THREE.Group();
+  const mesh = new THREE.Mesh(g, clayMat);
+  const wire = new THREE.LineSegments(lg, wireMat);
+  group.add(mesh, wire);
+  return { group, mesh, wire };
+}
+
+const lods = {};
+let current = null, mode = 'both';
+function applyMode() {
+  for (const l of Object.values(lods)) {
+    l.mesh.visible = mode !== 'wire';
+    l.wire.visible = mode !== 'clay';
+    l.wire.material = mode === 'wire' ? wireOnlyMat : wireMat;
+  }
+  // la jaula LOD1 se lee con líneas marcadas; en LOD0 (4x más caras) se aclaran
+  const dense = current === lods.LOD0;
+  wireMat.opacity = dense ? 0.32 : 0.8;
+  wireOnlyMat.opacity = dense ? 0.35 : 0.65;
+  for (const m of ['clay', 'both', 'wire']) document.getElementById('mode-' + m).setAttribute('aria-pressed', String(m === mode));
+}
+async function load(name) {
+  if (!lods[name]) {
+    const res = await fetch(`base_mesh_${name}.json`);
+    if (!res.ok) throw new Error(`base_mesh_${name}.json respondió ${res.status}`);
+    lods[name] = buildLOD(await res.json());
+  }
+  return lods[name];
+}
+async function showLOD(name) {
+  for (const k of ['LOD0', 'LOD1']) {
+    document.getElementById('lod-' + k).setAttribute('aria-pressed', String(k === name));
+    document.getElementById('h-' + k).classList.toggle('cur', k === name);
+  }
+  statusEl.hidden = false; statusEl.textContent = 'Cargando malla…';
+  try {
+    const l = await load(name);
+    if (current) root.remove(current.group);
+    current = l; root.add(l.group); applyMode();
+    statusEl.hidden = true;
+  } catch (err) {
+    statusEl.textContent = 'No se pudo cargar la malla: ' + (err && err.message ? err.message : err);
+  }
+}
+
+const VIEWS = { front: [0, 0.95, 5.2], side: [5.2, 0.95, 0], back: [0, 0.95, -5.2], '34': [2.6, 1.25, 4.4] };
+function setView(v) {
+  const p = VIEWS[v];
+  camera.position.set(p[0], p[1], p[2]); controls.target.set(0, 0.86, 0); root.rotation.y = 0;
+  for (const k of Object.keys(VIEWS)) document.getElementById('cam-' + k).setAttribute('aria-pressed', String(k === v));
+  controls.update();
+}
+for (const k of Object.keys(VIEWS)) document.getElementById('cam-' + k).addEventListener('click', () => setView(k));
+for (const k of ['LOD0', 'LOD1']) document.getElementById('lod-' + k).addEventListener('click', () => showLOD(k));
+for (const m of ['clay', 'both', 'wire']) document.getElementById('mode-' + m).addEventListener('click', () => { mode = m; applyMode(); });
+const spin = document.getElementById('spin');
+document.getElementById('heads').addEventListener('change', (e) => { ruler.visible = e.target.checked; });
+controls.addEventListener('start', () => {
+  document.querySelectorAll('[id^="cam-"]').forEach((b) => b.setAttribute('aria-pressed', 'false'));
+});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  clayMat.color.set(css('--clay')); wireMat.color.set(css('--wire')); wireOnlyMat.color.set(css('--fg'));
+});
+
+setView('34');
+showLOD('LOD0');
+window._dbg = { camera, controls, setView };
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = clock.getDelta();
+  if (spin.checked) root.rotation.y += dt * 0.35;
+  controls.update();
+  renderer.render(scene, camera);
+});
+</script>

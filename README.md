@@ -85,3 +85,9 @@ y Pillow + scipy para los scripts de comparación.
 | `scripts/rig_animate.py` | Armadura, pesos (bone heat + correcciones), acciones |
 | `scripts/export_unity.py` | FBX + GLB y verificación por re-importación |
 | `scripts/render_anim.py` | Hojas de animación y test de deformación |
+
+## Base mesh femenino (proyecto nuevo)
+
+Cuerpo base femenino solo quads (jaula 2 636 quads / LOD0 21 088 triángulos) modelado por
+scripts a partir de `reference/base_mesh_sheet.png`: ver [`base_mesh/README.md`](base_mesh/README.md),
+el registro de iteraciones en `base_mesh/PROGRESS.md` y el visor `base_mesh/web/visor_base_mesh.html`.
