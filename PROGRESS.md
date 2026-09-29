@@ -163,3 +163,24 @@ el recorte ampliado de la referencia a la misma escala (`v3/scripts/compare_face
 
 En Unity los rasgos vienen de la textura del atlas (filtro Point); en el color de vértice esas
 caras son piel lisa, por eso el visor web usa ahora la textura.
+
+## v3 — resumen y entregables
+
+| | v2 | **v3** |
+|---|---|---|
+| Triángulos | 9 085 | **10 320** (rango pedido 8 000-12 000) |
+| IoU silueta F/S/B | 0.843/0.845/0.847 | **0.852/0.840/0.868** (máx. por zona: 0.861/0.852/0.868) |
+| Huesos | 57 (5 de coleta) | 56 (4 de coleta, con muelle) |
+| Cara | polígonos proyectados | textura pintada en el atlas sobre las caras de la cabeza |
+
+- Zona 1: hombros, cintura, axila y muslos ajustados a ±1-2 cm de la referencia en las tres vistas.
+- Zona 2: espalda (columna, erectores, escápulas, V), glúteos altos y redondos, gemelos en diamante, lágrima del vasto medial, deltoides y bíceps más marcados; subdivisión local donde hacía falta.
+- Zona 3: escote en U, racerback, franjas laterales del top, short con franjas diagonales visibles de frente y de espaldas, rodilleras de 15 cm con cuadro grande y franja trasera, muñequeras gruesas con el cuadro fuera, zapatillas retro más grandes con cordones y parches.
+- Zona 4: coleta de 6 mechones + núcleo con arco desde la coronilla, cintas, flequillo con raya, coronilla en picos; 4 huesos con muelle amortiguado.
+- Zona 5: cara pintada (ojos almendrados, iris, brillo, párpado grueso, pestañas, cejas decididas, nariz, boca), mandíbula, pómulos, cuello con esternocleidomastoideos, orejas, perfil despejado.
+
+Entregables: `export/atleta_v3.{blend,fbx,glb}` (+ `atleta_v3_atlas.png`), `renders/compare_v3.png`,
+`renders/sidebyside_v3.png`, `renders/face_v3.png`, `renders/anim_v3_*.png`, `renders/deform_poses_v3.png`.
+Reconstrucción: `v3/build_all.sh`. Visor web (`web/visor.html`): botones v3 / v2 / Original; para v3
+decodifica la textura del atlas desde los bytes del modelo (`createImageBitmap`) para mostrar la cara pintada.
+FBX re-importado: 1.789 m de alto (incluye la coleta), 56 huesos, 5 tomas, escala 1.

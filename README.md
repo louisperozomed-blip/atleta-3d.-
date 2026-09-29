@@ -5,7 +5,18 @@ Personaje 3D low poly facetado construido **solo con scripts de Python (bpy)** a
 
 ![comparativa final](renders/sidebyside_final.png)
 
-## Entregables
+## Versión v3 (la más fiel a la referencia)
+
+`export/atleta_v3.fbx` / `.glb` / `.blend`: 10 320 triángulos, cara pintada en el atlas, coleta de
+6 mechones con 4 huesos (`Ponytail1..4`) y movimiento secundario simulado. Se reconstruye con
+`v3/build_all.sh`; el detalle por zonas está en `PROGRESS.md`.
+
+![v3](renders/sidebyside_v3.png)
+![cara v3](renders/face_v3.png)
+
+En Unity la cara sale de la textura del atlas: pon el **Filter Mode en Point** y la compresión en None.
+
+## Entregables (versión original)
 
 | Archivo | Contenido |
 |---|---|

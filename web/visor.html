@@ -1,0 +1,311 @@
+<title>Atleta Low Poly</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Figtree:wght@400;600&display=swap">
+<style>
+/* Layout: visor a pantalla completa, barra de control flotante abajo, ficha técnica arriba a la izquierda */
+:root {
+  --bg: #c6c6c9;          /* gris de la hoja de referencia */
+  --panel: rgba(250, 250, 252, 0.86);
+  --fg: #1f2a30;
+  --muted: #5a6670;
+  --teal: #1f9ea6;
+  --coral: #e8664f;
+  --line: rgba(31, 42, 48, 0.14);
+  --display: "Chakra Petch", "Trebuchet MS", sans-serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #23272b; --panel: rgba(34, 40, 45, 0.88); --fg: #e8eef0; --muted: #9aa8b0;
+    --teal: #35c3cb; --coral: #f27c66; --line: rgba(232, 238, 240, 0.14); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #23272b; --panel: rgba(34, 40, 45, 0.88); --fg: #e8eef0; --muted: #9aa8b0;
+  --teal: #35c3cb; --coral: #f27c66; --line: rgba(232, 238, 240, 0.14); color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); overflow: hidden; }
+#stage { position: fixed; inset: 0; }
+#status[hidden] { display: none; }
+#stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+.sheet {
+  position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); left: 16px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px 16px; backdrop-filter: blur(6px); max-width: calc(100vw - 32px);
+}
+.sheet h1 { font-family: var(--display); font-weight: 700; font-size: 22px; letter-spacing: 0.04em; margin: 0; text-transform: uppercase; }
+.sheet h1 span { color: var(--teal); }
+.stats { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stats b { color: var(--fg); font-weight: 600; }
+.vers { display: flex; gap: 6px; margin-top: 10px; }
+.ver {
+  font-family: var(--display); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+  border: 1px solid var(--line); background: transparent; color: var(--fg); padding: 5px 10px; border-radius: 6px; cursor: pointer;
+}
+.ver:hover { border-color: var(--coral); }
+.ver[aria-pressed="true"] { background: var(--coral); border-color: var(--coral); color: #fff; }
+.ver:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+.bar {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  width: min(720px, calc(100vw - 32px));
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 12px; display: flex; flex-direction: column; gap: 10px; backdrop-filter: blur(6px);
+}
+.clips { display: flex; flex-wrap: wrap; gap: 6px; }
+.clip {
+  font-family: var(--display); font-weight: 500; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase;
+  border: 1px solid var(--line); background: transparent; color: var(--fg);
+  padding: 8px 14px; border-radius: 8px; cursor: pointer; flex: 1 1 auto;
+}
+.clip:hover { border-color: var(--teal); }
+.clip[aria-pressed="true"] { background: var(--teal); border-color: var(--teal); color: #fff; }
+.clip:focus-visible, .tog:focus-visible, input:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 13px; color: var(--muted); }
+.row label { display: flex; align-items: center; gap: 8px; }
+.row input[type=range] { width: 120px; accent-color: var(--teal); }
+.tog { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.tog input { accent-color: var(--teal); }
+.frame { margin-left: auto; font-variant-numeric: tabular-nums; }
+#status {
+  padding-inline: 24px; text-align: center;
+  position: fixed; inset: 0; display: grid; place-items: center; font-family: var(--display);
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); pointer-events: none;
+}
+@media (max-width: 480px) {
+  .sheet h1 { font-size: 18px; }
+  .frame { margin-left: 0; }
+}
+</style>
+
+<div id="stage"></div>
+<div id="status">Cargando modelo…</div>
+
+<header class="sheet">
+  <h1>Atleta <span>low poly</span></h1>
+  <div class="stats">
+    <span><b id="tris">10 320</b> triángulos</span>
+    <span><b id="bones">56</b> huesos</span>
+    <span><b>1,76</b> m</span>
+    <span>arrastra para girar · rueda para zoom</span>
+  </div>
+  <div class="vers" role="group" aria-label="Versión del modelo">
+    <button type="button" class="ver" id="ver-v3" aria-pressed="true">v3</button>
+    <button type="button" class="ver" id="ver-v2" aria-pressed="false">v2</button>
+    <button type="button" class="ver" id="ver-v1" aria-pressed="false">Original</button>
+  </div>
+</header>
+
+<section class="bar" aria-label="Controles de animación">
+  <div class="clips" id="clips" role="group" aria-label="Animaciones"></div>
+  <div class="row">
+    <label for="speed">Velocidad <input id="speed" type="range" min="0" max="2" step="0.05" value="1"> <span id="speedv">1.0×</span></label>
+    <label class="tog" for="spin"><input id="spin" type="checkbox"> Girar</label>
+    <label class="tog" for="wire"><input id="wire" type="checkbox"> Aristas</label>
+    <span class="frame" id="frame">—</span>
+  </div>
+</section>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const stage = document.getElementById('stage');
+const statusEl = document.getElementById('status');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 50);
+camera.position.set(2.2, 1.35, 4.9);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.86, 0);
+controls.enableDamping = true;
+controls.minDistance = 1.2; controls.maxDistance = 8;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8078, 1.9));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+sun.position.set(-2, 4, 3); scene.add(sun);
+
+// suelo: disco con sombra de contacto suave
+const shadowTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'); const gr = g.createRadialGradient(64, 64, 4, 64, 64, 64);
+  gr.addColorStop(0, 'rgba(0,0,0,0.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c);
+})();
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.4), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
+floor.rotation.x = -Math.PI / 2; floor.position.y = 0.001; scene.add(floor);
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h;
+  camera.fov = w < 520 ? 38 : 30; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+const ORDER = ['APose', 'Idle', 'Walk', 'Run', 'Jump'];
+const LABEL = { APose: 'A-pose', Idle: 'Idle', Walk: 'Caminar', Run: 'Correr', Jump: 'Saltar' };
+let mixer, actions = {}, current, model, materials = [];
+
+const VERSIONS = {
+  v3: { file: 'atleta_v3.json', tris: '10 320', bones: '56', texture: true },
+  v2: { file: 'atleta_v2.json', tris: '9 085', bones: '57' },
+  v1: { file: 'atleta.json', tris: '9 329', bones: '57' },
+};
+const cache = {};
+
+// El visor bloquea fetch() de URLs data:, así que el buffer embebido en base64 se
+// decodifica aquí y se reconstruye un GLB en memoria para GLTFLoader.parse().
+async function loadModel(file, useTexture) {
+  const res = await fetch(file);
+  if (!res.ok) throw new Error('HTTP ' + res.status + ' al pedir ' + file);
+  const json = await res.json();
+  const uri = json.buffers[0].uri;
+  const raw = atob(uri.slice(uri.indexOf(',') + 1));
+  const bin = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) bin[i] = raw.charCodeAt(i);
+  delete json.buffers[0].uri;
+  // v3: la cara está pintada en el atlas. La imagen se decodifica aquí desde los bytes del
+  // modelo (createImageBitmap sobre un Blob, sin peticiones); si falla, colores de vértice.
+  let texture = null;
+  if (useTexture && json.images && json.images[0] && json.images[0].bufferView !== undefined) {
+    try {
+      const bv = json.bufferViews[json.images[0].bufferView];
+      const off = bv.byteOffset || 0;
+      const bmp = await createImageBitmap(new Blob([bin.slice(off, off + bv.byteLength)], { type: 'image/png' }));
+      texture = new THREE.Texture(bmp);
+      texture.flipY = false;
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.magFilter = THREE.NearestFilter;
+      texture.minFilter = THREE.NearestFilter;
+      texture.generateMipmaps = false;
+      texture.needsUpdate = true;
+    } catch (e) { console.warn('Textura no disponible, uso colores de vértice', e); }
+  }
+  // Los colores ya van por vértice (COLOR_0): se quita la textura del atlas para no
+  // depender de cargar una imagen, que algunos visores móviles bloquean.
+  delete json.images; delete json.textures; delete json.samplers;
+  for (const m of json.materials || []) {
+    if (m.pbrMetallicRoughness) delete m.pbrMetallicRoughness.baseColorTexture;
+  }
+  const enc = new TextEncoder().encode(JSON.stringify(json));
+  const jsonLen = Math.ceil(enc.length / 4) * 4, binLen = Math.ceil(bin.length / 4) * 4;
+  const glb = new ArrayBuffer(12 + 8 + jsonLen + 8 + binLen);
+  const dv = new DataView(glb), u8 = new Uint8Array(glb);
+  dv.setUint32(0, 0x46546C67, true); dv.setUint32(4, 2, true); dv.setUint32(8, glb.byteLength, true);
+  dv.setUint32(12, jsonLen, true); dv.setUint32(16, 0x4E4F534A, true);
+  u8.fill(0x20, 20, 20 + jsonLen); u8.set(enc, 20);
+  const o = 20 + jsonLen;
+  dv.setUint32(o, binLen, true); dv.setUint32(o + 4, 0x004E4942, true); u8.set(bin, o + 8);
+  const gltf = await new Promise((ok, ko) => new GLTFLoader().parse(glb, '', ok, ko));
+  return { gltf, texture };
+}
+
+function buildClipButtons() {
+  const box = document.getElementById('clips');
+  for (const k of ORDER) {
+    const b = document.createElement('button');
+    b.className = 'clip'; b.type = 'button'; b.id = 'clip-' + k; b.textContent = LABEL[k];
+    b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', () => play(k));
+    box.appendChild(b);
+  }
+}
+buildClipButtons();
+
+let loadToken = 0;
+async function showVersion(v) {
+  document.querySelectorAll('.ver').forEach((b) => b.setAttribute('aria-pressed', String(b.id === 'ver-' + v)));
+  document.getElementById('tris').textContent = VERSIONS[v].tris;
+  document.getElementById('bones').textContent = VERSIONS[v].bones;
+  const token = ++loadToken;
+  const playing = current ? Object.keys(actions).find((k) => actions[k] === current) : 'Idle';
+  statusEl.textContent = 'Cargando modelo…'; statusEl.hidden = false;
+  try {
+    cache[v] = cache[v] || loadModel(VERSIONS[v].file, !!VERSIONS[v].texture);
+    const { gltf, texture } = await cache[v];
+    if (token !== loadToken) return;
+    const rotY = model ? model.rotation.y : 0;
+    if (model) scene.remove(model);
+    model = gltf.scene;
+    model.rotation.y = rotY;
+    materials = [];
+    const wire = document.getElementById('wire').checked;
+    model.traverse((o) => {
+      if (o.isMesh) {
+        const m = o.material;
+        m.map = texture;                   // v3: atlas con la cara pintada
+        m.vertexColors = !texture;         // v1/v2 (o sin textura): color plano por cara
+        m.color.set(0xffffff);
+        m.metalness = 0; m.roughness = 0.85;
+        m.flatShading = true; m.wireframe = wire;
+        m.needsUpdate = true; materials.push(m);
+        o.frustumCulled = false;
+      }
+    });
+    scene.add(model);
+    if (mixer) mixer.stopAllAction();
+    mixer = new THREE.AnimationMixer(model);
+    actions = {}; current = null;
+    for (const clip of gltf.animations) {
+      const key = ORDER.find((k) => clip.name.startsWith(k));
+      if (!key) continue;
+      const a = mixer.clipAction(clip);
+      if (key === 'APose') { a.setLoop(THREE.LoopOnce); a.clampWhenFinished = true; }
+      actions[key] = a;
+    }
+    statusEl.hidden = true;
+    play(playing || 'Idle');
+  } catch (err) {
+    delete cache[v];
+    statusEl.textContent = 'No se pudo cargar el modelo: ' + (err && err.message ? err.message : err);
+    console.error(err);
+  }
+}
+document.getElementById('ver-v3').addEventListener('click', () => showVersion('v3'));
+document.getElementById('ver-v2').addEventListener('click', () => showVersion('v2'));
+document.getElementById('ver-v1').addEventListener('click', () => showVersion('v1'));
+showVersion('v3');
+
+function play(k) {
+  const next = actions[k]; if (!next) return;
+  next.reset().setEffectiveWeight(1).play();
+  if (current && current !== next) current.crossFadeTo(next, 0.25, false);
+  current = next;
+  document.querySelectorAll('.clip').forEach((b) => b.setAttribute('aria-pressed', String(b.id === 'clip-' + k)));
+}
+
+const speed = document.getElementById('speed'), speedv = document.getElementById('speedv');
+speed.addEventListener('input', () => { speedv.textContent = Number(speed.value).toFixed(1) + '×'; });
+const spin = document.getElementById('spin');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+spin.checked = !reduce;
+document.getElementById('wire').addEventListener('change', (e) => materials.forEach((m) => { m.wireframe = e.target.checked; }));
+const frameEl = document.getElementById('frame');
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = clock.getDelta();
+  if (mixer) mixer.update(dt * Number(speed.value));
+  if (model && spin.checked) model.rotation.y += dt * 0.35;
+  if (current) {
+    const f = Math.floor(current.time * 30) + 1, n = Math.round(current.getClip().duration * 30) + 1;
+    frameEl.textContent = `fotograma ${String(f).padStart(2, '0')} / ${n}`;
+  }
+  controls.update();
+  renderer.render(scene, camera);
+});
+</script>
