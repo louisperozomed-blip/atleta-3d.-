@@ -131,3 +131,62 @@ Loops y tapas de rejilla 4×2 en talón y puntera.
     rígida del pie, a >8 cm del tobillo.
   - 8 polos de 3 en las esquinas de las tapas de talón y puntera (esquinas de un bloque, zona
     que no se deforma).
+
+---
+
+## Etapa 3 — brazos y manos
+
+Topología: el agujero del torso (12 vértices) se extruye hacia fuera (A0) y el brazo es un tubo
+de 12 vértices con Bridge Edge Loops (anillos perpendiculares al eje hombro-codo y codo-muñeca,
+girados con `best_alignment` para no retorcer las aristas). Mano: anillo de nudillos de 16
+vértices (dorso D0..D7 + palma P7..P0) reducido a 12 con dos quads de reducción (centro del
+dorso y centro de la palma), 3 quads de membrana entre dedos, 4 dedos extruidos desde quads
+del anillo de nudillos (4 segmentos + tapa) y el pulgar extruido desde la cara lateral de la
+palma del lado del índice. `scripts/closeup.py` renderiza primeros planos con wireframe.
+
+### s3a — primer bloqueo
+- 2302 quads. **Error**: 8 aristas con 3 caras y 2 caras internas: el pulgar se extruía desde
+  una cara existente sin borrarla (en los dedos no pasaba porque salen de un anillo abierto).
+- Diferencias (FRONT): brazo 1-2.6 cm demasiado hacia fuera entre z 1.20 y 1.35 (brazo muy
+  abierto arriba) y 0.7 cm demasiado grueso en el deltoides/bíceps; el hombro de la hoja es más
+  vertical arriba y se abre en el codo (codo real ≈ (0.232, 1.135), muñeca ≈ (0.31, 0.96)).
+- Pulgar casi horizontal hacia delante (en la hoja va pegado al índice, hacia abajo).
+
+### s3b — ejes del brazo y extrusión correcta
+- Hombro (0.160, 1.35), codo (0.232, 1.135), muñeca (0.31, 0.96) medidos en la hoja; brazo
+  superior de 9 anillos y antebrazo de 8 (3 loops en el codo: t 0.91/1.00 del brazo y 0.08 del
+  antebrazo; muñeca con los 2 últimos anillos + el anillo de la palma).
+- `_finger` borra la cara base antes de extruir → 0 aristas no manifold, 0 caras internas.
+- Diferencias: el hombro cae demasiado (a z 1.40 el modelo mide ±0.15 y la hoja ±0.175-0.19);
+  el pulgar sigue siendo una lámina fina.
+
+### s3c — hombro y pulgar
+- A0 se extruye 2.6 cm hacia fuera y 4 mm hacia arriba; hombro en (0.162, 1.36); primer anillo
+  del deltoides más ancho (4.1 cm). A z 1.40: ±0.165 (antes ±0.15).
+- Dedos con curvatura hacia la palma (dedos relajados como en la hoja).
+- Diferencia: el pulgar sale casi paralelo a su cara base, así que los anillos (que mantenían la
+  orientación de la cara) quedaban cizallados → pulgar plano como una cuchilla.
+
+### s3d — anillos de los dedos perpendiculares a su eje
+- Cada anillo de dedo se rota (Rodrigues) para quedar perpendicular a la tangente local del
+  dedo; el pulgar sale casi perpendicular al lado de la palma y se curva hacia abajo.
+  Dedos un 10 % más gruesos (la Subdivision los adelgazaba). Ver `s3d_hand_wire.png` y
+  `s3d_hand_smooth.png`.
+- BACK: brazos dentro de ±6 mm de z 0.95 a 1.35. FRONT: ±1 cm en 1.20-1.35 — la figura FRONT
+  de la hoja dibuja el brazo ~1 cm más estrecho que la BACK en esa zona (inconsistencia del
+  dibujo); se deja un valor intermedio. La mano de la hoja tiene los dedos más abiertos
+  (−2 cm a z 0.85-0.90).
+- IoU (zona 0.70-1.45): front 0.902, side 0.941, back 0.896.
+- Validación: 2396 quads, 0 tris, 0 n-gons, 0 polos >5, 0 aristas no manifold (aparte de los
+  bordes abiertos del cuello), 0 caras internas, 0 duplicados, 0 normales invertidas,
+  simetría 0. `poles_in_joint_zone` vacío.
+- Polos nuevos justificados (por lado):
+  - 2 polos de 5 en las esquinas inferiores del agujero del brazo = pliegue delantero y trasero
+    de la axila (2-4 cm por debajo de la zona de giro del hombro). Es la solución estándar para
+    sacar un tubo de 12 de una rejilla; las esquinas superiores no generan polo porque coinciden
+    con los vértices de la reducción del cuello.
+  - 2 polos de 5 de la reducción 16→12 de la mano (centro del dorso y de la palma, zona plana).
+  - 2 polos de 5 en las esquinas de la base del pulgar (eminencia tenar, 1.6 cm fuera de la zona
+    de la muñeca).
+  - 10 polos de 5 en las membranas entre dedos (cada membrana une dos dedos de 4 lados).
+  - 20 polos de 3 en las puntas de los dedos (tapa de un quad por dedo; puntas que no se deforman).

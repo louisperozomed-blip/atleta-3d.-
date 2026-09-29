@@ -38,6 +38,17 @@ def catmull(keys, x):
     return v
 
 
+def rotate_to(a, b, v):
+    """Rota v con la rotación mínima que lleva el vector unitario a al b (Rodrigues)."""
+    k = np.cross(a, b)
+    sn, c = np.linalg.norm(k), float(a @ b)
+    if sn < 1e-9:
+        return np.asarray(v, float)
+    k = k / sn
+    v = np.asarray(v, float)
+    return v * c + np.cross(k, v) * sn + k * (k @ v) * (1 - c)
+
+
 def interp_table(keys, xs):
     return [tuple(catmull(keys, x)) for x in xs]
 
@@ -258,20 +269,22 @@ class Body:
     def arms(self):
         m = self.m
         hole = self.ports['arm_hole']
-        sh = np.array([0.172, -0.008, 1.345]) * SC
-        el = np.array([0.222, 0.000, 1.165]) * SC
-        wr = np.array([0.305, -0.004, 0.975]) * SC
+        sh = np.array([0.162, -0.008, 1.360]) * SC
+        el = np.array([0.228, 0.002, 1.135]) * SC
+        wr = np.array([0.310, -0.004, 0.960]) * SC
         d1 = (el - sh) / np.linalg.norm(el - sh)
         d2 = (wr - el) / np.linalg.norm(wr - el)
         # A0: extrusión del agujero hacia fuera (arranque del deltoides)
-        A0 = m.ring([m.V[i] + np.array([0.020, 0, -0.004]) * SC for i in hole], 'arm')
+        A0 = m.ring([m.V[i] + np.array([0.026, 0, 0.004]) * SC for i in hole], 'arm')
         m.bridge(hole, A0)
         # (t en el segmento, radio lateral, delante, detrás)
-        UPPER = [(0.02, 0.050, 0.052, 0.056), (0.18, 0.044, 0.047, 0.050), (0.38, 0.039, 0.042, 0.043),
-                 (0.60, 0.036, 0.040, 0.038), (0.80, 0.032, 0.034, 0.034), (0.92, 0.030, 0.031, 0.033),
-                 (1.00, 0.029, 0.030, 0.032)]
-        LOWER = [(0.08, 0.030, 0.031, 0.031), (0.25, 0.031, 0.030, 0.029), (0.50, 0.027, 0.026, 0.025),
-                 (0.75, 0.022, 0.021, 0.020), (0.90, 0.018, 0.020, 0.018), (1.00, 0.017, 0.021, 0.017)]
+        # (t en el segmento, radio lateral, delante, detrás); 3 loops en el codo (t 0.90/1.00/0.08)
+        UPPER = [(0.02, 0.041, 0.050, 0.052), (0.13, 0.037, 0.046, 0.048), (0.26, 0.033, 0.042, 0.044),
+                 (0.40, 0.031, 0.039, 0.040), (0.55, 0.030, 0.036, 0.036), (0.70, 0.030, 0.033, 0.033),
+                 (0.82, 0.029, 0.031, 0.032), (0.91, 0.028, 0.030, 0.031), (1.00, 0.028, 0.029, 0.031)]
+        LOWER = [(0.08, 0.030, 0.029, 0.030), (0.20, 0.033, 0.030, 0.029), (0.34, 0.031, 0.028, 0.027),
+                 (0.48, 0.029, 0.026, 0.025), (0.62, 0.026, 0.023, 0.022), (0.76, 0.023, 0.020, 0.019),
+                 (0.89, 0.019, 0.018, 0.017), (1.00, 0.018, 0.019, 0.017)]
         prev = A0
         for (t, rs, rf, rb) in UPPER:
             ring = full_ring(sh + (el - sh) * t, d1 if t > 0.05 else (d1 * 0.6 + np.array([0.8, 0, 0])),
@@ -291,7 +304,7 @@ class Body:
 
     def hand(self, wrist, wr, d2):
         m = self.m
-        tip = np.array([0.340, -0.012, 0.790]) * SC
+        tip = np.array([0.345, -0.012, 0.790]) * SC
         h = (tip - wr) / np.linalg.norm(tip - wr)
         a, s, f = frame(h, (0, -1, 0))          # f = hacia el pulgar (delante), s = lateral
         w_axis = s if s[0] > 0 else -s          # dorso hacia fuera (+X)
@@ -326,7 +339,8 @@ class Body:
         for k in range(4):
             quad = [D[2 * k], D[2 * k + 1], Pm[2 * k + 1], Pm[2 * k]]
             dirf = h + f * spread[k] - w_axis * 0.10
-            self._finger(quad, dirf / np.linalg.norm(dirf), lengths[k] * SC, 0.0085 * SC, 0.0080 * SC)
+            self._finger(quad, dirf / np.linalg.norm(dirf), lengths[k] * SC, 0.0085 * SC, 0.0080 * SC,
+                         curl=-w_axis * (0.22 + 0.04 * k))
         # pulgar: sale de la cara lateral entre Pa0 y Pa1 del lado del índice
         side = None
         best = -1e9
@@ -337,25 +351,35 @@ class Body:
             sc = (cpos - wr) @ f
             if sc > best:
                 best, side = sc, q
-        tdir = h * 0.45 + f * 0.80 - w_axis * 0.30
-        self._finger(side, tdir / np.linalg.norm(tdir), 0.056 * SC, 0.011 * SC, 0.010 * SC, segs=(0.30, 0.62, 0.85, 1.0))
+        # sale casi perpendicular al lado de la palma (metacarpo) y se curva hacia abajo
+        tdir = f * 0.80 + h * 0.45 - w_axis * 0.35
+        self._finger(side, tdir / np.linalg.norm(tdir), 0.050 * SC, 0.011 * SC, 0.010 * SC,
+                     segs=(0.30, 0.60, 0.82, 1.0), curl=h * 0.55 - w_axis * 0.10)
 
     def _bridge_ring_to_ring(self, a, b):
         order = best_alignment([self.m.V[i] for i in a], [self.m.V[i] for i in b])
         self.m.bridge(a, [b[k] for k in order])
 
-    def _finger(self, quad, d, length, hw, ht, segs=(0.22, 0.48, 0.75, 1.0)):
-        """Extruye un dedo desde una cara (quad) en 4 segmentos + tapa."""
+    def _finger(self, quad, d, length, hw, ht, segs=(0.22, 0.48, 0.75, 1.0), curl=None):
+        """Extruye un dedo desde una cara (quad) en 4 segmentos + tapa.
+        curl: vector hacia la palma; los segmentos se curvan hacia él (dedos relajados)."""
         m = self.m
         P = np.array([m.V[i] for i in quad])
         base = P.mean(0)
+        m.F = [f for f in m.F if set(f) != set(quad)]     # extrusión: la cara base desaparece
         prev = quad
+        n0 = np.cross(P[1] - P[0], P[3] - P[0])
+        n0 /= np.linalg.norm(n0)
+        if n0 @ d < 0:
+            n0 = -n0
+        cv = np.zeros(3) if curl is None else np.asarray(curl, float)
         for i, t in enumerate(segs):
-            taper = 1.0 - 0.28 * t
-            new = [base + d * (length * t) + (p - base) * taper * (0.62 if i == 0 else 0.60) / 0.62 for p in P]
-            if i == 0:
-                new = [base + d * (length * t) + (p - base) * 0.78 for p in P]
-            ring = m.ring(new, 'hand')
+            scale = 0.86 if i == 0 else 0.86 * (1.0 - 0.28 * t)
+            off = d * (length * t) + cv * length * t * t
+            # cada anillo es perpendicular a la tangente local del dedo (sin cizalla)
+            tan = d + 2 * cv * t
+            tan /= np.linalg.norm(tan)
+            ring = m.ring([base + off + rotate_to(n0, tan, (p - base) * scale) for p in P], 'hand')
             m.bridge(prev, ring)
             prev = ring
         m.face(*prev)
