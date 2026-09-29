@@ -517,7 +517,7 @@ def main():
     weight_shoe(obs['Shoe_L'], 'Left')
     weight_shoe(obs['Shoe_R'], 'Right')
     weight_hair(obs['Hair'])
-    rigid(obs['FaceDecals'], 'Head')
+    rigid(obs['Ears'], 'Head')
     rigid(obs['HairTie'], 'Head')
     # unir todo en una sola malla con un solo material
     bpy.ops.object.select_all(action='DESELECT')

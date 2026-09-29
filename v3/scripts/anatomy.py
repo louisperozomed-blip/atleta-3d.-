@@ -104,6 +104,9 @@ def build_field():
                [(0, 0.058, 0.058, 0.052, 0.054), (0.5, 0.050, 0.050, 0.046, 0.050), (1, 0.050, 0.050, 0.045, 0.050)],
                k=0.02, name='neck'))
     head_parts(F)
+    # v3: cuello fuerte con los esternocleidomastoideos visibles
+    for sx in (1, -1):
+        F.add(Capsule((0.050 * sx, -0.055, 1.530), (0.016 * sx, -0.090, 1.410), 0.016, 0.018, k=0.010, name='scm'))
 
     for side in (1, -1):
         sx = side
@@ -235,12 +238,14 @@ def add_grooves(F):
 
 def head_parts(F):
     F.add(Ellipsoid((0, -0.080, 1.608), (0, 0, 1), (0.092, 0.080, 0.096), k=0.0, name='cranium'))
-    F.add(Ellipsoid((0, -0.105, 1.546), (0, 0, 1), (0.066, 0.066, 0.076), k=0.03, name='jaw'))
-    F.add(Ellipsoid((0, -0.148, 1.494), (0, 0.4, 1), (0.024, 0.030, 0.022), k=0.02, name='chin'))
-    F.add(Ellipsoid((0, -0.180, 1.548), (0, -0.5, 1), (0.024, 0.010, 0.016), k=0.012, name='nose'))
+    # v3: mandíbula algo más ancha y definida, pómulos marcados, orejas visibles
+    F.add(Ellipsoid((0, -0.105, 1.546), (0, 0, 1), (0.066, 0.071, 0.076), k=0.03, name='jaw'))
+    F.add(Ellipsoid((0, -0.153, 1.494), (0, 0.4, 1), (0.024, 0.032, 0.023), k=0.02, name='chin'))
+    F.add(Ellipsoid((0, -0.182, 1.546), (0, -0.5, 1), (0.024, 0.011, 0.020), k=0.012, name='nose'))
     for sx in (1, -1):
-        F.add(Ellipsoid((0.048 * sx, -0.140, 1.565), (0, 0, 1), (0.020, 0.028, 0.022), k=0.02, name='cheek'))
-        F.add(Ellipsoid((0.079 * sx, -0.062, 1.560), (0, 0, 1), (0.030, 0.012, 0.020), k=0.008, name='ear'))
+        F.add(Ellipsoid((0.052 * sx, -0.136, 1.566), (0, 0, 1), (0.020, 0.030, 0.023), k=0.016, name='cheek'))
+        F.add(Ellipsoid((0.058 * sx, -0.090, 1.512), (0.3 * sx, 0.2, 1), (0.030, 0.018, 0.034), k=0.018, name='jaw_angle'))
+        F.add(Ellipsoid((0.086 * sx, -0.060, 1.560), (0, 0.2, 1), (0.031, 0.019, 0.024), k=0.006, name='ear'))
 
 
 # ------------------------------------------------- esqueleto para el Skin modifier

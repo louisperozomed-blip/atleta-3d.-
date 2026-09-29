@@ -224,6 +224,10 @@ def dress_body(body):
     for a, b in SOCK_STRIPES:
         keys[sock & (fc[:, 2] > a) & (fc[:, 2] < b)] = K['teal']
     off[sock] = 0.004
+    # v3: interior de la oreja sombreado (se lee de perfil)
+    for sx in (1, -1):
+        ear = (np.linalg.norm((fc - np.array([0.098 * sx, -0.058, 1.560])) / np.array([0.012, 0.016, 0.020]), axis=1) < 1.0)
+        keys[ear & (np.abs(fc[:, 0]) > 0.088)] = K['skin_shadow']
     # ombligo
     nav = (np.abs(fc[:, 0]) < 0.012) & (np.abs(fc[:, 2] - 1.098) < 0.012) & (fc[:, 1] < -0.1)
     keys[nav] = K['skin_shadow']
@@ -443,18 +447,22 @@ def hair():
             continue
         if fc[2] < 1.56 and fc[1] < -0.035:                         # mejillas
             continue
+        if fc[2] < 1.605 and fc[1] < -0.005 and abs(fc[0]) > 0.055:  # v3: sien y oreja visibles de perfil
+            continue
         keep.append(f)
     add((cap_v, keep), K['hair'])
 
     # (b) flequillo en picos con raya ligeramente lateral (x=+0.02): los picos se abren desde la raya
     part_x = 0.02
-    for x, zt, fwd in [(-0.082, 1.598, 0.00), (-0.060, 1.612, 0.02), (-0.038, 1.604, 0.03), (-0.016, 1.618, 0.035),
-                       (0.004, 1.628, 0.035), (0.036, 1.612, 0.03), (0.058, 1.620, 0.02), (0.082, 1.600, 0.00)]:
+    for x, zt, fwd in [(-0.086, 1.606, 0.00), (-0.070, 1.622, 0.015), (-0.054, 1.612, 0.02), (-0.040, 1.628, 0.03),
+                       (-0.026, 1.614, 0.03), (-0.012, 1.630, 0.035), (0.002, 1.620, 0.035), (0.016, 1.638, 0.035),
+                       (0.030, 1.618, 0.03), (0.044, 1.630, 0.03), (0.058, 1.614, 0.02), (0.072, 1.624, 0.015),
+                       (0.086, 1.606, 0.00)]:
         lean = np.clip((x - part_x) / 0.08, -1, 1) * 0.35
         root = (part_x + (x - part_x) * 0.55, -0.118, 1.712)
         mid = (x * 1.06, -0.186 - fwd * 0.6, 1.672)
         tip = (x * 1.12 + lean * 0.03, -0.172 - fwd * 0.8, zt)
-        lock(root, mid, tip, 0.030, sides=4, flat=0.45, up=(0, -1, 0.3))
+        lock(root, mid, tip, 0.026, sides=4, flat=0.45, up=(0, -1, 0.3))
     # mechones de la coronilla: tumbados hacia la coleta + picos irregulares hacia arriba
     for k in range(8):
         a = -2.2 + k * 0.63
@@ -472,10 +480,11 @@ def hair():
              key=K['hair'] if k % 2 else K['hair_dark'])
     # (c) mechones que enmarcan la cara hasta la mandíbula (delante de la oreja) y uno corto detrás
     for sx in (1, -1):
-        for x0, y0, z0, z1, r in [(0.080, -0.118, 1.675, 1.492, 0.021), (0.098, -0.082, 1.675, 1.500, 0.025),
-                                  (0.110, -0.040, 1.670, 1.555, 0.028), (0.108, 0.000, 1.660, 1.565, 0.028)]:
-            lock((x0 * 0.92 * sx, y0, z0), ((x0 + 0.020) * sx, y0 - 0.008, 1.590), ((x0 + 0.004) * sx, y0 - 0.006, z1),
-                 r, sides=5, flat=0.6, up=(sx, 0, 0))
+        # v3 (cara): mechones finos delante de la oreja; los de detrás, cortos para que se vea la oreja
+        for x0, y0, z0, z1, r in [(0.084, -0.118, 1.675, 1.495, 0.015), (0.098, -0.094, 1.675, 1.535, 0.013),
+                                  (0.110, -0.030, 1.680, 1.625, 0.022), (0.106, 0.012, 1.670, 1.610, 0.024)]:
+            lock((x0 * 0.92 * sx, y0, z0), ((x0 + 0.018) * sx, y0 - 0.006, 1.595), ((x0 + 0.004) * sx, y0 - 0.004, z1),
+                 r, sides=5, flat=0.8, up=(sx, 0, 0))
     # nuca
     for x in (-0.06, -0.02, 0.02, 0.06):
         lock((x, 0.015, 1.62), (x * 1.1, 0.045, 1.57), (x * 1.2, 0.035, 1.53), 0.03, sides=5, flat=0.6,
@@ -528,76 +537,44 @@ def hair():
 
 
 # --------------------------------------------------------------------- cara
-def face_decals():
-    """Ojos, cejas y boca como polígonos proyectados sobre la cara (vista frontal)."""
+# v3: parches de cara con textura pintada (scripts/face_paint.py). (x0,x1,z0,z1) en metros y
+# rectángulo en face_paint.png (px, origen arriba-izquierda) + desplazamiento sobre la piel.
+FACE_PATCHES = [
+    ('eye_l', (0.009, 0.071, 1.538, 1.612), (0, 0, 214, 256), 0.0013),
+    ('eye_r', (-0.071, -0.009, 1.538, 1.612), (214, 0, 428, 256), 0.0013),
+    ('mouth', (-0.025, 0.025, 1.496, 1.546), (428, 0, 512, 84), 0.0009),
+]
+
+
+def face_patches():
+    """Rejillas proyectadas sobre la cara con UV a la textura pintada del atlas: ojos, cejas,
+    nariz y boca se leen nítidos a distancia sin depender de la geometría."""
     field = anatomy.Field()
     anatomy.head_parts(field)
-    polys = []  # (lista de (x,z), clave, desplazamiento)
-    for sx in (1, -1):
-        cx, cz = 0.040 * sx, 1.574
-        eye = [(cx - 0.024 * sx, cz + 0.001), (cx - 0.010 * sx, cz + 0.015), (cx + 0.012 * sx, cz + 0.014),
-               (cx + 0.025 * sx, cz + 0.002), (cx + 0.014 * sx, cz - 0.013), (cx - 0.010 * sx, cz - 0.013)]
-        polys.append((eye, K['eye_white'], 0.0012))
-        ix = cx - 0.001 * sx
-        iris = [(ix + 0.0135 * np.cos(a), cz - 0.002 + 0.0160 * np.sin(a)) for a in np.linspace(0, 2 * np.pi, 9)[:-1]]
-        polys.append((iris, K['iris'], 0.0020))
-        pupil = [(ix + 0.0060 * np.cos(a), cz + 0.000 + 0.0080 * np.sin(a)) for a in np.linspace(0, 2 * np.pi, 7)[:-1]]
-        polys.append((pupil, K['lash'], 0.0026))
-        hl = [(ix + 0.004 * sx, cz + 0.006), (ix + 0.0065 * sx, cz + 0.0035), (ix + 0.004 * sx, cz + 0.001), (ix + 0.0015 * sx, cz + 0.0035)]
-        polys.append((hl, K['eye_white'], 0.0032))
-        lash = [(cx - 0.026 * sx, cz + 0.000), (cx - 0.010 * sx, cz + 0.017), (cx + 0.013 * sx, cz + 0.017),
-                (cx + 0.030 * sx, cz + 0.008), (cx + 0.024 * sx, cz + 0.002), (cx + 0.011 * sx, cz + 0.010),
-                (cx - 0.009 * sx, cz + 0.010), (cx - 0.020 * sx, cz - 0.003)]
-        polys.append((lash, K['lash'], 0.0034))
-        low = [(cx - 0.004 * sx, cz - 0.011), (cx + 0.014 * sx, cz - 0.010), (cx + 0.013 * sx, cz - 0.008), (cx - 0.004 * sx, cz - 0.009)]
-        polys.append((low, K['brow'], 0.0022))
-        # v2: pliegue del párpado, reflejo secundario y rubor
-        crease = [(cx - 0.016 * sx, cz + 0.021), (cx + 0.004 * sx, cz + 0.025), (cx + 0.022 * sx, cz + 0.019),
-                  (cx + 0.021 * sx, cz + 0.017), (cx + 0.004 * sx, cz + 0.022), (cx - 0.015 * sx, cz + 0.019)]
-        polys.append((crease, K['skin_shadow'], 0.0016))
-        hl2 = [(ix - 0.005 * sx, cz - 0.007), (ix - 0.003 * sx, cz - 0.009), (ix - 0.005 * sx, cz - 0.0105), (ix - 0.007 * sx, cz - 0.009)]
-        polys.append((hl2, K['eye_white'], 0.0032))
-        bx = 0.052 * sx
-        blush = [(bx - 0.012 * sx, 1.548), (bx + 0.004 * sx, 1.552), (bx + 0.014 * sx, 1.547),
-                 (bx + 0.006 * sx, 1.541), (bx - 0.010 * sx, 1.542)]
-        # ceja decidida: más baja en el interior
-        brow = [(0.013 * sx, 1.599), (0.032 * sx, 1.608), (0.054 * sx, 1.613), (0.073 * sx, 1.606),
-                (0.070 * sx, 1.599), (0.052 * sx, 1.602), (0.032 * sx, 1.596), (0.015 * sx, 1.587)]
-        polys.append((brow, K['brow'], 0.0022))
-    mouth = [(-0.016, 1.514), (0.0, 1.5165), (0.016, 1.514), (0.015, 1.511), (0.0, 1.5125), (-0.015, 1.511)]
-    polys.append((mouth, K['lips'], 0.0018))
-    nose = [(-0.008, 1.537), (0.0, 1.541), (0.008, 1.537), (0.0, 1.530)]
-    polys.append((nose, K['skin_shadow'], 0.0015))
-    # v2: sombra bajo la nariz, labio inferior y pliegue de la barbilla
-    polys.append(([(-0.005, 1.5285), (0.005, 1.5285), (0.0, 1.5255)], K['skin_shadow'], 0.0013))
-    polys.append(([(-0.009, 1.5085), (0.009, 1.5085), (0.006, 1.5035), (-0.006, 1.5035)], K['skin_shadow'], 0.0012))
-    polys.append(([(-0.010, 1.4965), (0.0, 1.4985), (0.010, 1.4965), (0.0, 1.4945)], K['skin_shadow'], 0.0012))
-    V, F, keys = [], [], []
-    for pts, key, off in polys:
+    V, F, UV = [], [], []
+    for name, (x0, x1, z0, z1), (rx0, ry0, rx1, ry1), off in FACE_PATCHES:
+        n = 8 if name != 'mouth' else 6
         base = len(V)
-        pts3 = []
-        for x, z in pts:
-            # buscar la superficie a lo largo de -Y
-            ys = np.linspace(-0.25, -0.05, 400)
-            P = np.stack([np.full_like(ys, x), ys, np.full_like(ys, z)], -1)
-            d = field(P)
-            i = np.argmax(d < 0)
-            y = ys[i]
-            p = np.array([x, y, z])
-            g = field.grad(p[None])[0]
-            g /= np.linalg.norm(g)
-            pts3.append(p + g * off)
-        c = np.mean(pts3, 0)
-        g = field.grad(c[None])[0]
-        g /= np.linalg.norm(g)
-        V.extend([tuple(p) for p in pts3])
-        ci = len(V)
-        V.append(tuple(c + g * 0.0003))
-        n = len(pts3)
-        for i in range(n):
-            F.append((base + i, base + (i + 1) % n, ci))
-        keys.extend([key] * n)
-    ob = mu.mesh_from_pydata('FaceDecals', V, F)
+        for j in range(n + 1):
+            for i in range(n + 1):
+                a, b = i / n, j / n
+                x, z = x0 + (x1 - x0) * a, z0 + (z1 - z0) * b
+                ys = np.linspace(-0.26, -0.04, 440)
+                P = np.stack([np.full_like(ys, x), ys, np.full_like(ys, z)], -1)
+                y = ys[np.argmax(field(P) < 0)]
+                p = np.array([x, y, z])
+                g = field.grad(p[None])[0]
+                g /= np.linalg.norm(g)
+                V.append(tuple(p + g * off))
+                # u,v en el atlas (Blender: v=0 abajo). La textura de la cara ocupa filas 256..511.
+                px_x = rx0 + (rx1 - rx0) * a
+                px_y = ry0 + (ry1 - ry0) * (1 - b)          # imagen PIL: y hacia abajo
+                UV.append((px_x / ATLAS, (FACE_Y0 + (256 - px_y)) / ATLAS))
+        for j in range(n):
+            for i in range(n):
+                q = base + j * (n + 1) + i
+                F.append((q, q + 1, q + n + 2, q + n + 1))
+    ob = mu.mesh_from_pydata('FacePaint', V, F)
     bm = bmesh.new()
     bm.from_mesh(ob.data)
     for f in bm.faces:
@@ -605,21 +582,91 @@ def face_decals():
             f.normal_flip()
     bm.to_mesh(ob.data)
     bm.free()
+    me = ob.data
+    me.uv_layers.new(name='face_uv')
+    uvs = np.zeros(len(me.loops) * 2)
+    for p in me.polygons:
+        for li in p.loop_indices:
+            uvs[li * 2:li * 2 + 2] = UV[me.loops[li].vertex_index]
+    me.uv_layers['face_uv'].data.foreach_set('uv', uvs.astype(np.float32))
+    set_face_keys(ob, [K['skin']] * len(me.polygons))
+    return ob
+
+
+def ears():
+    """v3: orejas como pieza propia (la malla de la cabeza es demasiado gruesa para recogerlas).
+    Borde de piel + interior sombreado; rígidas a Head en el rig."""
+    V, F, keys = [], [], []
+    n = 8
+    for sx in (1, -1):
+        base_i = len(V)
+        c = np.array([0.079 * sx, -0.060, 1.558])
+        for i in range(n):                       # anillo de base (pegado a la cabeza)
+            a = 2 * np.pi * i / n
+            V.append(tuple(c + np.array([-0.008 * sx, 0.015 * np.cos(a), 0.024 * np.sin(a)])))
+        for i in range(n):                       # borde exterior, algo inclinado hacia atrás
+            a = 2 * np.pi * i / n
+            V.append(tuple(c + np.array([0.012 * sx, 0.017 * np.cos(a) + 0.004, 0.028 * np.sin(a)])))
+        V.append(tuple(c + np.array([0.004 * sx, 0.004, -0.002])))   # concha (hundida)
+        ci = len(V) - 1
+        for i in range(n):
+            j = (i + 1) % n
+            F.append((base_i + i, base_i + j, base_i + n + j, base_i + n + i))
+            keys.append(K['skin'])
+        for i in range(n):
+            j = (i + 1) % n
+            F.append((base_i + n + i, base_i + n + j, ci))
+            keys.append(K['skin_shadow'])
+    ob = mu.mesh_from_pydata('Ears', V, F)
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(ob.data)
+    bm.free()
     set_face_keys(ob, keys)
     return ob
 
 
 # ----------------------------------------------------------------- colores / atlas
+ATLAS = 512           # v3: atlas 512x512 = paleta (abajo-izq, celdas de 4 px) + cara pintada
+CELL = 4
+FACE_PX0 = 128        # la textura de la cara (384x384) ocupa x,y ∈ [128, 512) del atlas
+FACE_TEX = 384
+FACE_X0, FACE_X1, FACE_Z0, FACE_Z1 = -0.08, 0.08, 1.48, 1.64   # igual que face_paint.py
+
+
+def face_uv(x, z):
+    """UV plana (proyección frontal) de un punto de la cara a la textura pintada del atlas."""
+    u = (FACE_PX0 + (x - FACE_X0) / (FACE_X1 - FACE_X0) * FACE_TEX) / ATLAS
+    v = (FACE_PX0 + (z - FACE_Z0) / (FACE_Z1 - FACE_Z0) * FACE_TEX) / ATLAS
+    return u, v
+
+
+def is_face_front(fc, fn):
+    return ((np.abs(fc[:, 0]) < 0.084) & (fc[:, 2] > 1.476) & (fc[:, 2] < 1.645) & (fc[:, 1] < -0.08)
+            & (fn[:, 1] < -0.25))
+
+
+def palette_uv(k, s):
+    return ((s + 0.5) * CELL / ATLAS, (k + 0.5) * CELL / ATLAS)
+
+
 def build_atlas(path):
-    cell = 4
-    w, h = C.N_SHADES * cell, len(C.PALETTE) * cell
-    img = bpy.data.images.new('atleta_atlas', w, h, alpha=False)
-    px = np.zeros((h, w, 4))
+    px = np.ones((ATLAS, ATLAS, 4))
+    base = np.array(C.PALETTE[C.CKEY['skin']][1]) / 255.0
+    px[:, :, :3] = base
     for k in range(len(C.PALETTE)):
         for s in range(C.N_SHADES):
             rgb = [c / 255.0 for c in C.shade_rgb(k, s)]  # imagen de 8 bits: valores sRGB
-            px[k * cell:(k + 1) * cell, s * cell:(s + 1) * cell, :3] = rgb
-            px[k * cell:(k + 1) * cell, s * cell:(s + 1) * cell, 3] = 1
+            px[k * CELL:(k + 1) * CELL, s * CELL:(s + 1) * CELL, :3] = rgb
+    fp = os.path.join(C.EXPORT, 'face_paint.png')
+    if os.path.exists(fp):
+        fimg = bpy.data.images.load(fp)
+        fw, fh = fimg.size
+        fpx = np.array(fimg.pixels[:]).reshape(fh, fw, 4)      # ya viene con la fila 0 abajo
+        px[FACE_PX0:FACE_PX0 + fh, FACE_PX0:FACE_PX0 + fw] = fpx
+        bpy.data.images.remove(fimg)
+    img = bpy.data.images.new('atleta_atlas', ATLAS, ATLAS, alpha=False)
     img.pixels.foreach_set(px.astype(np.float32).ravel())
     img.filepath_raw = path
     img.file_format = 'PNG'
@@ -653,7 +700,7 @@ def occlusion(fc, fn, field):
     return np.clip(occ, 0, 1)
 
 
-def apply_colors(ob, mat, rng, field=None, ao_strength=6.0):
+def apply_colors(ob, mat, rng, field=None, ao_strength=6.0, flat_shade=False):
     """UV al centro de la celda del atlas + color de vértice.
 
     v2: el tono de cada cara sale de la oclusión (pliegues entre músculos, axilas,
@@ -673,6 +720,8 @@ def apply_colors(ob, mat, rng, field=None, ao_strength=6.0):
         fn = mu.face_normals(ob)
         base = C.SHADE_BASE - 1.0 - 2.0 * (fn[:, 2] < -0.35) - 1.0 * (fn[:, 2] < 0.0)
     shades = np.clip(base + jitter, 0, C.N_SHADES - 1).astype(int)
+    if flat_shade:
+        shades[:] = C.SHADE_BASE
     # (crear las capas antes de pedir referencias: añadir capas invalida punteros previos)
     if not me.color_attributes.get('Col'):
         me.color_attributes.new('Col', 'BYTE_COLOR', 'CORNER')
@@ -681,16 +730,32 @@ def apply_colors(ob, mat, rng, field=None, ao_strength=6.0):
     nrows = len(C.PALETTE)
     uvs = np.zeros((len(me.loops), 2))
     cols = np.zeros((len(me.loops), 4))
+    face = np.zeros(nf, bool)
+    if ob.name == 'Body':
+        face = is_face_front(mu.face_centers(ob), mu.face_normals(ob))
+        shades[face] = C.SHADE_BASE
+    vco = mu.get_co(ob)
     for p in me.polygons:
         k, s = keys[p.index], shades[p.index]
-        u = (s + 0.5) / C.N_SHADES
-        v = (k + 0.5) / nrows  # fila 0 del atlas = abajo en Blender
+        if face[p.index]:
+            rgb = [C.srgb_to_linear(c) for c in C.shade_rgb(k, s)]
+            for li in p.loop_indices:
+                x, _, z = vco[me.loops[li].vertex_index]
+                uvs[li] = face_uv(x, z)
+                cols[li] = (*rgb, 1)
+            continue
+        u, v = palette_uv(k, s)   # fila 0 del atlas = abajo en Blender
         rgb = [C.srgb_to_linear(c) for c in C.shade_rgb(k, s)]
         for li in p.loop_indices:
             uvs[li] = (u, v)
             cols[li] = (*rgb, 1)
+    if 'face_uv' in me.uv_layers:     # parches de cara: conservan su UV pintada
+        uvs = np.zeros(len(me.loops) * 2)
+        me.uv_layers['face_uv'].data.foreach_get('uv', uvs)
     me.uv_layers['UVMap'].data.foreach_set('uv', uvs.astype(np.float32).ravel())
     me.color_attributes['Col'].data.foreach_set('color', cols.astype(np.float32).ravel())
+    if 'face_uv' in me.uv_layers:     # una sola capa UV al final (Unity usa la primera)
+        me.uv_layers.remove(me.uv_layers['face_uv'])
     me.materials.clear()
     me.materials.append(mat)
     mu.set_flat(ob)
@@ -710,13 +775,15 @@ def build_all():
     bands = wristbands(body, field)
     shoes = [shoe(1, 'L'), shoe(-1, 'R')]
     hr, tie, ponypath = hair()
-    face = face_decals()
-    obs = [body] + pads + bands + shoes + [hr, tie, face]
+    obs = [body] + pads + bands + shoes + [hr, tie, ears()]
     img = build_atlas(os.path.join(C.EXPORT, 'atleta_atlas.png'))
     mat = make_material(img)
     rng = np.random.default_rng(3)
     for ob in obs:
         use_field = ob is body or ob.name.startswith(('KneePad', 'Wristband'))
+        if ob.name == 'FacePaint':
+            apply_colors(ob, mat, np.random.default_rng(0), None, flat_shade=True)
+            continue
         apply_colors(ob, mat, rng, field if use_field else None)
     total = sum(mu.tri_count(o) for o in obs)
     for o in obs:

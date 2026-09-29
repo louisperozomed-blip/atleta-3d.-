@@ -143,3 +143,23 @@ excitado por la aceleración vertical de la cadera y por el giro de la cadera; p
 simulan 4 ciclos y se usa el último (bucle continuo), para Jump se simula fotograma a fotograma
 (retraso al despegar, rebote al aterrizar). La primera versión del salto hacía que la coleta pasara
 por encima de la cara (los ángulos se acumulan en la cadena); se limitó a ±11° por hueso.
+
+## Zona 5 — cabeza y cara (f0, z5a → z5g)
+
+Primer plano con `v3/scripts/render_face.py` (ortográfica, 0.30 m, frente y perfil) comparado con
+el recorte ampliado de la referencia a la misma escala (`v3/scripts/compare_face.py` →
+`v3/renders/face_<tag>.png`).
+
+| Iter | Tris | Diferencias vistas | Corrección |
+|---|---|---|---|
+| f0 (v2) | 10 289 | Cara estrecha en V; ojos con mucho blanco, caídos y con cara de preocupación; cejas tapadas por un flequillo que llega a los ojos; de perfil los mechones tapan toda la mejilla; ni oreja ni perfil de nariz y barbilla. | — |
+| z5a | 10 492 | Rasgos **pintados en textura** (nuevo `face_paint.py`, PIL supermuestreado ×4): ojo almendrado, iris marrón grande con sombra superior, pupila, dos brillos, párpado superior grueso con pestañas en el extremo exterior, párpado inferior fino, ceja gruesa y recta más baja hacia el centro, nariz y boca. Probado primero en parches flotantes con UV propia → se ven rectángulos más claros (su sombreado no coincide con las facetas). | Atlas 512×512 (paleta + cara); mandíbula más ancha, ángulo mandibular y pómulos; esternocleidomastoideos en el cuello; flequillo por encima de las cejas. |
+| z5b | 10 164 | Sin rectángulos: la textura (proyección frontal x∈[−0.08,0.08], z∈[1.48,1.64]) se asigna como UV plana a las **caras frontales de la propia cabeza**, que conservan las facetas. Falta flequillo (se ve mucha frente), ojos algo pequeños, nariz poco legible. | Parches flotantes eliminados. |
+| z5c | 10 268 | Flequillo denso y ojos +14 %; de perfil los mechones laterales tapan oreja y mejilla. | Flequillo de 13 picos, sombra lateral de la nariz, nariz más saliente. |
+| z5d | 10 272 | Mejilla y mandíbula visibles de perfil; la oreja aún no se lee. | Mechón fino delante de la oreja hasta la mandíbula, los de detrás por encima de la oreja; casquete recortado en la sien. |
+| z5e | 10 272 | Oreja todavía invisible: la malla de la cabeza es demasiado gruesa para recoger el bulto. | Barbilla 5 mm más adelantada. |
+| z5f | 10 316 | Oreja visible de perfil y asomando de frente. | Orejas como pieza propia (borde de piel + concha sombreada, 32 tris, rígidas a Head). |
+| z5g | 10 316 | Boca y nariz se leen a distancia. | Labio más oscuro y grueso, sombra de la nariz mayor. |
+
+En Unity los rasgos vienen de la textura del atlas (filtro Point); en el color de vértice esas
+caras son piel lisa, por eso el visor web usa ahora la textura.
