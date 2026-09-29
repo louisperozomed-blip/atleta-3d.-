@@ -88,6 +88,6 @@ y Pillow + scipy para los scripts de comparación.
 
 ## Base mesh femenino (proyecto nuevo)
 
-Cuerpo base femenino solo quads (jaula 2 636 quads / LOD0 21 088 triángulos) modelado por
-scripts a partir de `reference/base_mesh_sheet.png`: ver [`base_mesh/README.md`](base_mesh/README.md),
+Cuerpo base femenino solo quads (jaula 3 390 quads / LOD0 27 120 triángulos, con UVs) modelado
+por scripts a partir de `reference/base_mesh_sheet.png`: ver [`base_mesh/README.md`](base_mesh/README.md),
 el registro de iteraciones en `base_mesh/PROGRESS.md` y el visor `base_mesh/web/visor_base_mesh.html`.

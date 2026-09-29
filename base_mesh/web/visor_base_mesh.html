@@ -87,7 +87,15 @@ details p { margin: 6px 0 0; font-size: 12px; line-height: 1.45; color: var(--mu
 .seg button:focus-visible, .tog input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tog { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
 .tog input { accent-color: var(--accent); }
+.uvmap {
+  position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); right: 16px; margin: 0;
+  width: min(220px, 34vw); background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px; display: grid; gap: 4px;
+}
+.uvmap canvas { width: 100%; height: auto; display: block; border-radius: 4px; }
+.uvmap figcaption { font-family: var(--display); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
 @media (max-width: 520px) {
+  .uvmap { display: none; }
   .sheet { padding: 10px 12px; }
   .sheet h1 { font-size: 18px; }
   details, .checks, .meta { display: none; }
@@ -105,23 +113,32 @@ details p { margin: 6px 0 0; font-size: 12px; line-height: 1.45; color: var(--mu
   <table aria-label="Conteo de polígonos por LOD">
     <thead><tr><th></th><th id="h-LOD0">LOD0</th><th id="h-LOD1">LOD1</th></tr></thead>
     <tbody>
-      <tr><td>quads</td><td>10 544</td><td>2 636</td></tr>
-      <tr><td>triángulos</td><td>21 088</td><td>5 272</td></tr>
-      <tr><td>vértices</td><td>10 546</td><td>2 638</td></tr>
+      <tr><td>quads</td><td>13 560</td><td>3 390</td></tr>
+      <tr><td>triángulos</td><td>27 120</td><td>6 780</td></tr>
+      <tr><td>vértices</td><td>13 562</td><td>3 392</td></tr>
     </tbody>
   </table>
   <div class="checks" aria-label="Validación de la jaula">
     <span class="chip">0 n-gons</span><span class="chip">0 tris</span><span class="chip">0 polos &gt;5</span>
     <span class="chip">0 no manifold</span><span class="chip">0 duplicados</span><span class="chip">0 normales invertidas</span>
     <span class="chip">0 auto-intersecciones</span><span class="chip">simetría 0</span>
+    <span class="chip">UV: 32 islas, 0 solapes</span>
   </div>
   <details>
     <summary>Polos y topología</summary>
-    <p>72 polos de 3 y 64 de 5, todos fuera de las zonas de pliegue: ingle y pliegue del glúteo,
-      axilas, base del cuello, dorso/palma, membranas de los dedos, puntas de los dedos, empeine,
-      talón y puntera, oreja y coronilla. 3 loops en rodilla, codo, tobillo y cintura.</p>
+    <p>88 polos de 3 y 80 de 5, ninguno en la zona de giro de una articulación: esquinas de los
+      loops de ojos, boca, nasolabial y glúteos, oreja, coronilla, base del cuello, esquinas del
+      hombro, ingles, membranas y puntas de los dedos, base del pulgar y puntera. 3 loops en rodilla,
+      codo, tobillo, cintura y en cada nudillo; 3 loops concéntricos en ojos y boca.</p>
+    <p>UV: costuras en los costados, el interior de brazos y piernas, detrás de la cabeza y el
+      cuello y el contorno de las manos. Densidad de texel uniforme (0,94-0,97) y la cara a 1,5×.</p>
   </details>
 </header>
+
+<figure class="uvmap" id="uvmap" hidden>
+  <canvas id="uvcanvas" width="512" height="512" aria-label="Mapa UV de la jaula sobre la cuadrícula"></canvas>
+  <figcaption>Mapa UV · 32 islas</figcaption>
+</figure>
 
 <section class="bar" aria-label="Controles del visor">
   <div class="group"><span>LOD</span>
@@ -135,6 +152,7 @@ details p { margin: 6px 0 0; font-size: 12px; line-height: 1.45; color: var(--mu
       <button type="button" id="mode-clay" aria-pressed="false">Arcilla</button>
       <button type="button" id="mode-both" aria-pressed="true">+ Wire</button>
       <button type="button" id="mode-wire" aria-pressed="false">Wire</button>
+      <button type="button" id="mode-uv" aria-pressed="false">UV</button>
     </div>
   </div>
   <div class="group"><span>Cámara</span>
@@ -231,27 +249,80 @@ function buildLOD(data) {
   const lg = new THREE.BufferGeometry();
   lg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   lg.setIndex(lines);
+  // modo UV: geometría sin índices con la UV de cada esquina (las costuras parten los vértices)
+  const flat = g.toNonIndexed();
+  const uv = new Float32Array((q.length / 4) * 6 * 2);
+  let o = 0;
+  for (let f = 0; f < q.length / 4; f++) {
+    for (const c of [0, 1, 2, 0, 2, 3]) {
+      uv[o++] = data.uv[(4 * f + c) * 2]; uv[o++] = data.uv[(4 * f + c) * 2 + 1];
+    }
+  }
+  flat.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   const group = new THREE.Group();
   const mesh = new THREE.Mesh(g, clayMat);
   const wire = new THREE.LineSegments(lg, wireMat);
-  group.add(mesh, wire);
-  return { group, mesh, wire };
+  const uvMesh = new THREE.Mesh(flat, gridMat);
+  group.add(mesh, wire, uvMesh);
+  return { group, mesh, wire, uvMesh, data };
+}
+
+// cuadrícula de comprobación: 32 × 32 celdas con 8 × 8 zonas de color (la misma que los renders)
+const gridCanvas = document.createElement('canvas');
+gridCanvas.width = gridCanvas.height = 1024;
+{
+  const c = gridCanvas.getContext('2d'), n = 32, s = 1024 / n;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    const zone = ((Math.floor(i / 4) * 3 + Math.floor((n - 1 - j) / 4) * 5) % 8) / 8;
+    const light = (i + j) % 2 ? 62 : 44;
+    c.fillStyle = `hsl(${Math.round(zone * 360)} 70% ${light}%)`;
+    c.fillRect(i * s, j * s, s, s);
+  }
+  c.strokeStyle = 'rgba(20,20,20,0.9)'; c.lineWidth = 1.5;
+  for (let i = 0; i <= n; i++) {
+    c.beginPath(); c.moveTo(i * s, 0); c.lineTo(i * s, 1024); c.stroke();
+    c.beginPath(); c.moveTo(0, i * s); c.lineTo(1024, i * s); c.stroke();
+  }
+}
+const gridTex = new THREE.CanvasTexture(gridCanvas);
+gridTex.colorSpace = THREE.SRGBColorSpace;
+gridTex.anisotropy = 4;
+var gridMat = new THREE.MeshStandardMaterial({ map: gridTex, roughness: 0.85, metalness: 0 });
+
+function drawUVMap(data) {
+  const cv = document.getElementById('uvcanvas'), c = cv.getContext('2d'), W = cv.width;
+  c.drawImage(gridCanvas, 0, 0, W, W);
+  c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(0, 0, W, W);
+  c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 0.6;
+  const q = data.q;
+  for (let f = 0; f < q.length / 4; f++) {
+    c.beginPath();
+    for (let k = 0; k < 4; k++) {
+      const u = data.uv[(4 * f + k) * 2] * W, v = (1 - data.uv[(4 * f + k) * 2 + 1]) * W;
+      k ? c.lineTo(u, v) : c.moveTo(u, v);
+    }
+    c.closePath(); c.stroke();
+  }
 }
 
 const lods = {};
 let current = null, mode = 'both';
 function applyMode() {
   for (const l of Object.values(lods)) {
-    l.mesh.visible = mode !== 'wire';
-    l.wire.visible = mode !== 'clay';
+    l.mesh.visible = mode === 'clay' || mode === 'both';
+    l.wire.visible = mode === 'both' || mode === 'wire';
     l.wire.material = mode === 'wire' ? wireOnlyMat : wireMat;
+    l.uvMesh.visible = mode === 'uv';
   }
+  document.getElementById('uvmap').hidden = mode !== 'uv';
+  if (mode === 'uv' && lods.LOD1) drawUVMap(lods.LOD1.data);
   // la jaula LOD1 se lee con líneas marcadas; en LOD0 (4x más caras) se aclaran
   const dense = current === lods.LOD0;
   wireMat.opacity = dense ? 0.32 : 0.8;
   wireOnlyMat.opacity = dense ? 0.35 : 0.65;
-  for (const m of ['clay', 'both', 'wire']) document.getElementById('mode-' + m).setAttribute('aria-pressed', String(m === mode));
+  for (const m of MODES) document.getElementById('mode-' + m).setAttribute('aria-pressed', String(m === mode));
 }
+const MODES = ['clay', 'both', 'wire', 'uv'];
 async function load(name) {
   if (!lods[name]) {
     const res = await fetch(`base_mesh_${name}.json`);
@@ -285,7 +356,11 @@ function setView(v) {
 }
 for (const k of Object.keys(VIEWS)) document.getElementById('cam-' + k).addEventListener('click', () => setView(k));
 for (const k of ['LOD0', 'LOD1']) document.getElementById('lod-' + k).addEventListener('click', () => showLOD(k));
-for (const m of ['clay', 'both', 'wire']) document.getElementById('mode-' + m).addEventListener('click', () => { mode = m; applyMode(); });
+for (const m of MODES) document.getElementById('mode-' + m).addEventListener('click', async () => {
+  mode = m;
+  if (m === 'uv' && !lods.LOD1) { try { await load('LOD1'); } catch (e) { /* el mapa se dibuja al cargar */ } }
+  applyMode();
+});
 const spin = document.getElementById('spin');
 document.getElementById('heads').addEventListener('change', (e) => { ruler.visible = e.target.checked; });
 controls.addEventListener('start', () => {

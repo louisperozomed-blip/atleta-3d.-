@@ -4,8 +4,8 @@ Uso: xvfb-run -a blender -b -P scripts/export.py
   export/base_mesh.blend      malla completa (Mirror aplicado), Subdivision nivel 1 SIN aplicar
   export/base_mesh_LOD1.fbx/.glb  jaula (quads)
   export/base_mesh_LOD0.fbx/.glb  Subdivision nivel 1 aplicada
-  export/base_mesh_stats.json    conteos de cada LOD + validación final
-  web/base_mesh_LOD0.json / _LOD1.json   vértices + quads para el visor web (wireframe de quads)
+  export/base_mesh_stats.json    conteos de cada LOD + validación final + estadísticas UV
+  web/base_mesh_LOD0.json / _LOD1.json   vértices + quads + UV por esquina para el visor web
 """
 import json
 import os
@@ -53,6 +53,11 @@ if bsdf:
     bsdf.inputs['Base Color'].default_value = (0.62, 0.62, 0.62, 1)
     bsdf.inputs['Roughness'].default_value = 0.8
 me.materials.append(mat)
+# 2) UVs de la jaula (el LOD0 las hereda de la Subdivision)
+import uv as UV  # noqa: E402
+labels = UV.unwrap(obj)
+uv_stats = UV.stats(obj, labels)
+print('UV', {k: v for k, v in uv_stats.items() if k != 'texel_density'})
 for c in ('RenderCam',):
     o = bpy.data.objects.get(c)
     if o:
@@ -70,8 +75,10 @@ def stats(subsurf):
         bm.from_mesh(me)
     r = VAL.validate(bm, expect_closed=True)
     r['triangles_when_triangulated'] = sum(len(f.verts) - 2 for f in bm.faces)
+    uvl = bm.loops.layers.uv.active
     data = dict(v=[round(c, 5) for v in bm.verts for c in v.co],
-                q=[v.index for f in bm.faces for v in f.verts])
+                q=[v.index for f in bm.faces for v in f.verts],
+                uv=[round(c, 4) for f in bm.faces for lo in f.loops for c in lo[uvl].uv])
     bm.free()
     return r, data
 
@@ -90,12 +97,12 @@ keys = ['verts', 'faces', 'quads', 'tris', 'ngons', 'triangles_when_triangulated
         'symmetry_error', 'bbox']
 out = {'LOD1_cage': {k: lod1[k] for k in keys}, 'LOD0_subdiv1': {k: lod0[k] for k in keys},
        'poles_in_joint_zone': lod1['poles_in_joint_zone'],
-       'pole_list_5': lod1['pole_list_5'], 'pole_list_3': lod1['pole_list_3']}
+       'pole_list_5': lod1['pole_list_5'], 'pole_list_3': lod1['pole_list_3'], 'uv': uv_stats}
 with open(os.path.join(EXP, 'base_mesh_stats.json'), 'w') as fh:
     json.dump(out, fh, indent=1, ensure_ascii=False)
 print('STATS', json.dumps({k: out[k] for k in ('LOD1_cage', 'LOD0_subdiv1')}, indent=1))
 
-# 2) .blend con la Subdivision sin aplicar
+# 3) .blend con la Subdivision sin aplicar
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(EXP, 'base_mesh.blend'))
 
 
@@ -110,7 +117,7 @@ def export(name, apply_mods):
         use_mesh_modifiers=apply_mods, mesh_smooth_type='FACE', use_tspace=False)
     bpy.ops.export_scene.gltf(
         filepath=os.path.join(EXP, f'base_mesh_{name}.glb'), export_format='GLB', use_selection=True,
-        export_apply=apply_mods, export_normals=True, export_texcoords=False, export_materials='EXPORT')
+        export_apply=apply_mods, export_normals=True, export_texcoords=True, export_materials='EXPORT')
 
 
 export('LOD1', False)

@@ -643,3 +643,26 @@ Costuras (todas en zonas poco visibles):
   `u6f_checker_*.png` y `u6f_uv_montage.jpg`.
 - La geometría no cambia (validación `u6f_geo_validate.json`: todo en 0). La jaula tiene 3 390
   quads; el LOD0 tiene 27 120 triángulos.
+
+## It2 · Etapa 7 — reexportación y visor
+
+- `export.py` desenvuelve las UVs antes de exportar (`uv.py`). El .blend guarda la UV `UVMap`, las
+  567 costuras marcadas y la Subdivision nivel 1 sin aplicar. Los FBX y GLB de LOD0 y LOD1
+  llevan UVs; el LOD0 las hereda de la Subdivision. Reimportados en Blender:
+
+  | Archivo | Vértices | Caras | UV |
+  |---|---:|---:|---|
+  | LOD1 FBX | 3 392 | 3 390 | UVMap |
+  | LOD0 FBX | 13 562 | 13 560 | UVMap |
+  | LOD1 GLB | 3 989 | 6 780 tris | UVMap |
+  | LOD0 GLB | 16 589 | 27 120 tris | UVMap |
+
+  (en el GLB los vértices se parten por las costuras UV). LOD0: 1.702 m de alto.
+- `base_mesh_stats.json` añade las estadísticas UV. Validación de LOD1 y LOD0: todo en 0 (ver README).
+- Renders finales (`renders/it2_7_final`, copiados a `renders/final_*`): comparativa con la hoja
+  (IoU front 0.923, side 0.952, back 0.860 — back limitado por la figura BACK de la hoja, que no
+  coincide con la FRONT), wireframe, cara y test de deformación de las 5 poses (`deform_test.jpg`).
+- Visor web (`web/visor_base_mesh.html`): nuevo modo **UV**. Aplica la misma cuadrícula de 32×32
+  celdas con las UVs reales de cada esquina (geometría sin índices, porque las costuras parten los
+  vértices) y muestra el mapa UV de las 32 islas en un panel. Conteos actualizados. Probado con
+  Chromium headless en escritorio (LOD0 y LOD1 en modo UV) antes de publicarlo.
