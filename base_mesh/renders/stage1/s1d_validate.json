@@ -1,0 +1,44 @@
+{
+ "verts": 628,
+ "edges": 1218,
+ "faces": 590,
+ "quads": 590,
+ "tris": 0,
+ "ngons": 0,
+ "subdiv1_tris": 4720,
+ "boundary_edges": 76,
+ "nonmanifold_edges": 0,
+ "edges_gt2_faces": 0,
+ "loose_edges": 0,
+ "loose_verts": 0,
+ "poles_3": 0,
+ "poles_5": 0,
+ "poles_gt5": 0,
+ "pole_list_5": [],
+ "pole_list_3": [],
+ "pole_list_gt5": [],
+ "poles_in_joint_zone": [],
+ "duplicate_verts": 0,
+ "duplicate_faces": 0,
+ "internal_faces": 0,
+ "degenerate_faces": 0,
+ "flipped_normals": 0,
+ "signed_volume": 0.02875,
+ "normals_outward": true,
+ "symmetry_error": 0.0,
+ "center_verts_off_plane": 0,
+ "tri_list": [],
+ "bbox": {
+  "x": [
+   -0.187,
+   0.187
+  ],
+  "z": [
+   0.875,
+   1.44
+  ]
+ },
+ "stage": 1,
+ "tag": "s1d",
+ "poles_expected": {}
+}
