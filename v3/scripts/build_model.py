@@ -399,8 +399,12 @@ def shoe(side, tag):
 
 
 # ---------------------------------------------------------------------- pelo
-PONY_PATH = [(-0.010, 0.020, 1.695), (-0.020, 0.070, 1.715), (-0.040, 0.130, 1.672),
-             (-0.060, 0.172, 1.595), (-0.075, 0.170, 1.500), (-0.085, 0.165, 1.415)]
+# v3: la coleta sale de la coronilla, sube en vertical, hace un arco hacia atrás y cae
+PONY_PATH = [(-0.010, 0.020, 1.692), (-0.014, 0.045, 1.722), (-0.028, 0.090, 1.730),
+             (-0.042, 0.130, 1.690), (-0.055, 0.145, 1.600), (-0.066, 0.140, 1.490),
+             (-0.076, 0.125, 1.370)]
+
+
 def hair():
     rng = np.random.default_rng(11)
     parts = []
@@ -442,15 +446,16 @@ def hair():
         keep.append(f)
     add((cap_v, keep), K['hair'])
 
-    # (b) flequillo en picos: cubre la frente hasta las cejas y sobresale hacia delante
-    for x, zt, lean, fwd in [(-0.078, 1.600, -0.35, 0.00), (-0.056, 1.622, -0.20, 0.02), (-0.034, 1.612, -0.05, 0.03),
-                             (-0.012, 1.628, 0.05, 0.035), (0.010, 1.614, -0.08, 0.035), (0.032, 1.626, 0.10, 0.03),
-                             (0.054, 1.616, 0.22, 0.02), (0.078, 1.602, 0.35, 0.00)]:
-        root = (x * 0.8, -0.120, 1.708)
-        mid = (x * 1.08, -0.185 - fwd * 0.6, 1.672)
+    # (b) flequillo en picos con raya ligeramente lateral (x=+0.02): los picos se abren desde la raya
+    part_x = 0.02
+    for x, zt, fwd in [(-0.082, 1.598, 0.00), (-0.060, 1.612, 0.02), (-0.038, 1.604, 0.03), (-0.016, 1.618, 0.035),
+                       (0.004, 1.628, 0.035), (0.036, 1.612, 0.03), (0.058, 1.620, 0.02), (0.082, 1.600, 0.00)]:
+        lean = np.clip((x - part_x) / 0.08, -1, 1) * 0.35
+        root = (part_x + (x - part_x) * 0.55, -0.118, 1.712)
+        mid = (x * 1.06, -0.186 - fwd * 0.6, 1.672)
         tip = (x * 1.12 + lean * 0.03, -0.172 - fwd * 0.8, zt)
         lock(root, mid, tip, 0.030, sides=4, flat=0.45, up=(0, -1, 0.3))
-    # mechones de la coronilla: tumbados sobre el casquete hacia la coleta
+    # mechones de la coronilla: tumbados hacia la coleta + picos irregulares hacia arriba
     for k in range(8):
         a = -2.2 + k * 0.63
         dirv = np.array([np.sin(a), -np.cos(a), 0.0])
@@ -458,54 +463,62 @@ def hair():
         tip = c + dirv * np.array([0.118, 0.125, 0]) + np.array([0, 0, 0.035])
         lock(tuple(root), tuple((root + tip) / 2 + np.array([0, 0, 0.03])), tuple(tip), 0.032, sides=4, flat=0.5,
              up=(0, 0, 1), key=K['hair_dark'] if k % 3 == 0 else K['hair'])
-    # (c) mechones laterales que enmarcan la cara
+    for k in range(7):
+        a = -1.9 + k * 0.62 + rng.uniform(-0.12, 0.12)
+        dirv = np.array([np.sin(a), -np.cos(a), 0.0])
+        root = c + np.array([0, 0, 0.088]) + dirv * 0.055
+        tip = root + dirv * rng.uniform(0.035, 0.055) + np.array([0, 0, rng.uniform(0.022, 0.040)])
+        lock(tuple(root), tuple((root + tip) / 2), tuple(tip), 0.022, sides=4, flat=0.6, up=(0, 0, 1),
+             key=K['hair'] if k % 2 else K['hair_dark'])
+    # (c) mechones que enmarcan la cara hasta la mandíbula (delante de la oreja) y uno corto detrás
     for sx in (1, -1):
-        for x0, y0, z1, r in [(0.082, -0.118, 1.505, 0.020), (0.100, -0.085, 1.470, 0.026),
-                              (0.112, -0.045, 1.50, 0.030), (0.110, 0.000, 1.53, 0.030)]:
-            lock((x0 * 0.92 * sx, y0, 1.675), ((x0 + 0.022) * sx, y0 - 0.008, 1.590), ((x0 + 0.006) * sx, y0 - 0.004, z1),
+        for x0, y0, z0, z1, r in [(0.080, -0.118, 1.675, 1.492, 0.021), (0.098, -0.082, 1.675, 1.500, 0.025),
+                                  (0.110, -0.040, 1.670, 1.555, 0.028), (0.108, 0.000, 1.660, 1.565, 0.028)]:
+            lock((x0 * 0.92 * sx, y0, z0), ((x0 + 0.020) * sx, y0 - 0.008, 1.590), ((x0 + 0.004) * sx, y0 - 0.006, z1),
                  r, sides=5, flat=0.6, up=(sx, 0, 0))
     # nuca
     for x in (-0.06, -0.02, 0.02, 0.06):
-        lock((x, 0.015, 1.62), (x * 1.1, 0.045, 1.56), (x * 1.2, 0.035, 1.50), 0.03, sides=5, flat=0.6,
+        lock((x, 0.015, 1.62), (x * 1.1, 0.045, 1.57), (x * 1.2, 0.035, 1.53), 0.03, sides=5, flat=0.6,
              up=(0, 1, 0), key=K['hair_dark'])
-    # (d) coleta alta y voluminosa
+    # (d) coleta: núcleo voluminoso + 6 mechones facetados que se abren y acaban en puntas separadas
     path = [np.array(p) for p in PONY_PATH]
-    radii = [0.032, 0.052, 0.068, 0.080, 0.082, 0.064]
-    add(S.strand(path, radii, sides=9, rng=rng, jitter=0.24, flat=1.0, up=(0, 1, 0)), K['hair'])
-    for k, (dx, dy, dz) in enumerate([(0.035, 0.02, -0.08), (-0.035, 0.035, -0.11), (0.0, -0.025, -0.12),
-                                      (-0.05, -0.01, -0.07), (0.04, 0.05, -0.06), (-0.015, 0.06, -0.09)]):
-        base = path[-1] + np.array([dx * 0.6, dy * 0.6, 0.03])
-        tipp = base + np.array([dx, dy, dz - 0.07])
-        add(S.strand([base, (base + tipp) / 2, tipp], [0.036, 0.028, 0.012], sides=5, rng=rng, up=(0, 1, 0)),
+    add(S.strand(path[:6], [0.030, 0.042, 0.066, 0.084, 0.086, 0.062], sides=8, rng=rng, jitter=0.22,
+                 flat=1.0, up=(0, 1, 0)), K['hair'])
+    for k, (ox, oy, tipz) in enumerate([(0.000, 0.010, 1.290), (0.050, 0.015, 1.350), (-0.052, 0.018, 1.330),
+                                        (0.026, 0.040, 1.400), (-0.030, 0.045, 1.380), (0.006, -0.040, 1.420),
+                                        (0.000, 0.050, 1.440)]):
+        pts = []
+        for n, p in enumerate(path[2:]):
+            t = n / (len(path) - 3)
+            pts.append(p + np.array([ox, oy, 0.0]) * t)
+        pts[-1] = path[-1] + np.array([ox * 1.4, oy * 1.2, tipz - path[-1][2]])
+        add(S.strand(pts, [0.046, 0.056, 0.052, 0.040, 0.018], sides=5, rng=rng, jitter=0.25, up=(0, 1, 0)),
             K['hair_dark'] if k % 2 else K['hair'])
-    for k in range(6):
-        a = path[2] + rng.uniform(-0.025, 0.025, 3)
-        b = path[4] + np.array([rng.uniform(-0.06, 0.04), rng.uniform(-0.01, 0.06), rng.uniform(-0.06, 0.0)])
-        add(S.strand([a, (a + b) / 2 + np.array([0, 0.035, 0]), b], [0.04, 0.034, 0.012], sides=5, rng=rng,
-                     up=(0, 1, 0)), K['hair_dark'] if k % 2 else K['hair'])
     V, F = S.merge(parts)
     ob = mu.mesh_from_pydata('Hair', V, F)
     set_face_keys(ob, keys)
     # (e) goma y cintas turquesa
     tv, tf = [], []
-    tie = path[0] + (path[1] - path[0]) * 0.3
+    tie = path[0] + (path[1] - path[0]) * 0.35
     tie_d = path[1] - path[0]
-    d, u, s = S.frame_from(tie_d, (0, 1, 0))
+    d, u, s_ = S.frame_from(tie_d, (0, 1, 0))
     ring = []
-    for h in (-0.012, 0.012):
+    for h in (-0.013, 0.013):
         for i in range(8):
             a = 2 * np.pi * i / 8
-            ring.append(tie + d * h + (u * np.cos(a) + s * np.sin(a)) * 0.046)
+            ring.append(tie + d * h + (u * np.cos(a) + s_ * np.sin(a)) * 0.044)
     secs = [np.array(ring[:8]), np.array(ring[8:])]
     v1, f1 = S.loft(secs, cap_start=False, cap_end=False)
+    # dos cintas que cuelgan de la goma hacia atrás y abajo (≈ 14 cm)
     ribbons = []
     for sgn in (1, -1):
-        r0 = tie + np.array([0.03 * sgn, 0.02, -0.01])
-        r1 = r0 + np.array([0.015 * sgn, 0.02, -0.08])
-        r2 = r1 + np.array([0.005 * sgn, 0.01, -0.07])
-        w = 0.012
-        vv = [r0 - [w, 0, 0], r0 + [w, 0, 0], r1 - [w, 0, 0], r1 + [w, 0, 0], r2 + [0, 0, -0.01]]
-        ff = [(0, 1, 3, 2), (2, 3, 4)]
+        r0 = tie + np.array([0.036 * sgn, 0.030, -0.005])
+        r1 = r0 + np.array([0.010 * sgn, 0.030, -0.070])
+        r2 = r1 + np.array([0.004 * sgn, 0.018, -0.065])
+        w = 0.016
+        vv = [r0 - [0, w, 0], r0 + [0, w, 0], r1 - [0, w, 0], r1 + [0, w, 0], r2 - [0, w * 0.8, 0],
+              r2 + [0, w * 0.8, 0], r2 + [0, 0, -0.022]]
+        ff = [(0, 1, 3, 2), (2, 3, 5, 4), (4, 5, 6)]
         ribbons.append(([tuple(p) for p in vv], ff))
     V2, F2 = S.merge([(v1, f1)] + ribbons)
     tob = mu.mesh_from_pydata('HairTie', V2, F2)

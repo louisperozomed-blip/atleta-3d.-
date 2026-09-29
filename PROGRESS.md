@@ -125,3 +125,21 @@ Rig re-hecho; Run y poses extremas revisadas (T-pose, brazos arriba, sentadilla,
 | z3d | 10 131 | 0.851/0.842/0.862 | Zapatilla con parches grandes como la ref (turquesa lateral, coral en el cuello, talón navy, cordones). | Sin puntera navy; parches grandes inclinados en lugar de zigzag. |
 
 Rig re-hecho (rodilleras/muñequeras por transferencia de pesos, zapatillas a Foot/Toes); Walk y Run revisados.
+
+## Zona 4 — pelo y coleta (z4a → z4c)
+
+| Iter | Tris | IoU F/S/B | Diferencias vistas | Corrección |
+|---|---|---|---|---|
+| z4a | 10 243 | 0.852/0.798/0.868 | (antes: coleta como una lámina plana que salía hacia atrás, cintas casi invisibles, laterales en cortina). Nueva coleta: sube demasiado (≈1.83 m, ref 1.76) y de perfil es fina como una bandera; de espaldas, una línea. | Coleta = núcleo + 6 mechones facetados que se abren desde el arco y acaban en puntas separadas (z 1.29-1.42, hasta media espalda); goma más gruesa y dos cintas de 14 cm; flequillo en 8 picos con raya a x=+0.02; 7 picos irregulares en la coronilla; mechones delante de la oreja hasta la mandíbula (z≈1.49). |
+| z4b | 10 293 | 0.849/0.804/0.865 | Ancho de espaldas ya ±2 cm; de perfil, la coleta queda 4-5 cm demasiado atrás (−0.26 m frente a −0.21) y separada de la nuca (ref: masa pegada, borde interior a −0.086). | Arco más bajo (1.735), núcleo y mechones más gruesos (r 0.086 / 0.056). |
+| z4c | 10 289 | **0.860/0.852/0.866** | Silueta de perfil y de espaldas coincide (IoU de perfil 0.80 → 0.85). | Trayectoria de la coleta 3.5 cm más adelante y apertura de las puntas reducida. |
+
+Nota: la coleta llega hasta z≈1.29 m (media espalda); la referencia termina en ≈1.33 m. La alargué un poco
+más de lo que muestra la hoja porque así se pidió, pero no llegué a doblar su longitud para no romper la silueta.
+
+**Rig de la coleta**: 4 huesos en cadena (`Ponytail1..4`, antes 5). El movimiento secundario ya no es
+un seno: es un **muelle amortiguado por hueso** (frecuencia 1.6 Hz decreciente hacia la punta, ζ=0.22)
+excitado por la aceleración vertical de la cadera y por el giro de la cadera; para Walk/Run se
+simulan 4 ciclos y se usa el último (bucle continuo), para Jump se simula fotograma a fotograma
+(retraso al despegar, rebote al aterrizar). La primera versión del salto hacía que la coleta pasara
+por encima de la cara (los ángulos se acumulan en la cadena); se limitó a ±11° por hueso.

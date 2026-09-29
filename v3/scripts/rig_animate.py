@@ -2,7 +2,7 @@
 
 Uso: xvfb-run -a blender -b export/atleta_model.blend -P scripts/rig_animate.py
 Genera export/atleta.blend con:
-  * Armature (nombres de huesos de Unity Humanoid + Ponytail1..5)
+  * Armature (nombres de huesos de Unity Humanoid + Ponytail1..4)
   * Malla única 'Atleta' (cuerpo + ropa + pelo + accesorios) con pesos
   * Acciones: APose, Idle, Walk, Run, Jump
 """
@@ -18,8 +18,10 @@ import anatomy  # noqa: E402
 import meshutil as mu  # noqa: E402
 
 FPS = 30
-PONY = [(-0.010, 0.020, 1.695), (-0.020, 0.070, 1.715), (-0.040, 0.130, 1.672), (-0.060, 0.172, 1.595),
-        (-0.075, 0.170, 1.500), (-0.085, 0.165, 1.415), (-0.090, 0.160, 1.28)]
+# v3: 4 huesos en cadena para la coleta (el último punto solo sirve para los pesos de las puntas)
+PONY = [(-0.010, 0.020, 1.692), (-0.028, 0.090, 1.730), (-0.042, 0.130, 1.690), (-0.055, 0.145, 1.600),
+        (-0.066, 0.140, 1.490), (-0.076, 0.125, 1.290)]
+NPONY = len(PONY) - 2
 
 
 # ------------------------------------------------------------------- armadura
@@ -343,12 +345,42 @@ def arms_base(adduct=0.0):
 
 
 def pony(rots, phase, amp, lag=0.9, yaw_amp=0.0, base=(0, 0, 0)):
-    """Movimiento secundario de la coleta: onda con retraso creciente por hueso.
-    Las rotaciones se acumulan en la cadena, así que la amplitud por hueso es pequeña."""
-    for i in range(5):
-        a = amp * (0.6 + 0.1 * i)
+    """Balanceo suave de la coleta para Idle (onda con retraso creciente por hueso)."""
+    for i in range(NPONY):
+        a = amp * (0.6 + 0.15 * i)
         ph = phase - lag * (i + 1)
         rots[f'Ponytail{i + 1}'] = (base[0] + a * math.sin(ph), base[1] + yaw_amp * (0.5 + 0.3 * i) * math.sin(ph - 0.5), base[2])
+
+
+def spring_chain(drive, fps, freq=1.6, zeta=0.22, gain=18.0, cycles=4, clip=14.0):
+    """v3: movimiento secundario de la coleta = muelle amortiguado por hueso.
+
+    drive: aceleración (m/s²) del punto de anclaje en cada fotograma. Cada hueso es un
+    oscilador con rigidez decreciente hacia la punta: se retrasa y rebota. Para bucles se
+    simulan varios ciclos y se devuelve el último (resultado periódico).
+    """
+    dt = 1.0 / fps
+    out = []
+    for i in range(NPONY):
+        w = 2 * math.pi * freq * (1.0 - 0.12 * i)
+        k, c = w * w, 2 * zeta * w
+        g = gain * (0.55 + 0.25 * i)
+        th = v = 0.0
+        res = []
+        for _ in range(cycles):
+            res = []
+            for a in drive:
+                acc = -k * th - c * v - g * k * a / 9.81
+                v += acc * dt
+                th += v * dt
+                res.append(max(-clip, min(clip, th)))
+        out.append(res)
+    return np.array(out)          # (NPONY, frames) en grados
+
+
+def second_diff(x, fps):
+    x = np.asarray(x, float)
+    return (np.roll(x, -1) - 2 * x + np.roll(x, 1)) * fps * fps
 
 
 def make_apose(arm_ob):
@@ -391,6 +423,14 @@ def make_idle(arm_ob):
 def gait(arm_ob, name, n, hip_amp, knee_amp, arm_amp, elbow, lean, bob, stride_knee_front,
          pony_amp, arm_add, foot_amp):
     a = Anim(arm_ob, name, n + 1)
+    # v3: coleta con retraso y rebote simulados a partir del bote de la cadera y del giro
+    frames = np.arange(n)
+    zc = bob * np.cos(4 * math.pi * frames / n)
+    yaw = (6 if name == 'Walk' else 9) * np.sin(2 * math.pi * frames / n)
+    sim = spring_chain(second_diff(zc, FPS), FPS, gain=pony_amp * 3.0)
+    simy = spring_chain(second_diff(np.radians(yaw) * 0.15, FPS), FPS, freq=1.3, gain=pony_amp * 2.0)
+    sim_pitch = np.concatenate([sim, sim[:, :1]], 1)
+    sim_yaw = np.concatenate([simy, simy[:, :1]], 1)
     for f in range(0, n + 1, 2):
         ph = 2 * math.pi * f / n
         s = math.sin(ph)
@@ -420,7 +460,8 @@ def gait(arm_ob, name, n, hip_amp, knee_amp, arm_amp, elbow, lean, bob, stride_k
         r['Neck'] = (-lean * 0.5, 0, 2 * s)
         r['Head'] = (-lean * 0.3, 0, 2 * s)
         z = bob * math.cos(2 * ph) - bob * 0.5
-        pony(r, 2 * ph, pony_amp, lag=0.8, yaw_amp=pony_amp * 0.6, base=(lean * 0.25, 0, 0))
+        for i in range(NPONY):
+            r[f'Ponytail{i + 1}'] = (lean * 0.25 + float(sim_pitch[i, f]), float(sim_yaw[i, f]), 0)
         a.key(f + 1, r, hips_loc=(0, 0, z))
     a.finish()
     return a.act
@@ -433,7 +474,6 @@ def make_jump(arm_ob):
     keys = [(1, 0.0, 0.0, 0.0), (8, 0.9, -0.16, -0.4), (12, 0.2, 0.02, 1.0), (16, 0.0, 0.22, 1.0),
             (22, -0.1, 0.34, 0.8), (28, 0.1, 0.22, 0.6), (33, 0.2, 0.0, 0.3), (37, 0.85, -0.15, -0.3),
             (44, 0.0, 0.0, 0.0)]
-    prev_h = 0.0
     for i, (f, c, h, up) in enumerate(keys):
         r = {}
         for side, sg in (('Left', 1), ('Right', -1)):
@@ -445,12 +485,21 @@ def make_jump(arm_ob):
         r['Spine'] = (22 * c, 0, 0)
         r['Chest'] = (12 * c, 0, 0)
         r['Neck'] = (-15 * c, 0, 0)
-        v = h - prev_h
-        prev_h = h
-        # la coleta se retrasa respecto al movimiento vertical
-        for k in range(5):
-            r[f'Ponytail{k + 1}'] = (float(np.clip(-(v * 40) * (0.6 + 0.15 * k) - 2 * c, -9, 9)), 0, 0)
+        for k in range(NPONY):
+            r[f'Ponytail{k + 1}'] = (0.0, 0, 0)
         a.key(f, r, hips_loc=(0, 0.0, h - 0.29 * c * 0.3))
+    # v3: coleta simulada fotograma a fotograma (retraso al despegar, rebote al aterrizar)
+    fr = np.arange(1, n + 1)
+    kf = np.array([k[0] for k in keys]); kh = np.array([k[2] - 0.29 * k[1] * 0.3 for k in keys])
+    hz = np.interp(fr, kf, kh)
+    hz = np.convolve(np.pad(hz, 2, mode='edge'), np.ones(5) / 5, mode='valid')
+    acc = np.gradient(np.gradient(hz)) * FPS * FPS
+    sim = spring_chain(acc, FPS, gain=4.0, cycles=1, clip=11.0)   # 4 huesos: ≤44° en la punta
+    for idx, f in enumerate(fr):
+        for k in range(NPONY):
+            pb = arm_ob.pose.bones[f'Ponytail{k + 1}']
+            pb.rotation_quaternion = local_q(arm_ob, pb.name, (float(sim[k, idx]), 0, 0))
+            pb.keyframe_insert('rotation_quaternion', frame=int(f))
     a.finish()
     return a.act
 
