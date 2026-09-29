@@ -3,6 +3,7 @@ import base64
 import io
 import json
 import os
+import sys
 
 from PIL import Image
 
@@ -32,6 +33,16 @@ def main():
     out = os.path.join(DEMO, "index.html")
     open(out, "w", encoding="utf-8").write(html)
     print(out, round(os.path.getsize(out) / 1e6, 2), "MB")
+    # Variante para publicar como Artifact: el visor añade su propio esqueleto
+    # (<!doctype>, <html>, <head> con charset/viewport, <body>), así que se quitan.
+    import re
+    frag = html
+    for pat in (r"<!doctype html>\s*", r"<html[^>]*>\s*", r"</?head>\s*", r"<body>\s*", r"</body>\s*", r"</html>\s*",
+                r'<meta charset="utf-8">\s*', r'<meta name="viewport"[^>]*>\s*'):
+        frag = re.sub(pat, "", frag, flags=re.I)
+    target = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "build", "automata_iso.html")
+    open(target, "w", encoding="utf-8").write(frag)
+    print(target, round(os.path.getsize(target) / 1e6, 2), "MB")
 
 
 if __name__ == "__main__":

@@ -7,9 +7,11 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#ffffff">
-<title>Sprite Iso 3D</title>
+<title>Autómata isométrico</title>
 <style>
+  /* Escena de un solo aspecto (fondo blanco pedido), sin variante oscura a propósito */
   :root {
+    color-scheme: light;
     --bg: #ffffff;
     --ink: #1d2230;
     --muted: #6b7285;
@@ -18,10 +20,6 @@
     --accent: #d9731f;
     --accent-ink: #ffffff;
   }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --panel: rgba(255, 255, 255, 0.94); }
-  }
-  :root[data-theme="dark"] { --panel: rgba(255, 255, 255, 0.94); }
   html, body {
     margin: 0; padding: 0; width: 100%; height: 100%;
     background: var(--bg); color: var(--ink);

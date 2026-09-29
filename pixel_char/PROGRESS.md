@@ -103,3 +103,35 @@ Correcciones tras las pruebas (etapa 4, aplicadas aquí):
 | Doble toque parado se desplazaba ~11 px antes de saltar | Anticipación de 0.1 s + vuelta al punto de partida al anular. |
 | Se detenía hasta 4 px antes del punto | Radio de llegada 0.004 H y encaje exacto al parar. |
 | En iPhone el personaje ocupaba el 45 % del ancho y rozaba el borde | 36 % del ancho, margen lateral 0.48 H. |
+
+## Etapa 4 — Pruebas y publicación
+
+Pruebas: `tests/e2e.mjs` (Playwright + Chromium; WebGL por SwiftShader en headless):
+`cd tests && ln -s $(npm root -g) node_modules && node e2e.mjs ../demo/index.html <salida>`.
+Dos perfiles: escritorio 1280×800 a 2x con ratón, e iPhone 13 (390×844 a 3x, táctil real: `touchscreen.tap`
+y `Input.dispatchTouchEvent` de CDP para la pulsación mantenida). Resultado final: **54/54 OK**
+(`review/stage4/e2e_log.txt`, `results.json`).
+
+Comprueba: canvas a devicePixelRatio; toque cercano → camina, llega al punto exacto y queda en idle mirando
+a donde iba; toque lejano (> 4 H) → idle → walk → run → walk → idle; velocidades 1.05 / 2.7 H/s; aceleración
+acotada; las 8 direcciones (en marcha y al parar) sin parpadeo; giro de 180° pasando por las intermedias
+(SE → E → NE → N → NW); mantener pulsado sigue al dedo (distancia < 1.5 H) y al soltar llega al último punto;
+doble toque parado salta en el sitio (0 px de desplazamiento, 0.34–0.40 H de altura); SALTAR en marcha salta
+hacia delante; sin scroll ni zoom; sin errores JS; panel plegable; normal maps on/off.
+
+Capturas: `review/stage4/*.png` (inicio, tras carrera, direcciones SW/NE, siguiendo el dedo, luz a 220°,
+sin normal maps) y GIF: `review/stage4_demo.gif` (carrera NE → salto → aterrizaje → marcha SW).
+
+| Fallo encontrado por las pruebas | Causa / corrección |
+|---|---|
+| Error de compilación en Chrome: precisión distinta de `uRect` en VS/FS | `highp` en los fragment shaders (también necesario para UV exactas en el atlas). |
+| Seguir al dedo quedaba 1.5–3 H atrás | Umbrales de seguimiento más cortos (ver etapa 3). |
+| Doble toque parado se desplazaba 11 px | Anticipación de 0.1 s y vuelta al punto de partida. |
+| Paraba 3.7 px antes del objetivo | Radio de llegada mínimo y encaje exacto. |
+| iPhone: personaje demasiado grande, un brazo cortado en el borde; y la pantalla no llegaba a 4 H, nunca corría | Alto = 36 % del ancho y margen lateral mayor; ahora en iPhone un toque lejano (4.5 H) corre. |
+| Errores del propio test (posición leída antes del render tras teletransportar; toques fuera de pantalla; objetivo recortado a los márgenes) | Corregidos en `e2e.mjs`. |
+| Rendimiento: 26–28 fps en headless a 2x/3x | Es render por CPU (SwiftShader); a 1x va a 60 fps. El coste por frame es de 4 quads (sombra con 9 muestras, contacto, marcador, sprite), holgado para la GPU de un iPhone; el contador de fps del panel permite verificarlo en el dispositivo. |
+
+Publicación: `tools/build_demo.py` genera además una variante sin `<html>/<head>/<body>` para el visor de
+Artifacts (que añade su propio esqueleto); publicada como «Autómata isométrico»:
+https://claude.ai/artifact/D3MKMn1CTffmSTreZWg6oS

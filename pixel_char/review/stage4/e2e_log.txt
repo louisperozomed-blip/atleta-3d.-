@@ -1,0 +1,56 @@
+OK   [escritorio] canvas usa devicePixelRatio — canvas 2560×1600 dpr 2
+OK   [escritorio] toque cercano → camina (sin correr) — idle,walk
+OK   [escritorio] llega al punto y pasa a idle — final 947.2,496.0 objetivo 947.2,496.0 en 1978 ms
+OK   [escritorio] idle mirando hacia donde iba (E) — E
+OK   [escritorio] velocidad de marcha ≈ 1.05 H/s — 1.05 H/s
+OK   [escritorio] toque lejano (6.3 H) → corre y luego camina → idle — idle → walk → run → walk → idle
+OK   [escritorio] velocidad de carrera ≈ 2.7 H/s — 2.70 H/s
+OK   [escritorio] aceleración/frenado acotados — máx 10.4 H/s²
+OK   [escritorio] dirección S — en marcha S, al parar S
+OK   [escritorio] dirección SW — en marcha SW, al parar SW
+OK   [escritorio] dirección W — en marcha W, al parar W
+OK   [escritorio] dirección NW — en marcha NW, al parar NW
+OK   [escritorio] dirección N — en marcha N, al parar N
+OK   [escritorio] dirección NE — en marcha NE, al parar NE
+OK   [escritorio] dirección E — en marcha E, al parar E
+OK   [escritorio] dirección SE — en marcha SE, al parar SE
+OK   [escritorio] sin parpadeo de dirección en línea recta — 0,0,0,0,0,0,0,0
+OK   [escritorio] giro amplio pasa por direcciones intermedias — SE → E → NE → N → NW
+OK   [escritorio] mantener pulsado activa el seguimiento
+OK   [escritorio] sigue al dedo (distancia final < 1.5 H) — distancias 0.77,1.07,0.59,0.77,1.22 H
+OK   [escritorio] al soltar llega al último punto y para — final 1178,560 vs 1178,560
+OK   [escritorio] doble toque parado → salta en el sitio — desplazamiento 0.0 px, altura máx 0.40 H
+OK   [escritorio] el sprite sube durante el salto — 0.40 H
+OK   [escritorio] SALTAR en marcha → salta hacia delante — avance 1.30 H
+OK   [escritorio] sin scroll ni zoom — {"sx":0,"sy":0,"scale":1,"sw":1280,"cw":1280}
+OK   [escritorio] sin errores JS
+OK   [escritorio] panel plegable se abre
+OK   [iphone] canvas usa devicePixelRatio — canvas 1170×1992 dpr 3
+OK   [iphone] toque cercano → camina (sin correr) — idle,walk
+OK   [iphone] llega al punto y pasa a idle — final 322.6,411.7 objetivo 322.6,411.7 en 1188 ms
+OK   [iphone] idle mirando hacia donde iba (E) — E
+OK   [iphone] velocidad de marcha ≈ 1.05 H/s — 1.05 H/s
+OK   [iphone] toque lejano (4.5 H) → corre y luego camina → idle — idle → walk → run → walk → idle
+OK   [iphone] velocidad de carrera ≈ 2.7 H/s — 2.70 H/s
+OK   [iphone] aceleración/frenado acotados — máx 9.9 H/s²
+OK   [iphone] dirección S — en marcha S, al parar S
+OK   [iphone] dirección SW — en marcha SW, al parar SW
+OK   [iphone] dirección W — en marcha W, al parar W
+OK   [iphone] dirección NW — en marcha NW, al parar NW
+OK   [iphone] dirección N — en marcha N, al parar N
+OK   [iphone] dirección NE — en marcha NE, al parar NE
+OK   [iphone] dirección E — en marcha E, al parar E
+OK   [iphone] dirección SE — en marcha SE, al parar SE
+OK   [iphone] sin parpadeo de dirección en línea recta — 0,0,0,0,0,0,0,0
+OK   [iphone] giro amplio pasa por direcciones intermedias — SE → E → NE → N → NW
+OK   [iphone] mantener pulsado activa el seguimiento
+OK   [iphone] sigue al dedo (distancia final < 1.5 H) — distancias 0.79,0.60,0.18,0.27,0.51 H
+OK   [iphone] al soltar llega al último punto y para — final 323,465 vs 323,465
+OK   [iphone] doble toque parado → salta en el sitio — desplazamiento 0.0 px, altura máx 0.38 H
+OK   [iphone] el sprite sube durante el salto — 0.38 H
+OK   [iphone] SALTAR en marcha → salta hacia delante — avance 0.73 H
+OK   [iphone] sin scroll ni zoom — {"sx":0,"sy":0,"scale":1,"sw":390,"cw":390}
+OK   [iphone] sin errores JS
+OK   [iphone] panel plegable se abre
+
+54/54 comprobaciones OK
