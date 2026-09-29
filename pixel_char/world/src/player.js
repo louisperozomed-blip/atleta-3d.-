@@ -14,7 +14,7 @@
     runDist: 4.0, walkBackDist: 2.2,
     radius: 0.28,
     jumpPrep: 0.07, jumpAir: 0.62, jumpLand: 0.15, jumpHeight: 0.5,
-    stepSmooth: 16,                     // rapidez del ajuste vertical al subir/bajar escalones
+    stepSmooth: 10,                     // rapidez del ajuste vertical al subir/bajar escalones
   });
 
   class Player {

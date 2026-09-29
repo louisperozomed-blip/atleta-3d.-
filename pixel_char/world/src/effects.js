@@ -163,10 +163,10 @@
   // ---------------------------------------------------------------------------
   W.makeFx = function (scene) {
     const rings = [], RING_N = 14;
-    const rg = new THREE.RingGeometry(0.8, 1, 24);
+    const rg = new THREE.RingGeometry(0.7, 1, 28);
     rg.rotateX(-Math.PI / 2);
     for (let i = 0; i < RING_N; i++) {
-      const m = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ color: 0xbff6ff, transparent: true, opacity: 0, depthWrite: false }));
+      const m = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ color: 0xeaffff, transparent: true, opacity: 0, depthWrite: false }));
       m.visible = false; m.renderOrder = 2; scene.add(m); rings.push({ m, t: 1, life: 1 });
     }
     const DUST_N = 64, dg = new THREE.BufferGeometry();
@@ -198,7 +198,7 @@
           if (r.t >= 1) { r.m.visible = false; continue; }
           const s = r.size * (0.25 + r.t);
           r.m.scale.set(s, 1, s);
-          r.m.material.opacity = (1 - r.t) * 0.75;
+          r.m.material.opacity = (1 - r.t) * 0.95;
         }
         for (let i = 0; i < DUST_N; i++) {
           if (dv[i * 4 + 3] <= 0) { dp[i * 3 + 1] = -100; continue; }

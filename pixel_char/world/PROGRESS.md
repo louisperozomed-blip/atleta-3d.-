@@ -45,3 +45,42 @@ render a 1/3 de resolución, esporas simuladas solo cerca de la vista.
 
 Colisiones (`tests/collide.mjs`): contra el árbol-corazón se para a 1.78 del centro (radio 1.55); no
 entra en lagunas; no sube desniveles de 1 m. Capturas: `review/stage1/`.
+
+## Etapa 2 — Que el personaje pertenezca al mundo
+
+`src/character.js` (material del personaje) e `src/interact.js` (reacciones del entorno).
+Comparativa en 3 zonas con luz distinta: `review/stage2/comparativa_integrado.png`.
+
+- **Sprite plano vertical** orientado a la cámara (gira solo en Y), de 1.7 u de alto; como el plano
+  es vertical, su profundidad varía con la altura igual que un objeto real de pie.
+- **Mismas luces del mundo**: `ShaderMaterial` con `lights: true` que lee los uniforms de three.js:
+  la hemisférica turquesa/violeta, el sol (con su mapa de sombras, consultado 0.7 u hacia el sol para
+  que su propio proyector no le haga auto-sombra) y las 8 luces puntuales del pool (vainas, hongos,
+  árbol-corazón, cristales), con su normal map y su máscara especular (brillo más duro en metal y casco).
+  Al pasar junto al árbol-corazón el casco y las piezas crema se tiñen de magenta; junto a los cristales,
+  de violeta.
+- **Sombra proyectada** con la dirección del sol del mundo: un segundo plano con el frame actual,
+  girado de cara al sol (un plano de cara a la cámara casi no proyecta con el sol de lado), invisible en la
+  pasada de color y con material de profundidad con alpha test. **Oclusión de contacto**: elipse oscura
+  bajo los pies que se encoge y aclara con la altura del salto.
+- **Profundidad**: alpha test (alfa < 0.5 se descarta) y escritura de profundidad → los arcos, raíces,
+  cristales y hongos que están delante lo tapan (se ve en las capturas: cristal y hongo delante del cuerpo).
+- **Pies a la altura del terreno** con un resorte de 0.1 s: en un escalón de 0.5 la altura pasa
+  1 → 1.18 → 1.47 → 1.5 (medido en `tests/stage2_checks.mjs`).
+- **Color**: mismo render a baja resolución y mismo posterizado que la escena (mismo tamaño de píxel);
+  niebla del mundo; la luz se tiñe con la saturación algo contenida y los medios tonos se enfrían un poco
+  (sombras hacia violeta), sin tocar negros ni altas luces.
+- **Interacción**: ondas en los charquitos en cada pisada (fase 0 y 0.5 del ciclo) y cada 1.4 s en reposo;
+  esporas que se apartan; hierba y tallos que se doblan al pasar (vertex shader con `uPlayer`); polvo
+  luminoso y ondas al aterrizar.
+- **Rotación de cámara en pasos de 90°**: la dirección se calcula respecto al azimut objetivo de la cámara
+  y al girar el índice mostrado salta 2 posiciones (medido: 1 → 3 → 5 → vuelta a 1).
+
+| Problema | Corrección |
+|---|---|
+| Personaje casi negro | En r128 sin luces físicas la irradiancia neta es color·intensidad (se multiplica y divide por π): sobraba mi división por π. |
+| El crema se volvía gris azulado | Tinte de las luces con saturación al 60 % y corrección de color al 60 %; ganancia 1.12. |
+| La luz del árbol-corazón lo dejaba turbio | Aporte difuso de las puntuales al 70 %. |
+| No proyectaba sombra | En r128 la pasada de sombras dibuja las caras traseras de los materiales de una cara; el proyector pasa a doble cara. |
+| Ondas casi invisibles sobre el agua clara | Anillo más grueso, más claro y más opaco. |
+| Pegatina de comparación mal escalada | La altura en pantalla ya viene proyectada; sobraba el cos(elevación). |
