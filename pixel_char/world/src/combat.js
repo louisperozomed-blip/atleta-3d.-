@@ -85,6 +85,7 @@
     s.m.position.set(x, y, z); s.m.material.color.setHex(color || 0xffffff); s.t = 0; s.dur = dur || 0.15; s.size = size; s.m.visible = true;
     s.m.material.rotation = Math.random() * Math.PI;
   }
+  W.combatStar = function (x, y, z, size, color, dur) { star(x, y, z, size, color, dur); };
   function updateStars(dt) {
     for (const s of stars) {
       if (!s.m.visible) continue;
@@ -230,9 +231,9 @@
       #stP{background:#9fd7a8!important}#ebars{position:absolute;pointer-events:none;transform:translate(-50%,-100%);display:none;text-align:center}
       #ebars .bb{width:70px;height:5px;margin:2px auto}#ebars .en{font-size:6px;color:#9fe8ff;margin-bottom:2px}
       #hpE{background:#c9483a!important}#poE{background:#ffd27a!important;left:auto!important;right:50%!important;transform:translateX(50%)}
-      #ebars.stun .en{color:#fff3b0}#cbars.low #hpP{background:#ff4a3a!important}`;
+      #ebars.stun .en{color:#fff3b0}#respawn{display:none}#respawn.hot{display:inline-block;background:#6a2a1a!important;border-color:#ff9a5a!important}#cbars.low #hpP{background:#ff4a3a!important}`;
     document.head.appendChild(css);
-    return { hpP: el.querySelector("#hpP"), stP: el.querySelector("#stP"), box: el, foe, hpE: foe.querySelector("#hpE"), poE: foe.querySelector("#poE") };
+    return { hpP: el.querySelector("#hpP"), stP: el.querySelector("#stP"), box: el, foe, hpE: foe.querySelector("#hpE"), poE: foe.querySelector("#poE"), en: foe.querySelector(".en") };
   }
   function updateHud() {
     if (!hud) return;
@@ -248,6 +249,8 @@
     hud.hpE.style.width = (100 * e.hp / e.hpMax).toFixed(1) + "%";
     hud.poE.style.width = (100 * e.post / e.postMax).toFixed(1) + "%";
     hud.foe.classList.toggle("stun", e.stunned);
+    const lbl = e.stunned ? "ATURDIDO" : !e.alive ? "ECO ✕" : "ECO";
+    if (hud.en.textContent !== lbl) hud.en.textContent = lbl;
     hud.foe.style.opacity = e.alive ? 1 : 0.35;
   }
 
@@ -259,11 +262,12 @@
     W.pf = W.addFighter(new W.Fighter(W.player, { team: "player", name: "jugador", hp: 100, stamina: 100 }), W.character);
     hud = makeHud();
     W.assets = assets;
-    // el eco aparece en el claro junto al inicio (2, -9: 4 u de suelo libre y llano alrededor)
+    // el eco aparece en el claro junto al inicio (a ~4.9 u; 4 u de suelo libre y llano alrededor)
     const p = W.player;
-    const s = W.findSpot(2.2, -9.4, p.y);
+    const s = W.findSpot(2.8, -10.2, p.y);
     W.foeSpawn = s;
     if (W.spawnFoe && s) W.foe = W.spawnFoe(s.x, s.z, assets, { heading: Math.atan2(p.z - s.z, p.x - s.x) });
+    if (W.initFoeUI) W.initFoeUI();
   };
   // punto libre (sin obstáculo ni agua, al nivel h) más cercano a (x, z)
   W.findSpot = function (x, z, h) {

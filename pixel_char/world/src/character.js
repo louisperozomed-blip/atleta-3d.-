@@ -132,9 +132,16 @@
         vec3 base = c.rgb;
         if (uEcho > 0.5) {
           // eco: los mismos dibujos en tonos fríos (cian y gris); el negro del visor se queda oscuro
+          // por materiales: crema/dorado -> gris cian claro, bordado naranja -> cian vivo, tela verde ->
+          // pizarra oscura, negro -> azul noche; se conserva la luminancia (el sombreado pintado)
           float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
-          vec3 cold = mix(vec3(0.05, 0.08, 0.11), vec3(0.62, 0.86, 0.92), smoothstep(0.02, 0.9, l));
-          c.rgb = mix(cold, cold * vec3(0.8, 0.95, 1.05) + vec3(0.0, 0.05, 0.08), 0.5);
+          float warm = clamp((c.r - c.b) * 2.2, 0.0, 1.0), sat = clamp((max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b))) * 1.8, 0.0, 1.0);
+          float cloth = clamp((c.g - c.r) * 4.0, 0.0, 1.0);
+          vec3 grey = mix(vec3(0.04, 0.06, 0.09), vec3(0.74, 0.86, 0.9), smoothstep(0.02, 0.92, l));
+          vec3 acc = vec3(0.25, 0.8, 0.95) * (0.35 + 1.1 * l);
+          vec3 slate = vec3(0.16, 0.22, 0.27) * (0.5 + 1.6 * l);
+          c.rgb = mix(grey, acc, warm * sat * smoothstep(0.25, 0.6, sat) * (1.0 - smoothstep(0.75, 0.95, l)));
+          c.rgb = mix(c.rgb, slate, cloth);
         }
         vec3 V = vec3(0.0, 0.0, 1.0);                             // cámara ortográfica
         float shin = mix(8.0, 56.0, sm);

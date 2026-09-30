@@ -36,6 +36,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     <button id="walk" aria-label="Variante del paso">andar E</button>
 <button id="snd" aria-pressed="true" aria-label="Sonido de pasos">sonido</button>
 <button id="guard" class="big" aria-pressed="false" aria-label="Guardia: tocar para desviar, mantener para bloquear">GUARDIA</button>
+<button id="respawn" aria-label="Reaparecer">REAPARECER</button>
 
     <button id="jump" class="big" aria-label="Saltar">SALTAR</button>
   </div>
@@ -3087,9 +3088,16 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         vec3 base = c.rgb;
         if (uEcho > 0.5) {
           // eco: los mismos dibujos en tonos fríos (cian y gris); el negro del visor se queda oscuro
+          // por materiales: crema/dorado -> gris cian claro, bordado naranja -> cian vivo, tela verde ->
+          // pizarra oscura, negro -> azul noche; se conserva la luminancia (el sombreado pintado)
           float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
-          vec3 cold = mix(vec3(0.05, 0.08, 0.11), vec3(0.62, 0.86, 0.92), smoothstep(0.02, 0.9, l));
-          c.rgb = mix(cold, cold * vec3(0.8, 0.95, 1.05) + vec3(0.0, 0.05, 0.08), 0.5);
+          float warm = clamp((c.r - c.b) * 2.2, 0.0, 1.0), sat = clamp((max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b))) * 1.8, 0.0, 1.0);
+          float cloth = clamp((c.g - c.r) * 4.0, 0.0, 1.0);
+          vec3 grey = mix(vec3(0.04, 0.06, 0.09), vec3(0.74, 0.86, 0.9), smoothstep(0.02, 0.92, l));
+          vec3 acc = vec3(0.25, 0.8, 0.95) * (0.35 + 1.1 * l);
+          vec3 slate = vec3(0.16, 0.22, 0.27) * (0.5 + 1.6 * l);
+          c.rgb = mix(grey, acc, warm * sat * smoothstep(0.25, 0.6, sat) * (1.0 - smoothstep(0.75, 0.95, l)));
+          c.rgb = mix(c.rgb, slate, cloth);
         }
         vec3 V = vec3(0.0, 0.0, 1.0);                             // cámara ortográfica
         float shin = mix(8.0, 56.0, sm);
@@ -3893,6 +3901,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     s.m.position.set(x, y, z); s.m.material.color.setHex(color || 0xffffff); s.t = 0; s.dur = dur || 0.15; s.size = size; s.m.visible = true;
     s.m.material.rotation = Math.random() * Math.PI;
   }
+  W.combatStar = function (x, y, z, size, color, dur) { star(x, y, z, size, color, dur); };
   function updateStars(dt) {
     for (const s of stars) {
       if (!s.m.visible) continue;
@@ -4038,9 +4047,9 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       #stP{background:#9fd7a8!important}#ebars{position:absolute;pointer-events:none;transform:translate(-50%,-100%);display:none;text-align:center}
       #ebars .bb{width:70px;height:5px;margin:2px auto}#ebars .en{font-size:6px;color:#9fe8ff;margin-bottom:2px}
       #hpE{background:#c9483a!important}#poE{background:#ffd27a!important;left:auto!important;right:50%!important;transform:translateX(50%)}
-      #ebars.stun .en{color:#fff3b0}#cbars.low #hpP{background:#ff4a3a!important}`;
+      #ebars.stun .en{color:#fff3b0}#respawn{display:none}#respawn.hot{display:inline-block;background:#6a2a1a!important;border-color:#ff9a5a!important}#cbars.low #hpP{background:#ff4a3a!important}`;
     document.head.appendChild(css);
-    return { hpP: el.querySelector("#hpP"), stP: el.querySelector("#stP"), box: el, foe, hpE: foe.querySelector("#hpE"), poE: foe.querySelector("#poE") };
+    return { hpP: el.querySelector("#hpP"), stP: el.querySelector("#stP"), box: el, foe, hpE: foe.querySelector("#hpE"), poE: foe.querySelector("#poE"), en: foe.querySelector(".en") };
   }
   function updateHud() {
     if (!hud) return;
@@ -4056,6 +4065,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     hud.hpE.style.width = (100 * e.hp / e.hpMax).toFixed(1) + "%";
     hud.poE.style.width = (100 * e.post / e.postMax).toFixed(1) + "%";
     hud.foe.classList.toggle("stun", e.stunned);
+    const lbl = e.stunned ? "ATURDIDO" : !e.alive ? "ECO ✕" : "ECO";
+    if (hud.en.textContent !== lbl) hud.en.textContent = lbl;
     hud.foe.style.opacity = e.alive ? 1 : 0.35;
   }
 
@@ -4067,11 +4078,12 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     W.pf = W.addFighter(new W.Fighter(W.player, { team: "player", name: "jugador", hp: 100, stamina: 100 }), W.character);
     hud = makeHud();
     W.assets = assets;
-    // el eco aparece en el claro junto al inicio (2, -9: 4 u de suelo libre y llano alrededor)
+    // el eco aparece en el claro junto al inicio (a ~4.9 u; 4 u de suelo libre y llano alrededor)
     const p = W.player;
-    const s = W.findSpot(2.2, -9.4, p.y);
+    const s = W.findSpot(2.8, -10.2, p.y);
     W.foeSpawn = s;
     if (W.spawnFoe && s) W.foe = W.spawnFoe(s.x, s.z, assets, { heading: Math.atan2(p.z - s.z, p.x - s.x) });
+    if (W.initFoeUI) W.initFoeUI();
   };
   // punto libre (sin obstáculo ni agua, al nivel h) más cercano a (x, z)
   W.findSpot = function (x, z, h) {
@@ -4101,12 +4113,21 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
 
 </script>
 <script>/* enemy.js */
-// enemy.js — el "eco": un segundo personaje con las mismas animaciones (recoloreadas en frío, visor
-// brillante) que usa la misma máquina de estados de combate (fighter.js).
+// enemy.js — el "eco": un segundo personaje con las mismas animaciones (recoloreadas en tonos fríos, visor y
+// cuchilla cian que brillan) y la misma máquina de estados de combate (fighter.js).
+//
+// IA: dormido junto a su claro hasta que el jugador se acerca (4.5 u) o le ataca; entonces persigue con A*
+// (re-planifica cada 0.35 s; corre si está lejos), se detiene a distancia de golpe y ataca: attack1 (a veces
+// encadena attack2) o attack3 (el salto, sobre todo si el jugador está a media distancia). Su preparación es más
+// lenta que la del jugador (×1.7) y antes de cada golpe da un DESTELLO DE AVISO (visor y cuerpo se encienden,
+// chispa en la cabeza y un tono: cian = golpe normal, naranja = attack3 pesado) para poder leerlo y desviarlo.
+// Tras atacar retrocede un poco y espera 0.9-1.6 s. Aturdido al perder la postura (fighter.js). Si se aleja más
+// de 14 u de su claro, vuelve. Botón REAPARECER (y el jugador, si ha muerto).
 (function () {
   "use strict";
   const W = (window.W = window.W || {});
   const foes = (W.foes = []);
+  const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
 
   W.spawnFoe = function (x, z, assets, opts) {
     opts = opts || {};
@@ -4115,19 +4136,124 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     body.ch = ch;
     const f = W.addFighter(new W.Fighter(body, { team: "foe", name: "eco", hp: 120, stamina: 100, posture: 100, prepK: opts.prepK || 1.7 }), ch);
     f.dmgK = opts.dmgK || 1.3;
-    f.home = { x, z };
-    f.ai = opts.ai === false ? null : (W.makeFoeAI ? W.makeFoeAI(f) : null);
-    body.heading = opts.heading != null ? opts.heading : -Math.PI / 2;
+    f.home = { x, z, heading: opts.heading != null ? opts.heading : -Math.PI / 2 };
+    body.heading = f.home.heading;
+    f.ai = opts.ai === false ? null : W.makeFoeAI(f);
     foes.push(f);
     return f;
   };
+
+  W.makeFoeAI = function (f) {
+    const ai = {
+      enabled: true, state: "dormant", t: 0, replan: 0, cool: 0.6, warnT: -1, warnKind: "", backT: 0, strafe: 1,
+      rand: (() => { let s = 12345; return () => ((s = (s * 16807) % 2147483647) / 2147483647); })(),   // determinista
+      update(dt) {
+        const b = f.body, p = W.pf;
+        this.t += dt;
+        // destello de aviso (decae en 0.3 s)
+        if (this.warnT >= 0) { this.warnT += dt; if (this.warnT > 0.32) this.warnT = -1; }
+        f.ch.uniforms.uWarn.value = this.warnT >= 0 ? Math.sin(Math.min(1, this.warnT / 0.32) * Math.PI) * (this.warnKind === "heavy" ? 1.2 : 1) : 0;
+        if (!this.enabled || !f.alive || !p) return;
+        if (f.act) {
+          // combo del eco: a veces encadena attack1 → attack2
+          if (f.act.name === "attack1" && f.act.f === 3 && this.chain && !f.act.chain) { f.input("attack", { dir: b.heading }); this.chain = false; }
+          return;
+        }
+        const dx = p.body.x - b.x, dz = p.body.z - b.z, d = Math.hypot(dx, dz), toP = Math.atan2(dz, dx);
+        const fromHome = Math.hypot(b.x - f.home.x, b.z - f.home.z);
+        if (!p.alive) { this.goHome(); return; }
+        if (this.state === "dormant") {
+          if (d < 4.5 || f.hp < f.hpMax) { this.state = "chase"; this.cool = 0.5; }
+          else { b.heading += norm(f.home.heading - b.heading) * Math.min(1, dt * 3); return; }
+        }
+        if (this.state === "home") {
+          if (fromHome < 0.6) { this.state = "dormant"; b.stop(); return; }
+          if (d < 5 && fromHome < 10) this.state = "chase";
+          else { this.goHome(); return; }
+        }
+        if (fromHome > 14) { this.state = "home"; this.goHome(); return; }
+        this.cool -= dt;
+        // de cara al jugador cuando está cerca
+        if (d < 3.5) b.heading += norm(toP - b.heading) * Math.min(1, dt * 8);
+        if (this.cool <= 0 && d <= 2.4 && (!p.act || p.act.name !== "death")) {
+          // ataque: attack3 (salto) a media distancia o a veces de cerca; attack1 (+ attack2) si no
+          b.stop(); b.heading = toP;
+          const heavy = d > 1.75 ? this.rand() < 0.7 : this.rand() < 0.25;
+          this.chain = !heavy && this.rand() < 0.35;
+          if (heavy) f.startAttack("attack3", { dir: toP }); else f.input("attack", { dir: toP });
+          this.cool = 0.9 + this.rand() * 0.7 + (heavy ? 0.4 : 0);
+          this.backT = 0.5;
+          return;
+        }
+        if (this.backT > 0 && d < 1.9) {
+          // se aparta un poco tras golpear (y rodea al jugador)
+          this.backT -= dt;
+          const a = toP + Math.PI + this.strafe * 0.6;
+          b.gait = "walk"; b.following = false;
+          b.path = [{ x: b.x + Math.cos(a) * 0.8, z: b.z + Math.sin(a) * 0.8 }];
+          return;
+        }
+        if (d > 1.75) {
+          // persecución por A*
+          this.replan -= dt;
+          if (this.replan <= 0 || !b.path.length) {
+            this.replan = 0.35;
+            const tx = p.body.x - Math.cos(toP) * 1.45, tz = p.body.z - Math.sin(toP) * 1.45;
+            const path = W.findPath(b.x, b.z, tx, tz, 9000);
+            if (path.length) { b.setPath(path, { noDelay: true }); b.gait = d > 5 ? "run" : "walk"; }
+          }
+        } else if (b.path.length) b.stop();
+      },
+      goHome() {
+        const b = f.body;
+        this.replan -= 1 / 60;
+        if (this.replan <= 0 || !b.path.length) {
+          this.replan = 0.5;
+          const path = W.findPath(b.x, b.z, f.home.x, f.home.z, 12000);
+          if (path.length) b.setPath(path, { noDelay: true });
+        }
+        this.state = "home";
+      },
+    };
+    return ai;
+  };
+
+  // aviso antes de cada golpe del eco: al empezar WIND UP (o LEAP)
+  const prevExtra = W.onCombatFrameExtra;
+  W.onCombatFrameExtra = function (f, a) {
+    if (prevExtra) prevExtra(f, a);
+    if (f.team !== "foe" || !f.ai) return;
+    if (a.name.startsWith("attack") && a.f === 1) {
+      f.ai.warnT = 0; f.ai.warnKind = a.name === "attack3" ? "heavy" : "light";
+      if (W.combatStar) W.combatStar(f.body.x, f.body.y + W.CHAR_H * 0.92, f.body.z, a.name === "attack3" ? 0.9 : 0.7, a.name === "attack3" ? 0xffa050 : 0x9ff4ff, 0.3);
+      if (W.sfx) W.sfx.combat("warn");
+      W.combatLog.push({ ev: "warn", who: f.name, anim: a.name, t: +W.U.uTime.value.toFixed(3) });
+    }
+  };
+
   W.updateFoes = function (dt, theta, thetaT) {
     for (const f of foes) {
-      if (f.ai && dt > 0) f.ai.update(dt);
+      if (f.ai) f.ai.update(dt);
       f.update(dt);
       f.body.update(dt);
       f.ch.update(dt, f.body, theta, thetaT);
     }
+    // botón REAPARECER: visible si el eco o el jugador han muerto
+    const rb = document.getElementById("respawn");
+    if (rb) {
+      const need = foes.some((f) => !f.alive) || (W.pf && !W.pf.alive);
+      if (rb._shown !== need) { rb._shown = need; rb.classList.toggle("hot", need); }
+    }
+  };
+  W.respawnAll = function () {
+    for (const f of foes) { f.respawn(f.home.x, f.home.z); f.body.heading = f.home.heading; if (f.ai) { f.ai.state = "dormant"; f.ai.cool = 0.6; f.ai.warnT = -1; } }
+    const p = W.pf;
+    if (p && !p.alive) p.respawn();
+    W.combatLog.push({ ev: "respawn", t: +W.U.uTime.value.toFixed(3) });
+  };
+  W.initFoeUI = function () {
+    const rb = document.getElementById("respawn");
+    if (rb) rb.addEventListener("click", (e) => { e.stopPropagation(); W.respawnAll(); });
   };
 })();
 

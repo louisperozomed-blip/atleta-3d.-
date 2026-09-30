@@ -496,3 +496,27 @@ Espacio → esquiva, L → salto, clic en el eco a 1.6 u → ataque, a 6 u → s
 → parry y mantenido → block, y deslizar derecha/arriba/izquierda/abajo → esquiva hacia allí (+155, −56, −155,
 +70 px en pantalla). Nota de las pruebas: con SwiftShader los eventos táctiles sueltos se procesan con segundos
 de retraso (el gesto parecía durar 3.6 s y arrancaba el seguimiento); los eventos de cada gesto se envían juntos.
+
+## Etapa 5 — Enemigo de prueba: el eco
+`src/enemy.js` (+ tinte en `character.js`, botón en `buttons.html`):
+
+- **Aspecto**: las mismas animaciones y hojas que el jugador, recoloreadas en el shader por materiales
+  conservando la luminancia (el sombreado pintado): crema y dorado → gris cian claro, bordado naranja → cian
+  vivo, tela verde → pizarra oscura, negro → azul noche. Visor con brillo cian propio, cuchilla con emisión cian,
+  silueta oculta con trama fría (la del jugador es cálida).
+- **IA**: dormido en su claro (aparece a 4.9 u del inicio) hasta que el jugador se acerca a 4.5 u o le ataca;
+  persigue con A* (re-planifica cada 0.35 s, corre si está a más de 5 u), se para a distancia de golpe, gira
+  hacia el jugador y ataca: attack3 (salto) sobre todo a media distancia, attack1 si no (35 % encadena attack2).
+  Su preparación es 1.7 veces más lenta que la del jugador y al empezar cada golpe da un **destello de aviso**
+  (cuerpo y visor se encienden, chispa en la cabeza y un tono; cian = golpe normal, naranja = attack3). Tras
+  golpear se aparta rodeando al jugador y espera 0.9-1.6 s (+0.4 tras attack3). A más de 14 u de su claro, vuelve.
+  Números aleatorios deterministas (pruebas repetibles).
+- **Aturdido** al llenarse la postura (2.4 s, etiqueta ATURDIDO sobre sus barras); golpearlo entonces es un
+  remate (×3, mínimo 40).
+- **REAPARECER**: el botón se ilumina cuando el eco (o el jugador) ha muerto; lo devuelve a su claro con la vida
+  llena y dormido (y al jugador, si había muerto).
+
+Comprobado en el navegador: al cargar está dormido a 4.88 u; al acercarse despierta, persigue (4.5 → 1.6 u) y
+ataca con aviso antes de cada golpe (warn:attack3 → hit, warn:attack1 → hit, warn:attack2 → hit); tres parries a
+~110 ms del impacto → postura 48 → 77 → 100 → aturdido; remate de 40; muerto → REAPARECER encendido → vuelve a
+su claro con 120 de vida.
