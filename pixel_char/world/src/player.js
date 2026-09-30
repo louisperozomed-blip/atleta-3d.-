@@ -126,15 +126,21 @@
         this.speed += clamp(vWanted - this.speed, -decel * 1.6 * dt, accel * dt);
         this.speed = Math.max(0, this.speed);
         let step = Math.min(this.speed * dt, d);
-        const moved = this.tryMove(Math.cos(this.heading) * step, Math.sin(this.heading) * step);
-        if (!moved && step > 0) this.stuck = (this.stuck || 0) + dt; else this.stuck = 0;
-        if (this.stuck > 0.35) {
+        this.tryMove(Math.cos(this.heading) * step, Math.sin(this.heading) * step);
+        // atasco = no acercarse al punto de paso actual durante 0.45 s (deslizarse a lo largo de un borde
+        // mientras avanza no lo es: antes contaba como atasco y a los 3 re-planeos se rendía a medio camino)
+        const dq = Math.hypot(q.x - this.x, q.z - this.z);
+        if (this._wp !== q || this._bestD == null) { this._wp = q; this._bestD = dq; this.stuck = 0; }
+        else if (dq < this._bestD - 0.015) { this._bestD = dq; this.stuck = 0; }
+        else if (step > 0) this.stuck = (this.stuck || 0) + dt;
+        if (this.stuck > 0.45) {
           // atascado (al cortar una esquina): re-planifica desde aquí hasta el destino; tras 3 intentos se rinde
-          this.stuck = 0;
+          this.stuck = 0; this._bestD = null;
           const goal = this.path[this.path.length - 1];
           this.replans = (this.replans || 0) + 1;
           if (this.replans <= 3 && W.findPath) {
-            const np = W.findPath(this.x, this.z, goal.x, goal.z);
+            // al atascarse, camino sin suavizar: los centros de celda de A* ya respetan desniveles y esquinas
+            const np = W.findPath(this.x, this.z, goal.x, goal.z, undefined, { raw: true });
             if (np.length) { this.path = np; this.speed *= 0.5; } else this.path = [];
           } else { this.path = []; }
         }

@@ -64,7 +64,7 @@
   let gBuf = null, fromBuf = null, stamp = null, stampN = 0;
 
   // Devuelve [{x,z}...] desde (x0,z0) hasta (x1,z1) o hasta el punto alcanzable más cercano
-  W.findPath = function (x0, z0, x1, z1, maxNodes) {
+  W.findPath = function (x0, z0, x1, z1, maxNodes, opts) {
     if (!near) prepare();
     const n = W.NAV.n, N = n * n;
     if (!gBuf) { gBuf = new Float32Array(N); fromBuf = new Int32Array(N); stamp = new Uint32Array(N); }
@@ -104,7 +104,8 @@
     let pts = cells.map((i) => ({ x: toW((i / n) | 0), z: toW(i % n) }));
     // el último punto: el destino exacto si era libre y alcanzado
     if (bestI === ti && exactGoal) pts[pts.length - 1] = { x: x1, z: z1 };
-    pts = W.smoothPath({ x: x0, z: z0 }, pts);
+    // sin suavizar (opts.raw): de centro de celda en centro de celda, para salir de un atasco
+    if (!(opts && opts.raw)) pts = W.smoothPath({ x: x0, z: z0 }, pts);
     pts.reached = bestI === ti;
     pts.exact = bestI === ti && exactGoal;
     return pts;
@@ -114,10 +115,19 @@
   W.lineClear = function (a, b) {
     const d = Math.hypot(b.x - a.x, b.z - a.z), steps = Math.max(1, Math.ceil(d / 0.2));
     const r = (W.PLAYER_PARAMS ? W.PLAYER_PARAMS.radius : 0.28), nx = -(b.z - a.z) / (d || 1), nz = (b.x - a.x) / (d || 1);
+    // el borde del cuerpo en la dirección de avance: la misma comprobación que hace player.tryMove
+    // (si no, el camino suavizado cortaba esquinas de baldosas con 1 u de desnivel y se atascaba)
+    const hx = Math.sign(b.x - a.x) * r, hz = Math.sign(b.z - a.z) * r;
+    // y en una franja estrecha a ambos lados de la línea: si pasa justo por la esquina de 4 baldosas, el
+    // personaje real (que gira con suavidad) se desvía unos cm y puede pisar la del desnivel
+    const band = [-0.12, 0, 0.12];
     let px = a.x, pz = a.z;
     for (let k = 1; k <= steps; k++) {
       const x = a.x + (b.x - a.x) * k / steps, z = a.z + (b.z - a.z) * k / steps;
-      if (!W.canStep(px, pz, x, z)) return false;
+      for (const o of band) {
+        const qx = x + nx * o, qz = z + nz * o, qpx = px + nx * o, qpz = pz + nz * o;
+        if (!W.canStep(qpx, qpz, qx, qz) || !W.canStep(qpx, qpz, qx + hx, qz + hz) || !W.canStep(qx, qz, qx + hx, qz + hz)) return false;
+      }
       if (!W.cellFree(x + nx * r, z + nz * r) || !W.cellFree(x - nx * r, z - nz * r)) return false;
       px = x; pz = z;
     }
