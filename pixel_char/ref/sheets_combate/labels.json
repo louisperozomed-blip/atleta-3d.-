@@ -1,0 +1,827 @@
+{
+ "source": "Leído visualmente de las etiquetas de cada hoja (título, rótulo de dirección a la izquierda de cada fila y texto bajo cada frame). Todas las filas coinciden con el orden por defecto; ninguna hoja lo cambia.",
+ "format": {
+  "size": [
+   1225,
+   1284
+  ],
+  "rows": 4,
+  "frames_per_row": 6
+ },
+ "animations": {
+  "attack1": [
+   "ANTICIPATION",
+   "WIND UP",
+   "SWING",
+   "IMPACT",
+   "FOLLOW THROUGH",
+   "RECOVERY"
+  ],
+  "attack2": [
+   "ANTICIPATION",
+   "WIND UP",
+   "SWING",
+   "IMPACT",
+   "FOLLOW THROUGH",
+   "RECOVERY"
+  ],
+  "attack3": [
+   "ANTICIPATION",
+   "LEAP",
+   "OVERHEAD",
+   "IMPACT",
+   "FOLLOW THROUGH",
+   "RECOVERY"
+  ],
+  "parry": [
+   "GUARD UP",
+   "DEFLECT",
+   "SPARK",
+   "PUSH BACK",
+   "READY",
+   "RECOVERY"
+  ],
+  "block": [
+   "RAISE",
+   "HOLD",
+   "HOLD",
+   "IMPACT",
+   "HOLD",
+   "LOWER"
+  ],
+  "dodge": [
+   "CROUCH",
+   "PUSH OFF",
+   "DASH",
+   "DASH",
+   "LANDING",
+   "RECOVERY"
+  ],
+  "hit": [
+   "IMPACT",
+   "RECOIL",
+   "STAGGER",
+   "STAGGER",
+   "RECOVER",
+   "READY"
+  ],
+  "death": [
+   "HIT",
+   "STAGGER",
+   "KNEES",
+   "COLLAPSE",
+   "DOWN",
+   "DOWN"
+  ]
+ },
+ "sheets": {
+  "attack1_1": {
+   "anim": "attack1",
+   "title": "ATTACK 1",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "NE": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "E": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "SE": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ]
+   }
+  },
+  "attack1_2": {
+   "anim": "attack1",
+   "title": "ATTACK 1",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "SW": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "W": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "NW": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ]
+   }
+  },
+  "attack2_1": {
+   "anim": "attack2",
+   "title": "ATTACK 2",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "NE": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "E": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "SE": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ]
+   }
+  },
+  "attack2_2": {
+   "anim": "attack2",
+   "title": "ATTACK 2",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "SW": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "W": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "NW": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ]
+   }
+  },
+  "attack3_1": {
+   "anim": "attack3",
+   "title": "ATTACK 3",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "ANTICIPATION",
+     "LEAP",
+     "OVERHEAD",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "NE": [
+     "ANTICIPATION",
+     "LEAP",
+     "OVERHEAD",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "E": [
+     "ANTICIPATION",
+     "LEAP",
+     "OVERHEAD",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "SE": [
+     "ANTICIPATION",
+     "LEAP",
+     "OVERHEAD",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ]
+   }
+  },
+  "attack3_2": {
+   "anim": "attack3",
+   "title": "ATTACK 3",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "ANTICIPATION",
+     "LEAP",
+     "OVERHEAD",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "SW": [
+     "ANTICIPATION",
+     "LEAP",
+     "OVERHEAD",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "W": [
+     "ANTICIPATION",
+     "LEAP",
+     "OVERHEAD",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "NW": [
+     "ANTICIPATION",
+     "LEAP",
+     "OVERHEAD",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ]
+   }
+  },
+  "parry_1": {
+   "anim": "parry",
+   "title": "PARRY",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "GUARD UP",
+     "DEFLECT",
+     "SPARK",
+     "PUSH BACK",
+     "READY",
+     "RECOVERY"
+    ],
+    "NE": [
+     "GUARD UP",
+     "DEFLECT",
+     "SPARK",
+     "PUSH BACK",
+     "READY",
+     "RECOVERY"
+    ],
+    "E": [
+     "GUARD UP",
+     "DEFLECT",
+     "SPARK",
+     "PUSH BACK",
+     "READY",
+     "RECOVERY"
+    ],
+    "SE": [
+     "GUARD UP",
+     "DEFLECT",
+     "SPARK",
+     "PUSH BACK",
+     "READY",
+     "RECOVERY"
+    ]
+   }
+  },
+  "parry_2": {
+   "anim": "parry",
+   "title": "PARRY",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "GUARD UP",
+     "DEFLECT",
+     "SPARK",
+     "PUSH BACK",
+     "READY",
+     "RECOVERY"
+    ],
+    "SW": [
+     "GUARD UP",
+     "DEFLECT",
+     "SPARK",
+     "PUSH BACK",
+     "READY",
+     "RECOVERY"
+    ],
+    "W": [
+     "GUARD UP",
+     "DEFLECT",
+     "SPARK",
+     "PUSH BACK",
+     "READY",
+     "RECOVERY"
+    ],
+    "NW": [
+     "GUARD UP",
+     "DEFLECT",
+     "SPARK",
+     "PUSH BACK",
+     "READY",
+     "RECOVERY"
+    ]
+   }
+  },
+  "block_1": {
+   "anim": "block",
+   "title": "BLOCK",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "RAISE",
+     "HOLD",
+     "HOLD",
+     "IMPACT",
+     "HOLD",
+     "LOWER"
+    ],
+    "NE": [
+     "RAISE",
+     "HOLD",
+     "HOLD",
+     "IMPACT",
+     "HOLD",
+     "LOWER"
+    ],
+    "E": [
+     "RAISE",
+     "HOLD",
+     "HOLD",
+     "IMPACT",
+     "HOLD",
+     "LOWER"
+    ],
+    "SE": [
+     "RAISE",
+     "HOLD",
+     "HOLD",
+     "IMPACT",
+     "HOLD",
+     "LOWER"
+    ]
+   }
+  },
+  "block_2": {
+   "anim": "block",
+   "title": "BLOCK",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "RAISE",
+     "HOLD",
+     "HOLD",
+     "IMPACT",
+     "HOLD",
+     "LOWER"
+    ],
+    "SW": [
+     "RAISE",
+     "HOLD",
+     "HOLD",
+     "IMPACT",
+     "HOLD",
+     "LOWER"
+    ],
+    "W": [
+     "RAISE",
+     "HOLD",
+     "HOLD",
+     "IMPACT",
+     "HOLD",
+     "LOWER"
+    ],
+    "NW": [
+     "RAISE",
+     "HOLD",
+     "HOLD",
+     "IMPACT",
+     "HOLD",
+     "LOWER"
+    ]
+   }
+  },
+  "dodge_1": {
+   "anim": "dodge",
+   "title": "DODGE",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "CROUCH",
+     "PUSH OFF",
+     "DASH",
+     "DASH",
+     "LANDING",
+     "RECOVERY"
+    ],
+    "NE": [
+     "CROUCH",
+     "PUSH OFF",
+     "DASH",
+     "DASH",
+     "LANDING",
+     "RECOVERY"
+    ],
+    "E": [
+     "CROUCH",
+     "PUSH OFF",
+     "DASH",
+     "DASH",
+     "LANDING",
+     "RECOVERY"
+    ],
+    "SE": [
+     "CROUCH",
+     "PUSH OFF",
+     "DASH",
+     "DASH",
+     "LANDING",
+     "RECOVERY"
+    ]
+   }
+  },
+  "dodge_2": {
+   "anim": "dodge",
+   "title": "DODGE",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "CROUCH",
+     "PUSH OFF",
+     "DASH",
+     "DASH",
+     "LANDING",
+     "RECOVERY"
+    ],
+    "SW": [
+     "CROUCH",
+     "PUSH OFF",
+     "DASH",
+     "DASH",
+     "LANDING",
+     "RECOVERY"
+    ],
+    "W": [
+     "CROUCH",
+     "PUSH OFF",
+     "DASH",
+     "DASH",
+     "LANDING",
+     "RECOVERY"
+    ],
+    "NW": [
+     "CROUCH",
+     "PUSH OFF",
+     "DASH",
+     "DASH",
+     "LANDING",
+     "RECOVERY"
+    ]
+   }
+  },
+  "hit_1": {
+   "anim": "hit",
+   "title": "HIT",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "IMPACT",
+     "RECOIL",
+     "STAGGER",
+     "STAGGER",
+     "RECOVER",
+     "READY"
+    ],
+    "NE": [
+     "IMPACT",
+     "RECOIL",
+     "STAGGER",
+     "STAGGER",
+     "RECOVER",
+     "READY"
+    ],
+    "E": [
+     "IMPACT",
+     "RECOIL",
+     "STAGGER",
+     "STAGGER",
+     "RECOVER",
+     "READY"
+    ],
+    "SE": [
+     "IMPACT",
+     "RECOIL",
+     "STAGGER",
+     "STAGGER",
+     "RECOVER",
+     "READY"
+    ]
+   }
+  },
+  "hit_2": {
+   "anim": "hit",
+   "title": "HIT",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "IMPACT",
+     "RECOIL",
+     "STAGGER",
+     "STAGGER",
+     "RECOVER",
+     "READY"
+    ],
+    "SW": [
+     "IMPACT",
+     "RECOIL",
+     "STAGGER",
+     "STAGGER",
+     "RECOVER",
+     "READY"
+    ],
+    "W": [
+     "IMPACT",
+     "RECOIL",
+     "STAGGER",
+     "STAGGER",
+     "RECOVER",
+     "READY"
+    ],
+    "NW": [
+     "IMPACT",
+     "RECOIL",
+     "STAGGER",
+     "STAGGER",
+     "RECOVER",
+     "READY"
+    ]
+   }
+  },
+  "death_1": {
+   "anim": "death",
+   "title": "DEATH",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ],
+    "NE": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ],
+    "E": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ],
+    "SE": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ]
+   }
+  },
+  "death_2": {
+   "anim": "death",
+   "title": "DEATH",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ],
+    "SW": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ],
+    "W": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ],
+    "NW": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ]
+   }
+  },
+  "death_2_alt": {
+   "anim": "death",
+   "title": "DEATH",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ],
+    "SW": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ],
+    "W": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ],
+    "NW": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ]
+   }
+  }
+ }
+}
