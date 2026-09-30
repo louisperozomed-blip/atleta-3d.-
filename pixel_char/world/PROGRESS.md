@@ -622,3 +622,19 @@ y queda oculto; REAPARECER lo devuelve con 260; cambio al eco (1 enemigo) y vuel
 
 Regresión: la batería de combate anterior contra el eco (`HASH=#enemy=echo node tests/combat.mjs`) pasa 31/31,
 sin errores JS: el eco guardado se comporta exactamente como antes.
+
+## Etapa 4 — Ambiente
+- **Pasos pesados**: cada pisada del autómata (del anclaje de pies, igual que el personaje) hace temblar un poco la
+  cámara (según la distancia al jugador: nada a más de 13 u; más al correr), levanta polvo del terreno, suelta
+  esporas del musgo que lleva encima, deja una huella grande (u ondas en el agua) y suena un golpe grave. Las
+  pisadas de los enemigos ya no hunden al jugador (antes todas iban al mismo sitio; ahora cada evento lleva su
+  personaje y cada tipo las trata a su manera).
+- **El ojo lo delata**: luz puntual cian (4.5 u) que sigue al ojo frame a frame y un halo aditivo que se ve en la
+  oscuridad y entre la niebla (no a través de los objetos: la silueta tapada usa una trama fría); más fuertes
+  mientras prepara un ataque; se apagan al morir.
+- **Sonido grave mecánico** al preparar cada ataque (motor que se carga + chirrido de metal; más largo en el
+  barrido) y golpe sordo en las pisadas.
+- **Tres puntos del mapa**: el claro junto al titán (a 11 u del inicio), el bosque de raíces y el cementerio
+  de las ruinas (claros con 1.6 u de suelo libre y llano). Cada uno patrulla su zona. **Reaparecer**: el botón
+  REAPARECER se enciende al morir alguno (o el jugador) y el panel ⚙ tiene «reaparecer enemigos».
+Captura: `review/enemy/E4_zonas.png` (raíces: tras un tronco se le ve el ojo y la silueta; ruinas).

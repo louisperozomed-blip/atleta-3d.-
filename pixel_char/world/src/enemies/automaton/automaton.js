@@ -57,11 +57,24 @@
     // luz del ojo
     const L = new THREE.PointLight(CFG.eyeLight.color, CFG.eyeLight.intensity, CFG.eyeLight.distance, 2);
     W.scene.add(L); f.eyeLight = L;
+    // halo del ojo: lo delata en la oscuridad y entre la niebla (pero no a través de los objetos)
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex(), color: 0x7ff0ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.6 }));
+    halo.scale.set(0.9, 0.9, 1); halo.renderOrder = 4; W.scene.add(halo); f.eyeHalo = halo;
     f.ai = makeAI(f);
     f.fade = 1; f.deadT = 0;
+    ch.onStep = (e, kind, P) => heavyStep(f, e, kind, P);
     return f;
   }
 
+  let _halo = null;
+  function haloTex() {
+    if (_halo) return _halo;
+    const c = document.createElement("canvas"); c.width = c.height = 64;
+    const g = c.getContext("2d"), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(0.15, "rgba(200,250,255,0.8)"); gr.addColorStop(0.45, "rgba(90,220,255,0.18)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    return (_halo = new THREE.CanvasTexture(c));
+  }
   // posición del ojo en el mundo (del JSON: píxeles del atlas respecto al pivote)
   const _v = new THREE.Vector3();
   function eyeWorld(f) {
@@ -73,6 +86,24 @@
     const ex = e ? e[0] : 0, ey = e ? e[1] : -95;
     _v.set(b.x + rx * ex * ch.unitsH + tx * 0.35, b.y + (st.hgt || 0) - ey * ch.unitsV, b.z + rz * ex * ch.unitsH + tz * 0.35);
     return { p: _v, visible: !!e };
+  }
+
+  // ---- pisadas pesadas: la cámara tiembla un poco (según la distancia), polvo o esporas y un golpe grave ----
+  const SPORES = [[0.55, 0.75, 0.35], [0.8, 0.95, 0.55], [0.45, 0.9, 0.85]];
+  function heavyStep(f, e, kind, P) {
+    const run = e.anim === "run", pl = W.player;
+    const d = Math.hypot(e.x - pl.x, e.z - pl.z), near = Math.max(0, 1 - d / 13);
+    const y = W.heightAt(e.x, e.z);
+    W.fx.dust(e.x, kind === "water" ? y + 0.045 : y, e.z, Math.round(P.n * (run ? 2.2 : 1.6)), Object.assign({}, P, { spd: (P.spd || 1) * 1.3, up: (P.up || 1) * 1.2 }));
+    // esporas del musgo que lleva encima (en hierba, hojas y tierra)
+    if (kind !== "water" && kind !== "metal") W.fx.dust(e.x, y + 0.5, e.z, run ? 4 : 3, { pal: SPORES, spd: 0.35, up: 0.9, life: 1.2 });
+    if (kind === "water") W.fx.ripple(e.x, y + 0.045, e.z, run ? 1.1 : 0.8);
+    else if (kind !== "metal") W.fx.footprint(e.x, y, e.z, e.heading, 0.5);
+    if (near > 0) {
+      if (W.shakeCam) W.shakeCam(0, 1, (run ? 0.045 : 0.028) * near, 0.18);
+      if (W.sfx) W.sfx.combat("stomp", (run ? 1.1 : 0.8) * near);
+    }
+    f.steps = (f.steps || 0) + 1;
   }
 
   // ---- IA -------------------------------------------------------------------------------------------
@@ -226,6 +257,13 @@
       const e = eyeWorld(f);
       L.position.copy(e.p);
       L.intensity = CFG.eyeLight.intensity * (e.visible ? 1 : 0.55) * Math.min(1.8, k) * f.fade;
+      const h = f.eyeHalo;
+      if (h) {
+        h.position.copy(e.p);
+        h.visible = e.visible && f.fade > 0.02 && !f.hidden;
+        const s = (0.55 + 0.35 * Math.min(2.5, k) / 2.5) * (1 + 0.05 * Math.sin((ai ? ai.t : 0) * 3));
+        h.scale.set(s, s, 1); h.material.opacity = 0.55 * Math.min(1, k) * f.fade;
+      }
     }
     // muerte: en el suelo 3 s, luego se desvanece (2.5 s) con esporas que se levantan
     if (!f.alive) {
@@ -249,7 +287,7 @@
     const ch = f.ch; ch.mesh.visible = ch.caster.visible = ch.blob.visible = ch.ghost.visible = true;
     if (f.ai) { f.ai.state = "patrol"; f.ai.cool = 1.2; f.ai.pending = null; f.ai.hold = 0; f.ai.warnT = -1; }
   }
-  function remove(f) { if (f.eyeLight) { f.eyeLight.intensity = 0; W.scene.remove(f.eyeLight); } }
+  function remove(f) { if (f.eyeLight) { f.eyeLight.intensity = 0; W.scene.remove(f.eyeLight); } if (f.eyeHalo) W.scene.remove(f.eyeHalo); }
 
   W.registerEnemy("automaton", {
     label: "Autómata del bosque",

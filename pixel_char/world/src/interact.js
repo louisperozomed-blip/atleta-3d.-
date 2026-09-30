@@ -31,6 +31,13 @@
     if (W.FX.impact) {
       for (const e of evs) {
         const kind = surfaceKind(e.x, e.z), P = PAL[kind], run = e.anim === "run";
+        // pisadas de otros personajes (enemigos): cada uno las trata a su manera (el autómata: pesadas)
+        const ec = e.ch || W.character;
+        if (ec !== W.character) {
+          if (ec.onStep) ec.onStep(e, kind, P);
+          else { fx.dust(e.x, W.heightAt(e.x, e.z), e.z, P.n, P); if (W.sfx) W.sfx.step(kind, 0.5); }
+          continue;
+        }
         const y = W.heightAt(e.x, e.z);
         fx.dust(e.x, kind === "water" ? y + 0.045 : y, e.z, Math.round(P.n * (run ? 1.5 : 1)), P);
         if (kind === "water") fx.ripple(e.x, y + 0.045, e.z, run ? 0.7 : 0.5);

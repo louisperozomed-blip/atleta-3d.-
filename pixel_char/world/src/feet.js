@@ -129,7 +129,7 @@
             st.stance++;
             st.lastScreen = null;
             // pisada: evento para polvo, huella, hierba, hundimiento y sonido
-            (W.stepEvents || (W.stepEvents = [])).push({ x: st.anchor.px, z: st.anchor.pz, anim, heading: p.heading, t: performance.now() });
+            (W.stepEvents || (W.stepEvents = [])).push({ x: st.anchor.px, z: st.anchor.pz, anim, heading: p.heading, t: performance.now(), ch });
           }
           // desplazamiento necesario para que la bota vuelva a su punto del suelo
           const a = st.anchor;
