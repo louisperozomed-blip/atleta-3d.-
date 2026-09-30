@@ -177,10 +177,16 @@
       vertexShader: `uniform vec4 uRect; varying vec2 vUv;
         void main(){ vUv = vec2(uRect.x + uv.x * uRect.z, uRect.y + (1.0 - uv.y) * uRect.w);
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      // trama de tinta cálida (líneas diagonales de puntos): se le encuentra siempre, sin romper el dibujo
       fragmentShader: `uniform sampler2D uColor; varying vec2 vUv;
         void main(){ vec4 c = texture2D(uColor, vUv); if (c.a < 0.5) discard;
-          gl_FragColor = vec4(0.5, 0.85, 1.0, 0.42); }`,
+          vec2 p = floor(gl_FragCoord.xy);
+          if (mod(p.x + p.y, 3.0) > 0.5) discard;
+          gl_FragColor = vec4(0.95, 0.62, 0.34, 0.9); }`,
       depthTest: true, depthWrite: false, depthFunc: THREE.GreaterDepth, transparent: true,
+      // un poco hacia la cámara: con un búfer de profundidad de 24 bits la silueta empataba con el propio
+      // personaje y lo teñía entero; así solo aparece donde otra cosa está delante de verdad
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8,
     }));
     ghost.frustumCulled = false; ghost.renderOrder = 10;
     scene.add(ghost);

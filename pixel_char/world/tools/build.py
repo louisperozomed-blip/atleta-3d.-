@@ -6,7 +6,7 @@ import base64, io, json, os, re, sys
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ORDER = ["core.js", "terrain.js", "props.js", "effects.js", "player.js", "walk.js", "feet.js", "character.js", "interact.js", "audio.js", "nav.js", "controls.js", "main.js"]
+ORDER = ["core.js", "terrain.js", "props.js", "effects.js", "look.js", "player.js", "walk.js", "feet.js", "character.js", "interact.js", "audio.js", "nav.js", "controls.js", "main.js"]
 
 
 def webp(path, **kw):
@@ -34,7 +34,9 @@ def main():
         # solo lo que usa el anclaje (pies de cada frame y si está en el suelo)
         assets["feet"] = {k: {"frames": [{"feet": fr["feet"], "grounded": fr["grounded"], "lowest": fr["lowest"]} for fr in v["frames"]],
                               "contact": v["contact"], "f": v["f_screen"], "art": v["art_cycle_u"]} for k, v in F.items()}
-    pal = os.path.join(A, "palette.json")
+    # paleta de la dirección de arte (post-proceso y personaje); si no existe, la compartida anterior
+    pal = os.path.join(A, "palette_art.json")
+    if not os.path.exists(pal): pal = os.path.join(A, "palette.json")
     if os.path.exists(pal): assets["palette"] = json.load(open(pal))["colors"]
     extra = os.path.join(A, "walk_variants.json")
     if os.path.exists(extra): assets["walk"] = json.load(open(extra))

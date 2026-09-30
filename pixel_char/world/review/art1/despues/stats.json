@@ -1,0 +1,33 @@
+{
+ "heart": {
+  "calls": 59,
+  "triangles": 82107,
+  "points": 1164
+ },
+ "roots": {
+  "calls": 48,
+  "triangles": 93111,
+  "points": 1164
+ },
+ "crystal": {
+  "calls": 47,
+  "triangles": 47881,
+  "points": 1164
+ },
+ "ponds": {
+  "calls": 49,
+  "triangles": 55787,
+  "points": 1164
+ },
+ "ruins": {
+  "calls": 41,
+  "triangles": 51827,
+  "points": 1164
+ },
+ "_global": {
+  "chunks": 25,
+  "tris": 99748,
+  "meshes": 65,
+  "buildMs": 654
+ }
+}

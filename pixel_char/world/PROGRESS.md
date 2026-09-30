@@ -246,3 +246,52 @@ personaje) no hay pose dibujada de subir, así que durante ~0.13 s el pie de atr
 tiempo (se eligió eso frente a que la bota de delante se hundiera en el escalón); la profundidad de cada
 bota se deduce del dibujo (billboard), así que junto al borde lateral de un desnivel se usa la altura
 del centro.
+
+## Etapa 6 — Nueva dirección de arte: fantasía oscura (un mundo muerto que la naturaleza se traga)
+
+Referencias en `ref/estilo/` (01 árboles retorcidos, 02 cueva bioluminiscente, 03 bosque muerto con
+calaveras, 04 árbol hueco con farol, 05 titán esqueleto). No llegó `estilo_ref.zip` al contenedor ni al
+repositorio: se usaron las 5 imágenes adjuntas al mensaje, guardadas con esos nombres (JPG).
+
+### E1 — Look visual (`src/look.js`, parches en `core.js`, `main.js`, `terrain.js`)
+- **Paleta** (`tools/palette_art.py` → `assets/palette_art.json`, `walk/palette_art.png`): 22 tonos del
+  mundo por k-means en Lab sobre las 5 referencias (sin los saturados ni los cálidos), 12 anclas fijas
+  (negros de tinta, cian/verde bioluminiscentes, naranja de farol y de flor, musgo terracota) y 12 tonos
+  del personaje. `review/art1/paleta_refs.png`: las referencias reducidas a la paleta conservan el ambiente.
+- **Post-proceso de ilustración** sobre el render a baja resolución (una pasada, sin geometría extra):
+  la escena se pinta con textura de profundidad; de ella se reconstruyen posición y normales por píxel.
+  Tinta: silueta donde la profundidad salta (laplaciano, solo en el borde cercano → línea de 1 px) y
+  pliegue donde cambia la normal (bordes de terrazas, aristas). Sombreado de líneas diagonales (y
+  cruzadas en lo más oscuro) como la tinta de la referencia 01. Niebla por altura sobre el suelo local
+  (la altura del terreno va en el mapa de cobertura), más densa en lo bajo, sobre el agua y en las zonas
+  húmedas, con jirones animados; bajo las copas su color es casi negro. Viñeta, grano leve y posterizado
+  a la paleta con dither ordenado solo entre tonos vecinos. Líneas, dither y grano van anclados al mundo
+  (se desplazan con la cámara píxel a píxel, no "resbalan").
+- **Luz**: día nublado (cielo gris verdoso, sol velado). Mapa de cobertura (4 celdas/u): cada copa o
+  techo lo oscurece; en los shaders del mundo apaga sol (94 %) y cielo (86 %) pero no faroles ni
+  bioluminiscencia (`W.patchCover`). Bajo las copas queda casi a oscuras.
+- **Partículas** (`W.makeAmbient`, 1100 puntos alrededor de la cámara): hojas que caen girando donde hay
+  copas, ceniza que deriva, esporas que suben en lo húmedo, luciérnagas que parpadean en lo oscuro;
+  todas se apartan del personaje (las luciérnagas más, y más si corre).
+- **Rayos de luz** tenues entre las copas: 40 haces aditivos instanciados (1 draw call), orientados al
+  sol, en claros pequeños junto a copas densas.
+- Sin contornos horneados (cascos invertidos): la tinta sale del post → menos triángulos.
+- Terreno recoloreado: musgo verde azulado desaturado, tierra oscura, piedra gris, parches terracota.
+
+| Fallo encontrado | Corrección |
+|---|---|
+| Niebla con altura absoluta: el terreno va de 1 a 3.5 y tapaba al personaje y lavaba la escena | La capa va sobre el suelo local (altura del terreno en el canal B del mapa de cobertura). |
+| Con el búfer de profundidad como textura (24 bits), la silueta de oclusión (`GreaterDepth`) empataba con el propio personaje y lo teñía de gris azulado | `polygonOffset` en la silueta; además ahora es una trama de puntos cálida (se le encuentra tapado sin romper el dibujo). |
+| Dither y grano formaban un damero en superficies lisas | Dither solo entre tonos vecinos de la paleta y grano a 1.4 %. |
+
+Draw calls / triángulos por frame (sombras incluidas, móvil 430×760, px3), misma geometría:
+
+| Zona | Antes | Después E1 |
+|---|---|---|
+| Claro | 64 / 97.9k | 59 / 82.1k |
+| Raíces | 53 / 120.6k | 48 / 93.1k |
+| Cristales | 50 / 52.6k | 47 / 47.9k |
+| Charcas | 54 / 66.3k | 49 / 55.8k |
+| Ruinas | 45 / 60.2k | 41 / 51.8k |
+
+`review/art1/antes_despues.png` (capturas deterministas con `tests/capture_art.mjs`).

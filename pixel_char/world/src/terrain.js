@@ -110,7 +110,8 @@
       zoneId[i] = zi;
     }
     W.zoneKeys = zoneKeys;
-    const greens = [0x2c4a3c, 0x35604a, 0x3f7654, 0x4d8a5c, 0x5f9a62, 0x6aa66a];
+    // musgo verde azulado desaturado (de más oscuro en lo bajo a más claro en lo alto), como las referencias
+    const greens = [0x28382f, 0x2f4336, 0x364d3c, 0x3e5743, 0x46604a, 0x4f6a51];
     const nz = (x, z) => Math.sin(x * 0.33 + 1.3) * Math.cos(z * 0.29 - 0.7) * 1.3 + Math.sin((x + z) * 0.17) * 0.9 +
       Math.sin(x * 0.87 + z * 0.61) * 0.3 + Math.cos(z * 0.73 - x * 0.21) * 0.25;
     for (let ix = 0; ix < N; ix++) for (let iz = 0; iz < N; iz++) {
@@ -169,15 +170,16 @@
       H[i] = h; kind[i] = k;
       // color
       const r = R();
+      // tierra oscura en senderos, piedra gris verdosa, parches de musgo terracota
       switch (k) {
-        case K.PATH: c = r < 0.45 ? 0x5d6b6a : r < 0.8 ? 0x66756f : 0x4f6a58; break;
-        case K.PLAZA: c = r < 0.5 ? 0x3a4a44 : 0x44584c; break;
-        case K.WATER: c = 0x1d2f35; break;
-        case K.PUDDLE: c = 0x2f4d52; break;
-        case K.STONE: c = d < 1.15 ? (r < 0.5 ? 0x6b7480 : 0x747d88) : (r < 0.3 ? 0x3f7a4c : r < 0.65 ? 0x5a6470 : 0x646e7a); break;
-        case K.CRYSTAL: c = r < 0.35 ? 0x43386a : r < 0.6 ? 0x383a60 : r < 0.85 ? 0x35604a : 0x5c5890; break;
-        case K.BORDER: c = r < 0.5 ? 0x243a33 : 0x2c4a3c; break;
-        default: c = greens[Math.min(5, Math.floor((h - 1) * 1.6))]; if (r < 0.07) c = 0x4a3a5e;
+        case K.PATH: c = r < 0.45 ? 0x4a4f48 : r < 0.8 ? 0x535850 : 0x3f4a41; break;
+        case K.PLAZA: c = r < 0.5 ? 0x4b5552 : 0x56605c; break;
+        case K.WATER: c = 0x101816; break;
+        case K.PUDDLE: c = 0x1c2826; break;
+        case K.STONE: c = d < 1.15 ? (r < 0.5 ? 0x5a6360 : 0x646c68) : (r < 0.3 ? 0x3a5040 : r < 0.65 ? 0x4c5553 : 0x565f5c); break;
+        case K.CRYSTAL: c = r < 0.35 ? 0x3c4a45 : r < 0.6 ? 0x35423e : r < 0.85 ? 0x3e5743 : 0x4e3b32; break;
+        case K.BORDER: c = r < 0.5 ? 0x1e2824 : 0x26312c; break;
+        default: c = greens[Math.min(5, Math.floor((h - 1) * 1.6))]; if (r < 0.08) c = r < 0.04 ? 0x4e3b32 : 0x443630;
       }
       col[i] = c;
     }

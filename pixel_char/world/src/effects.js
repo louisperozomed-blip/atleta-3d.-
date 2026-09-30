@@ -70,6 +70,7 @@
 
   W.makeWaterMaterial = function () {
     const m = new THREE.MeshPhongMaterial({ color: 0xffffff, vertexColors: true, emissive: 0x04262e, transparent: true, opacity: 0.78, shininess: 60, flatShading: true, depthWrite: false });
+    m.onBeforeCompile = (s) => { if (W.U.uCover.value) W.patchCover(s); };
     return m;
   };
 

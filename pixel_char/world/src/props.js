@@ -148,6 +148,7 @@
     }
     W.addObstacle(x, z, 0.75 * s, "tree");
     claim(x, z, 1.4 * s);
+    if (W.addCover) W.addCover(x, z, 2.6 * s, 0.9);
     if (R() < 0.5) W.addEmitter(x, cy - 1.2 * s, z, COL.lime, 0.6, 5, { kind: "tree" });
   }
 
@@ -272,6 +273,7 @@
         bulb(tx, hy + 3.2, tz, COL.lime, 0.08); }
     }
     W.addObstacle(0, 0, 1.55, "heart");
+    if (W.addCover) W.addCover(0, 0, 4.2, 1);
     claim(0, 0, 2.6);
     W.heartPos = V3(0, hy + 2.3, 0);
     W.addEmitter(0, hy + 2.3, 0, 0xff4fc8, 1.6, 11, { kind: "heart", beat: true });

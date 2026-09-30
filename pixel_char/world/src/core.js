@@ -45,6 +45,26 @@
     uPlayer: { value: null },       // THREE.Vector3 (lo crea main)
     uPush: { value: 0 },            // 1 mientras el personaje se mueve (hierba que se aparta)
     uSteps: { value: [0, 1, 2, 3].map(() => new THREE.Vector4(0, 0, -99, 0)) },   // pisadas recientes: x, z, tiempo, fuerza
+    // mapa de cobertura (look.js): R = copas/techo (oscuridad), G = densidad de niebla
+    uCover: { value: null },
+    uHalf: { value: 40 },
+    uCoverK: { value: new THREE.Vector2(0.94, 0.86) },   // cuánto apagan las copas el sol y el cielo
+  };
+
+  // Luz bajo las copas: el sol y el cielo se apagan con la cobertura (R del mapa); las luces puntuales
+  // (faroles, bioluminiscencia) y el brillo propio no. Vale para cualquier material de three con luces.
+  W.patchCover = function (shader) {
+    shader.uniforms.uCover = W.U.uCover; shader.uniforms.uHalf = W.U.uHalf; shader.uniforms.uCoverK = W.U.uCoverK;
+    shader.vertexShader = "varying vec3 vCovWP;\n" + shader.vertexShader.replace("#include <project_vertex>",
+      "#include <project_vertex>\n#ifdef USE_INSTANCING\nvCovWP = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;\n#else\nvCovWP = (modelMatrix * vec4(transformed, 1.0)).xyz;\n#endif");
+    const lights = THREE.ShaderChunk.lights_fragment_begin
+      .replace("getDirectionalDirectLightIrradiance( directionalLight, geometry, directLight );",
+               "getDirectionalDirectLightIrradiance( directionalLight, geometry, directLight );\n\t\tdirectLight.color *= covSun;")
+      .replace("irradiance += getHemisphereLightIrradiance( hemisphereLights[ i ], geometry );",
+               "irradiance += getHemisphereLightIrradiance( hemisphereLights[ i ], geometry ) * covSky;");
+    shader.fragmentShader = "varying vec3 vCovWP;\nuniform sampler2D uCover; uniform float uHalf; uniform vec2 uCoverK;\n" +
+      shader.fragmentShader.replace("#include <lights_fragment_begin>",
+        "float cov = texture2D(uCover, (vCovWP.xz + uHalf) / (2.0 * uHalf)).r;\nfloat covSun = 1.0 - cov * uCoverK.x, covSky = 1.0 - cov * uCoverK.y;\n" + lights);
   };
 
   // ---------------------------------------------------------------------------
@@ -96,6 +116,7 @@
     shader.uniforms.uPush = W.U.uPush;
     shader.uniforms.uSteps = W.U.uSteps;
     shader.vertexShader = SWAY_VS + shader.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n" + SWAY_BODY);
+    if (withEmissive && W.U.uCover.value) W.patchCover(shader);
     if (withEmissive) {
       shader.fragmentShader = "varying float vPulse;\n" + shader.fragmentShader.replace(
         "vec3 totalEmissiveRadiance = emissive;",
@@ -201,13 +222,14 @@
   const _box = new THREE.Box3(), _size = new THREE.Vector3(), _ctr = new THREE.Vector3();
   const _m2 = new THREE.Matrix4(), _s = new THREE.Matrix4(), _t = new THREE.Matrix4();
   W.OUTLINE_T = 0.035;
+  W.BAKED_OUTLINE = false;      // contornos de casco invertido (antes); ahora la tinta es un pase de bordes
   W.addPiece = function (g, m, color, o) {
     o = o || {};
     _v.setFromMatrixPosition(m);
     const c = o.chunk || W.chunkOf(_v.x, _v.z);
     const target = o.crystal ? c.crys : c.solid;
     target.add(g, m, color, o);
-    if (o.outline !== false) {
+    if (o.outline !== false && W.BAKED_OUTLINE) {
       if (!g.boundingBox) g.computeBoundingBox();
       _box.copy(g.boundingBox);
       _box.getSize(_size); _box.getCenter(_ctr);

@@ -18,21 +18,23 @@
     renderer.info.autoReset = false;
     wrap.insertBefore(renderer.domElement, wrap.firstChild);
     W.renderer = renderer;
+    const gl = renderer.getContext();
     const scene = (W.scene = new THREE.Scene());
     (function () {
       const c = document.createElement("canvas"); c.width = 2; c.height = 64;
       const g = c.getContext("2d"), gr = g.createLinearGradient(0, 0, 0, 64);
-      gr.addColorStop(0, "#071019"); gr.addColorStop(0.6, "#10222c"); gr.addColorStop(1, "#1b2f33");
+      gr.addColorStop(0, "#0c1413"); gr.addColorStop(0.6, "#1a2523"); gr.addColorStop(1, "#27332f");
       g.fillStyle = gr; g.fillRect(0, 0, 2, 64);
       scene.background = new THREE.CanvasTexture(c);
     })();
-    scene.fog = new THREE.Fog(0x10222c, 48, 85);
+    // (la niebla es un pase del post-proceso: por altura y por zona, look.js)
     W.U.uPlayer.value = new THREE.Vector3(0, -99, 0);
 
-    // --- luces: ambiente turquesa/violeta, sol con sombras, pool de puntuales -----
-    const hemi = new THREE.HemisphereLight(0x7fb4d0, 0x2a1830, 0.6);
+    // --- luces: día nublado apagado (cielo gris verdoso, sol velado), pool de puntuales -----
+    // bajo las copas el sol y el cielo se apagan (mapa de cobertura, W.patchCover)
+    const hemi = (W.hemi = new THREE.HemisphereLight(0xa9bab4, 0x121816, 0.5));
     scene.add(hemi);
-    const sun = (W.sun = new THREE.DirectionalLight(0xc8dcff, 0.95));
+    const sun = (W.sun = new THREE.DirectionalLight(0xc9d0c6, 0.62));
     W.SUN_DIR = new THREE.Vector3(-10, 18, 7).normalize();
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
@@ -46,6 +48,10 @@
     const t0 = performance.now();
     W.generateTerrain(1337);
     W.placeProps();
+    // niebla densa en lo bajo y húmedo (charcas) y en el bosque muerto (ruinas → cementerio)
+    W.addFog(W.ZONES.ponds.x, W.ZONES.ponds.z, W.ZONES.ponds.r + 3, 0.9);
+    W.addFog(W.ZONES.ruins.x, W.ZONES.ruins.z, W.ZONES.ruins.r + 3, 1.1);
+    W.buildCover();
     const gm = W.makeGradientMap();
     const worldMat = (W.worldMat = W.makeWorldMaterial(gm));
     const outlineMat = W.makeOutlineMaterial();
@@ -78,7 +84,9 @@
     pod.position.copy(W.heartPos); pod.castShadow = true; scene.add(pod);
     const podOut = new THREE.Mesh(pod.geometry, new THREE.MeshBasicMaterial({ color: 0x2a0020, side: THREE.BackSide }));
     podOut.scale.setScalar(1.08); pod.add(podOut);
-    const spores = W.makeSpores(scene, 1400);
+    const ambient = (W.ambient = W.makeAmbient(scene, 1100));
+    W.autoShafts(40);
+    const shafts = (W.shafts = W.makeShafts(scene));
     const fx = (W.fx = W.makeFx(scene));
     stats.buildMs = Math.round(performance.now() - t0);
     W.stats = stats;
@@ -94,6 +102,7 @@
     function resize() {
       const px = PIX[ui.pi], w = Math.max(1, Math.floor(wrap.clientWidth * dpr / px)), h = Math.max(1, Math.floor(wrap.clientHeight * dpr / px));
       renderer.setSize(w, h, false); post.rt.setSize(w, h); rh = h;
+      if (W.ambient) W.ambient.mat.uniforms.uPx.value = 1;
       const a = w / h, fh = (12 / ui.zoom) * Math.max(1, (1 / a) / 1.3);   // en vertical se ve más alto
       cam.left = -fh * a / 2; cam.right = fh * a / 2; cam.top = fh / 2; cam.bottom = -fh / 2; cam.updateProjectionMatrix();
       const pxBtn = $("px"); if (pxBtn) pxBtn.textContent = "px" + px;
@@ -106,7 +115,7 @@
 
     const camT = new THREE.Vector3(player.x, player.y + 1.2, player.z);
     const tmp = new THREE.Vector3(), rv = new THREE.Vector3(), uv = new THREE.Vector3();
-    const lightView = new THREE.Matrix4(), lv = new THREE.Vector3();
+    const lightView = new THREE.Matrix4(), lv = new THREE.Vector3(), camPx = new THREE.Vector2();
 
     // --- selección de un punto del suelo desde la pantalla (marcha sobre el mapa de alturas)
     const _o = new THREE.Vector3(), _d = new THREE.Vector3();
@@ -188,6 +197,7 @@
       rv.setFromMatrixColumn(cam.matrixWorld, 0); uv.setFromMatrixColumn(cam.matrixWorld, 1);
       const tr = camT.dot(rv), tu = camT.dot(uv);
       cam.position.addScaledVector(rv, Math.round(tr / wpp) * wpp - tr).addScaledVector(uv, Math.round(tu / wpp) * wpp - tu);
+      camPx.set(Math.round(tr / wpp), Math.round(tu / wpp));     // anclaje de los patrones del post al mundo
       cam.updateMatrixWorld(); cam.getWorldDirection(W.CU.camDir.value);
       // sol: la sombra sigue a la vista, con el centro ajustado a texeles (sin parpadeo)
       const texel = (sun.shadow.camera.right - sun.shadow.camera.left) / sun.shadow.mapSize.x;
@@ -199,13 +209,17 @@
       sun.target.updateMatrixWorld();
       // luces puntuales cercanas, esporas, efectos
       W.updateLightPool(lightPool, camT.x, camT.z, W.viewHalf, t, beat);
-      W.updateSpores(spores, dt, t, player, player.speed, camT.x, camT.z, W.viewHalf);
+      W.updateAmbient(ambient, dt, t, player, camT.x, camT.z, Math.min(W.viewHalf, 16));
+      if (shafts) { shafts.mat.uniforms.uSun.value.copy(W.SUN_DIR); shafts.mat.uniforms.uCamDir.value.copy(W.CU.camDir.value); }
       fx.update(dt);
       // render a baja resolución + post
       renderer.info.reset();
       renderer.setRenderTarget(post.rt); renderer.render(scene, cam);
+      post.update(cam, camPx, post.rt.width, post.rt.height);
       W.lastInfo = { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, points: renderer.info.render.points };
       renderer.setRenderTarget(null); renderer.render(post.scene, post.cam);
+      // suelta las texturas del post (la profundidad del RT no puede seguir enlazada mientras se pinta en él)
+      for (let u = 0; u < 4; u++) { renderer.state.activeTexture(gl.TEXTURE0 + u); renderer.state.bindTexture(gl.TEXTURE_2D, null); }
       if (W.afterRender) W.afterRender();
       fpsN++; fpsT += dt;
       if (fpsT > 0.5) { W.fps = fpsN / fpsT; fpsN = 0; fpsT = 0; }
