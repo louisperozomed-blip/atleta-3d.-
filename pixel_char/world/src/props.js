@@ -88,6 +88,8 @@
   }
   W.spot = (o) => spot(o || {});
   function claim(x, z, r) { used.push([x, z, r]); }
+  // ayudantes para zones.js
+  W.P = { spot: (o) => spot(o || {}), claim, farFromUsed, used, rnd: () => R(), setRng: (seed) => { R = W.rng(seed); } };
 
   // ---------------------------------------------------------------------------
   // Piezas
@@ -282,7 +284,7 @@
   // ---------------------------------------------------------------------------
   // Colocación de todo el mundo
   // ---------------------------------------------------------------------------
-  W.placeProps = function () {
+  W.placePropsOld = function () {
     R = W.rng(2024);
     used.length = 0;
     geos();
@@ -333,5 +335,11 @@
     // destellos
     const dc = [COL.cyan, 0xff7ae0, 0xc8ff6a];
     for (let k = 0; k < 420; k++) { const s = spot({ minPath: 1.1, flat: false }); if (s) glint(s.x, s.z, dc[k % 3]); }
+  };
+  W.placeProps = function () {
+    R = W.rng(2024);
+    used.length = 0;
+    geos();
+    W.buildZones();
   };
 })();

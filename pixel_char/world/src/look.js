@@ -275,12 +275,18 @@
   function respawn(A, i, cx, cz, R, anyHeight) {
     const t = A.T[i];
     for (let k = 0; k < 6; k++) {
-      const x = cx + (Math.random() * 2 - 1) * R, z = cz + (Math.random() * 2 - 1) * R;
+      let x = cx + (Math.random() * 2 - 1) * R, z = cz + (Math.random() * 2 - 1) * R;
+      // luciérnagas: la mitad se juntan junto al farol si está a la vista
+      if (t === 3 && W.fireflyZones && Math.random() < 0.55) {
+        for (const [fx, fz, fr] of W.fireflyZones) if (Math.abs(fx - cx) < R + fr && Math.abs(fz - cz) < R + fr) {
+          const a = Math.random() * 6.283, d = Math.sqrt(Math.random()) * fr; x = fx + Math.cos(a) * d; z = fz + Math.sin(a) * d; break;
+        }
+      }
       const g = W.heightAt(x, z), cv = W.coverAt(x, z);
       // hojas: donde hay copas; esporas: sobre agua y en zonas húmedas; luciérnagas: en lo oscuro
       if (t === 0 && cv.c < 0.25 && Math.random() < 0.8) continue;
       if (t === 2 && cv.f < 0.55 && Math.random() < 0.85) continue;
-      if (t === 3 && cv.c < 0.3 && Math.random() < 0.7) continue;
+      if (t === 3 && cv.c < 0.3 && Math.random() < 0.7 && !(W.LANTERN && Math.hypot(x - W.LANTERN.x, z - W.LANTERN.z) < 10)) continue;
       const P = A.P, j = i * 3;
       P[j] = x; P[j + 2] = z;
       P[j + 1] = t === 0 ? g + (anyHeight ? Math.random() * 4.5 : 3.5 + Math.random() * 1.5)
@@ -382,5 +388,42 @@
     }
     out.forEach((o) => W.addShaft(...o));
     return out.length;
+  };
+})();
+// Reflejos de la bioluminiscencia en el agua oscura: franjas que tiemblan sobre la superficie, alargadas
+// hacia la cámara (en la vista isométrica el reflejo cae "debajo" de lo que brilla). Una llamada.
+(function () {
+  const W = window.W;
+  W.makeReflections = function (scene) {
+    const L = W.reflections || [], n = L.length;
+    if (!n) return null;
+    const base = new THREE.PlaneGeometry(1, 1);
+    const g = new THREE.InstancedBufferGeometry();
+    g.index = base.index; g.attributes.position = base.attributes.position; g.attributes.uv = base.attributes.uv;
+    const A = new Float32Array(n * 4), Cc = new Float32Array(n * 3), c = new THREE.Color();
+    L.forEach(([x, y, z, col, h], i) => { A.set([x, y + 0.02, z, h], i * 4); c.set(col); Cc.set([c.r, c.g, c.b], i * 3); });
+    g.setAttribute("aP", new THREE.InstancedBufferAttribute(A, 4));
+    g.setAttribute("aC", new THREE.InstancedBufferAttribute(Cc, 3));
+    g.instanceCount = n;
+    const mat = new THREE.ShaderMaterial({
+      uniforms: { uTime: W.U.uTime, uTheta: { value: 0 } },
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      vertexShader: `attribute vec4 aP; attribute vec3 aC; uniform float uTheta; varying vec2 vUv; varying vec3 vC; varying float vS;
+        void main(){ vUv = uv; vC = aC; vS = aP.x * 3.1 + aP.z * 1.7;
+          vec3 T = vec3(sin(uTheta), 0.0, cos(uTheta)), Rr = vec3(cos(uTheta), 0.0, -sin(uTheta));
+          float len = 0.4 + aP.w * 1.4;
+          vec3 p = aP.xyz + T * (uv.y - 0.1) * len + Rr * position.x * 0.35;
+          gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0); }`,
+      fragmentShader: `uniform float uTime; varying vec2 vUv; varying vec3 vC; varying float vS;
+        void main(){ float w = 1.0 - abs(vUv.x - 0.5) * 2.0;
+          float fall = (1.0 - vUv.y) * smoothstep(0.0, 0.1, vUv.y);
+          float ripple = 0.55 + 0.45 * sin(vUv.y * 26.0 - uTime * 2.2 + vS) * sin(vUv.y * 11.0 + uTime * 1.3 + vS * 2.0);
+          float band = step(0.35, fract(vUv.y * 6.0 + sin(uTime + vS) * 0.2));
+          gl_FragColor = vec4(vC * w * w * fall * ripple * band * 0.55, 1.0); }`,
+    });
+    const mesh = new THREE.Mesh(g, mat);
+    mesh.frustumCulled = false; mesh.renderOrder = 2;
+    scene.add(mesh);
+    return { mesh, mat };
   };
 })();

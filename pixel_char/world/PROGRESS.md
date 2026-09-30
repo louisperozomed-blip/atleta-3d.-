@@ -295,3 +295,64 @@ Draw calls / triángulos por frame (sombras incluidas, móvil 430×760, px3), mi
 | Ruinas | 45 / 60.2k | 41 / 51.8k |
 
 `review/art1/antes_despues.png` (capturas deterministas con `tests/capture_art.mjs`).
+
+### E2 — Zonas rehechas (`src/zones.js`, `src/modules.js`; mismo mapa y mismas claves de zona)
+- **El titán caído** (centro): máquina-gigante esquelética tendida. Columna de vértebras con placas, 5
+  costillas en arco (2 rotas) con placas oxidadas, musgo y cables-tendón: se camina por dentro de la caja
+  torácica y entre las costillas. Cráneo de máquina mirando a la cámara (cuencas hondas, dientes,
+  mandíbula caída, casco oxidado, cables en la nuca) con una luz de emergencia roja moribunda en una
+  cuenca. Brazo con antebrazo blindado y la **mano abierta = plataforma**: 2×2 baldosas medio escalón por
+  encima (`W.HAND`), dedos curvados con nudillos de metal; se sube por el sur y el este (A* comprobado).
+  Pelvis hundida y 8 cables que salen del titán y corren por el suelo como raíces.
+- **Bosque retorcido**: árboles de 6–9 u con 3–4 troncos trenzados en hélice, raíces que se abren y se
+  hunden, ramas y copas en racimos de tonos distintos (verde azulado, oliva, algo de terracota). Arcos de
+  raíces trenzadas sobre los senderos con musgo terracota colgando. Copas → mapa de cobertura (oscuro).
+- **Charcas bioluminiscentes**: agua casi negra con brillo especular de las luces cercanas y reflejos
+  temblorosos de la bioluminiscencia (quads instanciados alargados hacia la cámara). Salientes de roca
+  como dólmenes con dintel de losas quebradas y lianas con punta luminosa; raíces muertas sobre el agua
+  con más lianas; hongos cian/verde (los grandes con brillo apagado), líquenes que brillan. Penumbra de
+  cueva en toda la zona.
+- **Cementerio del bosque muerto**: árboles muertos blanquecinos sin copa, troncos caídos, tumbas y
+  cruces en filas con su montículo, cercas rotas (postes que faltan, travesaños caídos), 70 calaveras y
+  110 huesos entre la hierba, niebla densa. Las terrazas ahora son de hierba.
+- **Árbol del farol** (meseta): 7 troncos trenzados en anillo que dejan un hueco hacia el sendero y se
+  juntan arriba, la copa más grande del mapa; dentro, un farol cálido (única luz naranja, parpadeo de
+  llama, prioridad en el pool de luces); escalones de piedra con musgo hacia el hueco y en la subida a la
+  meseta, 150 flores naranjas (solo aquí), rocas con musgo; más de la mitad de las luciérnagas se juntan
+  aquí.
+- **Ciencia ficción en ruinas** por todo el mapa: terminales rotas cuya pantalla parpadea (brillo
+  `aGlow ≥ 2`: parpadeo irregular en el shader + luz puntual que parpadea), placas de metal hundidas
+  (registradas en `W.plates` para las pisadas metálicas), balizas de emergencia moribundas (se encienden
+  a ratos), diodos en los cables.
+- **Módulos instanciados** (una malla por tipo para todo el mapa): calavera, hueso, poste y travesaño de
+  cerca, lápida, cruz, montículo, placa, terminal, baliza, hongo, flor, musgo, roca, tronco caído, losa,
+  diodo, liquen. Piezas grandes y únicas (árboles, titán, raíces, cables): tubos fusionados por chunk.
+- **Recorte con trama**: las copas, las costillas y los hongos que quedan entre la cámara y el
+  personaje se tramean en un círculo a su alrededor (dither anclado), así nunca se le pierde de vista.
+
+| Fallo encontrado | Corrección |
+|---|---|
+| Las copas se oscurecían a sí mismas (la cobertura se aplicaba a toda altura): manchas negras | La cobertura solo apaga lo que está hasta ~3 u sobre el suelo local. |
+| Copas y costillas tapaban al personaje | Recorte con trama alrededor del personaje (`W.U.uCutP/uCutR`). |
+| Con todas las piezas proyectando sombra: hasta 252k triángulos y 82 draw calls | Proyectan sombra el terreno, el personaje y los módulos altos (tumbas, cruces, terminales, balizas, troncos); los árboles y el titán no (día nublado, y la oscuridad bajo copas ya la da la cobertura). |
+| Hongos gigantes enormes y chillones | 1.6–2.8 de escala con tinte apagado; se tramean si tapan. |
+| La luz de emergencia teñía de rosa el cráneo | Más roja y más débil. |
+
+Draw calls / triángulos por frame (sombras incluidas, móvil 430×760; vista amplia 900×700 al final):
+
+| Zona | Antes (original) | Después E2 (móvil) | Después E2 (vista amplia) |
+|---|---|---|---|
+| Titán / claro | 64 / 97.9k | 63 / 132.7k | 76 / 163.9k |
+| Bosque retorcido | 53 / 120.6k | 61 / 153.1k | 64 / 157.3k |
+| Árbol del farol | 50 / 52.6k | 55 / 106.9k | 63 / 125.8k |
+| Charcas | 54 / 66.3k | 62 / 117.9k | 65 / 122.7k |
+| Cementerio | 45 / 60.2k | 53 / 97.6k | 61 / 120.6k |
+
+Geometría total del mapa: 72 mallas (25 chunks × material + 20 tipos instanciados + terreno y agua),
+~200k triángulos; los módulos instanciados son ~30k (sin descarte, siempre se dibujan). En la vista del
+móvil el peor caso es ~153k triángulos y 63 draw calls, dentro del presupuesto que ya funcionaba en la
+etapa 4 (≤ 94 draw calls, ≤ 139k). No se puede medir el frame en un iPhone real desde aquí (headless
+con SwiftShader).
+
+`review/art2/antes_despues.png`, `review/art2/zonas_vista.png` (vista amplia de las 5 zonas y el
+personaje sobre la mano del titán), `review/art2/{mano_titan,craneo_titan,charca_dolmen}.png`.

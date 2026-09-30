@@ -69,7 +69,8 @@
   };
 
   W.makeWaterMaterial = function () {
-    const m = new THREE.MeshPhongMaterial({ color: 0xffffff, vertexColors: true, emissive: 0x04262e, transparent: true, opacity: 0.78, shininess: 60, flatShading: true, depthWrite: false });
+    // agua oscura y quieta: casi negra, brillo especular de las luces cercanas (los reflejos)
+    const m = new THREE.MeshPhongMaterial({ color: 0xffffff, vertexColors: true, emissive: 0x020807, specular: 0x7fa8a0, transparent: true, opacity: 0.92, shininess: 110, flatShading: true, depthWrite: false });
     m.onBeforeCompile = (s) => { if (W.U.uCover.value) W.patchCover(s); };
     return m;
   };
@@ -78,7 +79,7 @@
   // Pool de luces puntuales: número fijo (no recompila shaders) asignado cada
   // frame a los emisores más cercanos al centro de la vista, con fundido.
   // ---------------------------------------------------------------------------
-  W.LIGHT_POOL = 8;
+  W.LIGHT_POOL = 10;
   W.makeLightPool = function (scene) {
     const pool = [];
     for (let i = 0; i < W.LIGHT_POOL; i++) {
@@ -95,7 +96,7 @@
     for (const e of W.emitters) {
       const d = Math.hypot(e.x - cx, e.z - cz);
       if (d > radius + e.distance) continue;
-      _pick.push([d - (e.beat ? 6 : 0), e]);
+      _pick.push([d - (e.beat ? 6 : 0) - (e.warm ? 8 : 0), e]);
     }
     _pick.sort((a, b) => a[0] - b[0]);
     for (let i = 0; i < pool.length; i++) {
@@ -108,6 +109,9 @@
       const edge = 1 - W.smoothstep(radius * 0.7, radius + e.distance * 0.5, d);
       let I = e.intensity * edge * L.userData.fade;
       if (e.beat) I *= 0.8 + beat * 0.75;
+      else if (e.dying) { const w = Math.sin(t * 0.7 + e.x) * 0.5 + 0.5; I *= W.smoothstep(0.55, 1, w) * (Math.sin(t * 23 + e.z) > -0.6 ? 1 : 0.2); }
+      else if (e.flicker) I *= (Math.sin(t * 31 + e.x * 7) * Math.sin(t * 17 + e.z) > -0.3 ? 1 : 0.25);
+      else if (e.warm) I *= 0.92 + 0.08 * Math.sin(t * 5.3 + Math.sin(t * 2.1) * 2);     // llama
       else I *= 0.8 + 0.2 * Math.sin(t * 1.7 + e.x);
       L.position.set(e.x, e.y, e.z);
       L.color.copy(e.color);

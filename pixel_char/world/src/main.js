@@ -73,17 +73,17 @@
     wmeshes.forEach((m) => addMesh(m.geometry, waterMat, false, true));
     for (const c of W.chunks.values()) {
       stats.chunks++;
-      const s = c.solid.build(); if (s) addMesh(s, worldMat, true, true);
+      // piezas fusionadas (árboles, titán, raíces): reciben sombra pero no la proyectan (día nublado; la
+      // oscuridad bajo las copas la da el mapa de cobertura) → la pasada de sombras cuesta la mitad
+      const s = c.solid.build(); if (s) addMesh(s, worldMat, false, true);
       const o = c.outline.build(); if (o) addMesh(o, outlineMat, false, false);
       const k = c.crys.build(); if (k) addMesh(k, crysMat, true, false);
     }
-    // vaina del árbol-corazón (late)
-    const podMat = new THREE.MeshToonMaterial({ color: 0xff5ac8, emissive: 0xff2ab0, emissiveIntensity: 1, gradientMap: gm });
-    const pod = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 1).toNonIndexed(), podMat);
-    pod.geometry.computeVertexNormals();
-    pod.position.copy(W.heartPos); pod.castShadow = true; scene.add(pod);
-    const podOut = new THREE.Mesh(pod.geometry, new THREE.MeshBasicMaterial({ color: 0x2a0020, side: THREE.BackSide }));
-    podOut.scale.setScalar(1.08); pod.add(podOut);
+    // módulos instanciados (calaveras, huesos, cercas, tumbas, placas, terminales, hongos, flores...)
+    const mstats = W.M.build(scene, worldMat, depthMat);
+    stats.meshes += mstats.meshes; stats.tris += mstats.tris;
+    stats.modules = mstats;
+    const refl = (W.refl = W.makeReflections(scene));
     const ambient = (W.ambient = W.makeAmbient(scene, 1100));
     W.autoShafts(40);
     const shafts = (W.shafts = W.makeShafts(scene));
@@ -115,7 +115,7 @@
 
     const camT = new THREE.Vector3(player.x, player.y + 1.2, player.z);
     const tmp = new THREE.Vector3(), rv = new THREE.Vector3(), uv = new THREE.Vector3();
-    const lightView = new THREE.Matrix4(), lv = new THREE.Vector3(), camPx = new THREE.Vector2();
+    const lightView = new THREE.Matrix4(), lv = new THREE.Vector3(), camPx = new THREE.Vector2(), _cp = new THREE.Vector3();
 
     // --- selección de un punto del suelo desde la pantalla (marcha sobre el mapa de alturas)
     const _o = new THREE.Vector3(), _d = new THREE.Vector3();
@@ -183,10 +183,8 @@
       if (Math.abs(ui.thetaT - ui.theta) < 1e-4) ui.theta = ui.thetaT;
       character.update(dt, player, ui.theta, ui.thetaT);
       if (W.afterCharacter) W.afterCharacter(dt, t);
-      // latido
-      const beat = Math.pow(Math.max(0, Math.sin(t * 2.4)), 8);
-      pod.scale.setScalar(1 + beat * 0.12);
-      podMat.emissiveIntensity = 0.8 + beat * 0.6;
+      const beat = 0;
+      if (refl) refl.mat.uniforms.uTheta.value = ui.theta;
       // cámara: sigue con suavidad
       camT.lerp(tmp.set(player.x, player.y + 1.0, player.z), W.camSnap ? 1 : 1 - Math.exp(-dt * 4));
       W.camSnap = false;
@@ -198,6 +196,11 @@
       const tr = camT.dot(rv), tu = camT.dot(uv);
       cam.position.addScaledVector(rv, Math.round(tr / wpp) * wpp - tr).addScaledVector(uv, Math.round(tu / wpp) * wpp - tu);
       camPx.set(Math.round(tr / wpp), Math.round(tu / wpp));     // anclaje de los patrones del post al mundo
+      // recorte de copas: posición del personaje en píxeles del RT y su profundidad
+      cam.updateMatrixWorld(); cam.matrixWorldInverse.copy(cam.matrixWorld).invert();
+      _cp.set(player.x, player.y + 0.9, player.z).project(cam);
+      W.U.uCutP.value.set((_cp.x * 0.5 + 0.5) * post.rt.width, (_cp.y * 0.5 + 0.5) * post.rt.height, _cp.z * 0.5 + 0.5);
+      W.U.uCutR.value = W.CUTAWAY === false ? 0 : 2.4 / wpp;
       cam.updateMatrixWorld(); cam.getWorldDirection(W.CU.camDir.value);
       // sol: la sombra sigue a la vista, con el centro ajustado a texeles (sin parpadeo)
       const texel = (sun.shadow.camera.right - sun.shadow.camera.left) / sun.shadow.mapSize.x;

@@ -141,7 +141,7 @@
         h = 1.5 + lvl * 0.5;
         // plataformas elevadas (+1 m, sin escalera) en las esquinas de las ruinas
         if (cheb > 3 && Math.abs(Math.abs(x - q.x) - Math.abs(z - q.z)) < 2.2 && d > 2.2) h += 1;
-        k = K.STONE;
+        k = K.GRASS;                          // cementerio: hierba sobre las terrazas
       } else {                                // entre zonas
         h = 1.5 + noise * 0.7;
       }
@@ -182,6 +182,14 @@
         default: c = greens[Math.min(5, Math.floor((h - 1) * 1.6))]; if (r < 0.08) c = r < 0.04 ? 0x4e3b32 : 0x443630;
       }
       col[i] = c;
+    }
+    // mano abierta del titán: 2x2 baldosas medio escalón por encima (se sube andando por el sur y el este)
+    {
+      const x0 = -5, x1 = -3, z0 = -4, z1 = -2;
+      let hm = 0;
+      for (let x = x0; x < x1; x++) for (let z = z0; z < z1; z++) hm = Math.max(hm, H[(x + HALF) * N + (z + HALF)]);
+      for (let x = x0; x < x1; x++) for (let z = z0; z < z1; z++) { const i = (x + HALF) * N + (z + HALF); H[i] = hm + 0.5; kind[i] = K.PLAZA; col[i] = 0x8a8678; }
+      W.HAND = { x0, x1, z0, z1, h: hm + 0.5 };
     }
     W.T = { H, kind, pdist, zoneId, col };
     W.buildNav();
@@ -294,7 +302,7 @@
       const key = Math.floor(ix / W.CHUNK) + "," + Math.floor(iz / W.CHUNK);
       let b = water.get(key); if (!b) { b = { p: [], n: [], c: [] }; water.set(key, b); }
       const x0 = ix - HALF, z0 = iz - HALF;
-      quad(b, [x0, y, z0], [x0, y, z0 + 1], [x0 + 1, y, z0 + 1], [x0 + 1, y, z0], 0, 1, 0, C.setHex(k === K.WATER ? 0x0e5a68 : 0x1f7482));
+      quad(b, [x0, y, z0], [x0, y, z0 + 1], [x0 + 1, y, z0 + 1], [x0 + 1, y, z0], 0, 1, 0, C.setHex(k === K.WATER ? 0x0a1715 : 0x10211f));
     }
     const wmeshes = [];
     for (const [key, b] of water) {

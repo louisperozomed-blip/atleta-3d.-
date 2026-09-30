@@ -49,6 +49,8 @@
     uCover: { value: null },
     uHalf: { value: 40 },
     uCoverK: { value: new THREE.Vector2(0.94, 0.86) },   // cuánto apagan las copas el sol y el cielo
+    // recorte de copas delante del personaje: (x, y en píxeles del RT, profundidad), radio en píxeles
+    uCutP: { value: new THREE.Vector3(-999, -999, 0) }, uCutR: { value: 0 },
   };
 
   // Luz bajo las copas: el sol y el cielo se apagan con la cobertura (R del mapa); las luces puntuales
@@ -64,7 +66,9 @@
                "irradiance += getHemisphereLightIrradiance( hemisphereLights[ i ], geometry ) * covSky;");
     shader.fragmentShader = "varying vec3 vCovWP;\nuniform sampler2D uCover; uniform float uHalf; uniform vec2 uCoverK;\n" +
       shader.fragmentShader.replace("#include <lights_fragment_begin>",
-        "float cov = texture2D(uCover, (vCovWP.xz + uHalf) / (2.0 * uHalf)).r;\nfloat covSun = 1.0 - cov * uCoverK.x, covSky = 1.0 - cov * uCoverK.y;\n" + lights);
+        "vec4 covT = texture2D(uCover, (vCovWP.xz + uHalf) / (2.0 * uHalf));\n" +
+        "float cov = covT.r * (1.0 - smoothstep(2.4, 4.2, vCovWP.y - covT.b * 6.0));   // solo bajo las copas (no las copas)\n" +
+        "float covSun = 1.0 - cov * uCoverK.x, covSky = 1.0 - cov * uCoverK.y;\n" + lights);
   };
 
   // ---------------------------------------------------------------------------
@@ -83,10 +87,24 @@
   const SWAY_VS = `
     attribute float aGlow; attribute float aPhase; attribute float aSway;
     uniform float uTime; uniform vec3 uPlayer; uniform float uPush; uniform vec4 uSteps[4];
-    varying float vPulse;
+    varying float vPulse; varying float vCut;
   `;
   const SWAY_BODY = `
-    vPulse = aGlow * (0.65 + 0.35 * sin(uTime * (1.2 + fract(aPhase * 7.13) * 1.3) + aPhase));
+    vCut = aSway < -0.5 ? 1.0 : 0.0;     // aSway < 0: pieza que se recorta delante del personaje (copas)
+    // fase: la del vértice; en instancias, además la posición de la instancia (cada una late a su ritmo)
+    #ifdef USE_INSTANCING
+      float ph = aPhase + instanceMatrix[3].x * 1.37 + instanceMatrix[3].z * 2.11;
+    #else
+      float ph = aPhase;
+    #endif
+    vPulse = aGlow * (0.65 + 0.35 * sin(uTime * (1.2 + fract(ph * 7.13) * 1.3) + ph));
+    // aGlow >= 2: pantallas y luces de emergencia que parpadean (irregular, a veces se apagan)
+    if (aGlow > 1.99) {
+      float k = floor(uTime * 9.0 + ph * 3.0);
+      float fl = step(0.28, fract(sin(k * 12.9898 + ph * 78.233) * 43758.5453));
+      float dying = aGlow > 2.9 ? smoothstep(0.55, 1.0, sin(uTime * 0.7 + ph) * 0.5 + 0.5) : 1.0;
+      vPulse = (0.25 + 0.75 * fl) * dying * (aGlow > 2.9 ? 1.4 : 1.0);
+    }
     if (aSway > 0.0) {
       // balanceo por viento + se aparta del personaje al pasar
       float s = aSway;
@@ -118,6 +136,15 @@
     shader.vertexShader = SWAY_VS + shader.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n" + SWAY_BODY);
     if (withEmissive && W.U.uCover.value) W.patchCover(shader);
     if (withEmissive) {
+      shader.uniforms.uCutP = W.U.uCutP; shader.uniforms.uCutR = W.U.uCutR;
+      shader.fragmentShader = shader.fragmentShader.replace("void main() {", `varying float vCut; uniform vec3 uCutP; uniform float uCutR;
+        float cutB2(vec2 a){ a = floor(a); return fract(a.x / 2. + a.y * a.y * .75); }
+        void main() {
+          if (vCut > 0.5 && uCutR > 0.0 && gl_FragCoord.z < uCutP.z) {
+            float r = length((gl_FragCoord.xy - uCutP.xy) * vec2(1.0, 0.75));
+            float k = 1.0 - smoothstep(uCutR * 0.55, uCutR, r);
+            if (cutB2(.5 * gl_FragCoord.xy) * .25 + cutB2(gl_FragCoord.xy) < k * 0.9) discard;
+          }`);
       shader.fragmentShader = "varying float vPulse;\n" + shader.fragmentShader.replace(
         "vec3 totalEmissiveRadiance = emissive;",
         "vec3 totalEmissiveRadiance = emissive + vColor * vPulse;");
