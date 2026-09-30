@@ -187,3 +187,36 @@ a la izquierda en E y a la derecha en W): correctas en attack2, parry, block, do
 
 **Para regenerar:** attack3 IMPACT (frame 4) en N, NE, E, W y NW (y opcionalmente SE/SW en diagonal); si se
 quiere exactitud de proporciones, parry, dodge, hit y death con la proporción cabeza/cuerpo de idle.
+
+## Etapa 2 — Procesado (normales, especular, emisión, hojas y JSON)
+`tools/combat_maps.py` sobre `build/combat/fixed` (ya recortados sin halo, color igualado, escala y pivote en
+los pies, direcciones corregidas):
+
+- **Normal maps**: el mismo método que idle/walk (`normals.py`: bisel global + bisel por pieza + detalle
+  pintado → Sobel, convención OpenGL/Unity, verde arriba).
+- **Especular**: por material, igual que antes (crema/dorado alto, negro del casco muy alto, bordado bajo, tela
+  casi nulo); lo que emite no tiene especular propio.
+- **Emisión** (`tools/combat_emission.py`): tras igualar el color, el sombreado naranja de las placas y del
+  bordado tiene el mismo croma, tono y luz que la cuchilla, así que se decide por forma: brilla lo cálido que
+  sobresale ≥ 8 px del cuerpo grueso (punta de la cuchilla, chispas, estela, fuego), creciendo hasta 35 px desde
+  ahí, y en los frames activos también las piezas calientes grandes (el tajo y el fuego delante del cuerpo) y el
+  núcleo blanco pegado a lo que brilla. Limitación: si el cono de la cuchilla queda pegado al brazo formando
+  una masa gruesa (algunos frames de hit/dodge/death) no brilla. `review/combat/E2_mapas.png` lo enseña de
+  noche con una luz a cada lado: la cuchilla y el tajo brillan sin luz.
+- **Hojas** (`out/combat/<anim>_{color,normal,spec,emit}.png`): 8 filas (S, SW, W, NW, N, NE, E, SE) × 6 frames
+  de 256×288, pivote (128, 264).
+- **Atlas del mundo** (`world/assets/combat_{color,normal,spec}.png` + `combat_atlas.json`): media resolución,
+  celdas de 128×144, 32 columnas (4096×1728); `spec` lleva R = especular y G = emisión.
+- **JSON** (`out/combat/combat.json`): por frame etiqueta, fase (preparación / activo / recuperación), duración,
+  si es activo y qué se puede cancelar en él; por animación ventanas de cancelación, siguiente golpe del combo,
+  frames invulnerables, bucle de la guardia y desplazamiento pintado de los pies (movimiento raíz):
+
+| anim | preparación | activo | recuperación | cancelación | total |
+|---|---|---|---|---|---|
+| attack1 / attack2 | 1-3 | 4 IMPACT | 5-6 | encadenar 4-6, esquivar 5-6 | 485 ms |
+| attack3 | 1-3 (salto) | 4 IMPACT | 5-6 | esquivar 5-6 | 770 ms (más lento y pesado) |
+| parry | 1 GUARD UP | 2-3 DEFLECT/SPARK | 4-6 | atacar/esquivar 5-6 | 450 ms |
+| block | 1 RAISE | 2-5 (bucle 2-3, 4 = recibe) | 6 LOWER | soltar 2-5, esquivar 2,3,5 | — |
+| dodge | 1-2 | 3-4 DASH (invulnerable) | 5-6 | atacar/esquivar 6 | 400 ms |
+| hit | — | 1 IMPACT | 2-6 | esquivar 5-6, atacar 6 | 480 ms |
+| death | — | 1 HIT | 2-6 (se queda en el último) | — | 1030 ms |
