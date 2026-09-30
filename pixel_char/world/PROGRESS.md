@@ -565,3 +565,10 @@ atlas de combate en WebP).
 
 Limitaciones: el audio de combate solo se comprueba en que no da errores (aquí no se puede escuchar); el
 rendimiento en un iPhone real no se puede medir desde aquí.
+
+## Ajuste — guardia visible y avisos de acción
+El botón GUARDIA quedaba mezclado con los de cámara y no decía qué hacía. Ahora es un botón redondo grande y
+aparte, abajo a la derecha (al alcance del pulgar), con «toca: parry · mantén: bloqueo» escrito. Además, cada
+acción defensiva muestra un aviso sobre el personaje: ¡PARRY!, BLOQUEO, GUARDIA ROTA, ESQUIVA; y sobre el eco,
+ATURDIDO y ¡REMATE!. Comprobado en móvil y escritorio (`tests/guard_ui.mjs`: tocar → parry, mantener → block,
+parry contra un golpe → «¡PARRY!»; captura `review/combat/guardia_movil.png`).

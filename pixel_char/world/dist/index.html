@@ -35,7 +35,6 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     <button id="px" aria-label="Tamaño de píxel">px3</button>
     <button id="walk" aria-label="Variante del paso">andar E</button>
 <button id="snd" aria-pressed="true" aria-label="Sonido de pasos">sonido</button>
-<button id="guard" class="big" aria-pressed="false" aria-label="Guardia: tocar para desviar, mantener para bloquear">GUARDIA</button>
 <button id="respawn" aria-label="Reaparecer">REAPARECER</button>
 
     <button id="jump" class="big" aria-label="Saltar">SALTAR</button>
@@ -3834,7 +3833,35 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
   const STOP = { attack1: 0.075, attack2: 0.085, attack3: 0.12, parry: 0.11, parryHeavy: 0.13, block: 0.06, deathblow: 0.16 };
   const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
   W.combatLog = [];
-  function log(e) { e.t = W.U ? +W.U.uTime.value.toFixed(3) : 0; W.combatLog.push(e); if (W.combatLog.length > 400) W.combatLog.shift(); }
+  function log(e) { e.t = W.U ? +W.U.uTime.value.toFixed(3) : 0; W.combatLog.push(e); if (W.combatLog.length > 400) W.combatLog.shift(); feedback(e); }
+  // aviso sobre el personaje de lo que acaba de pasar (¡PARRY!, BLOQUEO...): así se ve si ha salido
+  const FB = {
+    parry: ["¡PARRY!", "#ffe08a", "who"], block: ["BLOQUEO", "#b8d8ff", "who"], guardbreak: ["GUARDIA ROTA", "#ff6a4a", "who"],
+    evade: ["ESQUIVA", "#9fe8c8", "who"], stun: ["ATURDIDO", "#fff3b0", "who"], deathblow: ["¡REMATE!", "#ffb070", "who"],
+  };
+  const pops = [];
+  function feedback(e) {
+    const d = FB[e.ev];
+    if (!d || !hud) return;
+    const f = fighters.find((x) => x.name === e[d[2]]);
+    if (!f) return;
+    // los avisos defensivos solo para el jugador; aturdido y remate, sobre el eco
+    if ((e.ev === "parry" || e.ev === "block" || e.ev === "guardbreak" || e.ev === "evade") && f.team !== "player") return;
+    const el = document.createElement("div");
+    el.className = "cpop"; el.textContent = d[0]; el.style.color = d[1];
+    document.getElementById("wrap").appendChild(el);
+    pops.push({ el, f, t: 0 });
+  }
+  function updatePops(dt) {
+    for (let i = pops.length - 1; i >= 0; i--) {
+      const q = pops[i]; q.t += dt;
+      if (q.t > 0.9) { q.el.remove(); pops.splice(i, 1); continue; }
+      const b = q.f.body, s = W.toScreen(b.x, b.y + W.CHAR_H * 1.35, b.z);
+      q.el.style.left = s[0] + "px"; q.el.style.top = (s[1] - q.t * 26) + "px";
+      q.el.style.opacity = q.t < 0.6 ? 1 : 1 - (q.t - 0.6) / 0.3;
+      q.el.style.transform = "translate(-50%,-100%) scale(" + (q.t < 0.08 ? 0.6 + q.t * 5 : 1) + ")";
+    }
+  }
 
   W.addFighter = function (f, ch) { f.ch = ch; fighters.push(f); return f; };
   W.nearestFoe = function (f, maxD, maxAng) {
@@ -4039,6 +4066,11 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     foe.id = "ebars";
     foe.innerHTML = `<div class="en">ECO</div><div class="bb"><i id="hpE"></i></div><div class="bb post"><i id="poE"></i></div>`;
     wrap.appendChild(foe);
+    // botón de guardia grande y aparte (abajo a la derecha, al alcance del pulgar), con lo que hace escrito
+    const pad = document.createElement("div");
+    pad.id = "cpad";
+    pad.innerHTML = `<button id="guard" aria-pressed="false" aria-label="Guardia: tocar para desviar (parry), mantener para bloquear"><b>GUARDIA</b><small>toca: parry<br>mantén: bloqueo</small></button>`;
+    wrap.appendChild(pad);
     const css = document.createElement("style");
     css.textContent = `#cbars{position:absolute;left:calc(12px + env(safe-area-inset-left,0px));top:calc(58px + env(safe-area-inset-top,0px));pointer-events:none;font-size:7px;color:var(--dim)}
       #cbars .cb{display:flex;align-items:center;gap:6px;margin-bottom:5px}#cbars span{width:34px}
@@ -4047,6 +4079,13 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       #stP{background:#9fd7a8!important}#ebars{position:absolute;pointer-events:none;transform:translate(-50%,-100%);display:none;text-align:center}
       #ebars .bb{width:70px;height:5px;margin:2px auto}#ebars .en{font-size:6px;color:#9fe8ff;margin-bottom:2px}
       #hpE{background:#c9483a!important}#poE{background:#ffd27a!important;left:auto!important;right:50%!important;transform:translateX(50%)}
+      #cpad{position:absolute;right:calc(12px + env(safe-area-inset-right,0px));bottom:calc(128px + env(safe-area-inset-bottom,0px));pointer-events:none}
+      #guard{pointer-events:auto;width:112px;height:112px;border-radius:50%;border:3px solid #ffb070;background:rgba(40,22,14,.78);color:#ffe7c8;
+        font:inherit;font-size:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer;touch-action:none;
+        box-shadow:0 0 0 3px rgba(0,0,0,.45);-webkit-user-select:none;user-select:none}
+      #guard small{font-size:6px;line-height:1.6;color:#e8c9a8}#guard[aria-pressed="true"]{background:#8a3a1a;border-color:#fff0c0;transform:scale(.95)}
+      @media (min-width:700px){#cpad{bottom:calc(84px + env(safe-area-inset-bottom,0px))}}
+      .cpop{position:absolute;pointer-events:none;font-size:11px;text-shadow:2px 2px 0 #000,-1px -1px 0 #000;white-space:nowrap;z-index:5}
       #ebars.stun .en{color:#fff3b0}#respawn{display:none}#respawn.hot{display:inline-block;background:#6a2a1a!important;border-color:#ff9a5a!important}#cbars.low #hpP{background:#ff4a3a!important}`;
     document.head.appendChild(css);
     return { hpP: el.querySelector("#hpP"), stP: el.querySelector("#stP"), box: el, foe, hpE: foe.querySelector("#hpE"), poE: foe.querySelector("#poE"), en: foe.querySelector(".en") };
@@ -4101,6 +4140,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
   };
   W.combatAfter = function (dt) {
     updateStars(dt);
+    updatePops(dt);
     // destello de luz: sube de golpe y cae en ~0.3 s
     if (flashL) {
       flashT += dt;
