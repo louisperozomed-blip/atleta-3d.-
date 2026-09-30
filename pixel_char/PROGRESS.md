@@ -283,3 +283,30 @@ y escalar por ella encogería al autómata. La altura solo cambia con la pose (`
 **Para regenerar (b)**: hit N (frames 5-6 de frente); hit_1 entera si se quiere su animación propia en NE/E/SE (se
 usan espejos de hit_2; además tiene otro estilo, piezas más claras y redondas); opcional: el ojo es más pequeño
 en hit_2, block, dodge y death (diferencia de diseño, apenas se nota a la escala del juego).
+
+## Etapa 2 — Procesado (enemigo)
+`tools/enemy_maps.py` sobre `build/enemy/fixed` (recortado, sin halo, color igualado, pivote en los pies,
+direcciones corregidas):
+- **Normal maps**: el mismo método que el personaje (`normals.py`).
+- **Especular por material**: placas de metal oxidado 0.45-0.8 según su luz, juntas y cables 0.3, musgo y raíces
+  0.04 (sin brillo), el ojo 0.
+- **Emisión**: el ojo cian y su halo (lo único que brilla sola en la oscuridad). Se guarda también la posición del
+  ojo en cada frame (`eye_px`) para poner en el mundo una luz puntual cian que ilumine un poco el entorno.
+- **Pies**: garras en contacto por frame (mismo formato que `world/assets/feet.json`) para anclar los pies y
+  colocar las sombras igual que con el personaje.
+- **Hojas** `out/enemy/<anim>_{color,normal,spec,emit}.png` (8 filas × 6 frames de 360×290, pivote 180,260) y
+  `out/enemy/enemy.json` (fases por frame: preparación / activo / recuperación, duraciones, ojo, pies, correcciones).
+- **Atlas del mundo** `world/assets/enemy_{color,normal,spec}.png` (media resolución, 3960×3190, celdas 180×145;
+  `spec`: R especular, G emisión) y `enemy_atlas.json`. Altura de pie: 214 px en la hoja; en el mundo se
+  dibuja a 1.4 veces la altura del personaje.
+
+| anim | preparación | activo | recuperación | total |
+|---|---|---|---|---|
+| attack1 (zarpazo rápido) | 1-3 | 4 IMPACT | 5-6 | 720 ms (+ la preparación larga de la IA) |
+| attack2 (barrido amplio) | 1-3 | 4 IMPACT | 5-6 | 875 ms |
+| parry | 1 | 2-3 DEFLECT/SPARK | 4-6 | 560 ms |
+| block | 1 | 2-5 (4 = recibe) | 6 | — |
+| dodge | 1-2 | 3-4 DASH | 5-6 | 550 ms |
+| hit / death | — | 1 | 2-6 | 590 / 1500 ms |
+
+Revisión: `review/enemy/E2_mapas.png` (de noche solo brilla el ojo; las placas reflejan la luz, el musgo no).
