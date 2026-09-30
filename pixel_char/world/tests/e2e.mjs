@@ -155,10 +155,14 @@ async function suite(browser, label, opts, touch) {
     s0 = await S(page);
     p = await scr(page, s0.x + 1.2, s0.z);
     if (touch) {
-      // táctil: los dos toques por CDP (touchscreen.tap espera al render lento y los separaba > 320 ms)
+      // táctil: con el iPhone emulado en SwiftShader el hilo principal está ocupado renderizando y cada toque
+      // espera al frame (> 320 ms entre toques). Se pausa el bucle de render solo durante los dos toques
+      // (W.manual): la lógica del gesto se prueba con su separación real de 60 ms
+      await page.evaluate(() => { W.manual = true; });
       const cdp = await page.context().newCDPSession(page);
       const tp = (type, q) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: q ? [{ x: q[0], y: q[1], id: 1 }] : [] });
       await tp("touchStart", p); await tp("touchEnd", null); await sleep(60); await tp("touchStart", p); await tp("touchEnd", null);
+      await page.evaluate(() => { W.manual = false; });
     } else { await tap(page, p[0], p[1], touch); await sleep(60); await tap(page, p[0], p[1], touch); }
     jumped = false;
     w = await waitIdle(page, 8000, 60, (s) => { if (s.jump) jumped = true; });
