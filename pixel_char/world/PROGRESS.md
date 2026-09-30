@@ -387,3 +387,38 @@ Cada efecto tiene su interruptor en `W.FEEL.on` (luz, visor, niebla, cámara, pr
 
 `review/art3/antes_despues.png` (sin/con, en oscuridad, en una charca y junto al farol) y
 `review/art3/caminar.gif` (cementerio con niebla → reposo con la cámara acercándose → carrera por el bosque).
+
+### E4 — Pruebas y publicación
+Mismo link: https://claude.ai/artifact/ANHrkwwHE8urZjzme74NhG
+
+- **Capturas por zona** con el personaje frente a la versión anterior: `review/art4/antes_despues.png`
+  (móvil 430×760) y `review/art4/vista/*.png` (vista amplia). **GIF recorriendo el mapa**:
+  `review/art4/recorrido.gif` (sube a la mano del titán → corre por el bosque retorcido → llega al farol y
+  se queda al calor → charcas → cementerio con niebla).
+- **Frente a las referencias** (`review/art4/vs_referencias.png`, cada zona junto a su imagen):
+  - Oscuro: sí. Bajo las copas y en las charcas casi a oscuras, con negros profundos y líneas de tinta en
+    lo oscuro; niebla densa en lo bajo, en las charcas y en el cementerio.
+  - Melancólico: sí. Paleta desaturada, día nublado, ceniza y hojas cayendo, árboles muertos, tumbas y
+    calaveras; el cálido solo en el farol y en el personaje, que es lo más cálido de la escena.
+  - Restos de ciencia ficción: se leen claramente en el titán (cráneo de máquina con luz de emergencia,
+    placas oxidadas, cables-tendón, mano-plataforma); en el resto del mapa (terminales que parpadean,
+    placas, balizas, cables en el suelo) son discretos a esta escala.
+  - Por debajo de las referencias: la bioluminiscencia brilla menos que en la 02 (la paleta y la niebla
+    la comprimen); las copas son racimos poligonales y no los troncos-cuerda dibujados de la 01; el agua
+    oscura casi no se distingue bajo la niebla; las flores y terminales son pequeños en la vista isométrica.
+- **Playwright**, versión final: E2E **33/33** (escritorio 1100×700 con ratón 19/19, iPhone 13 táctil
+  14/14; `review/art4/pruebas/`), con dos pruebas nuevas del titán (rodear su columna sin atravesarla,
+  subir a la mano-plataforma); pruebas de peso e integración (etapa 5) **13/13** con todo lo nuevo.
+- Rendimiento con el recorrido completo en escritorio: máx. 93 draw calls y 160k triángulos por frame
+  (antes de la dirección de arte: 94 / 139k). En el móvil (430×760): 53–63 draw calls y 98–153k
+  triángulos por zona (tabla de E2). Más ~8 draw calls del primer plano, que se pinta después del post.
+
+| Fallo encontrado | Corrección |
+|---|---|
+| Prueba de estrés de navegación (282 rutas aleatorias): el personaje se atascaba en esquinas de baldosas con 1 u de desnivel y se rendía a medio camino (**ya pasaba antes del arte**: 95.5 % de rutas bien) | Cuatro causas: el suavizado solo miraba la línea central (ahora el borde del cuerpo en una franja de ±0.12 u); deslizarse por un borde contaba como atasco (ahora atasco = sin acercarse al punto de paso 0.45 s); la sonda del cuerpo usaba el signo de cada componente y un residuo de 1e-17 la lanzaba contra un acantilado (ahora va en la dirección real); A* cortaba esquinas en diagonal si la celda ortogonal llevaba a un desnivel de 1 u. Resultado: **282/282**. |
+| E2E: SALTAR, doble toque y seguir al dedo fallaban a ratos en el iPhone emulado | Con la escena nueva, SwiftShader va a pocos fps y el tiempo simulado avanza más despacio que el real: esperas por tiempo real, y en el doble toque táctil el render se pausa durante los dos toques (se miden y se envían seguidos por CDP). El juego no cambia. |
+| La prueba del árbol-corazón ya no tenía sentido | Sustituida por las del titán. |
+
+Limitaciones: el rendimiento en un iPhone real no se puede medir desde aquí (headless con SwiftShader, sin
+GPU); el presupuesto de geometría y llamadas es parecido al de la versión anterior, que ya funcionaba. El
+audio (viento, goteo, zumbido, pasos) está comprobado solo en que no da errores: no se puede escuchar aquí.

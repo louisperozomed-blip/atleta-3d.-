@@ -1,0 +1,20 @@
+OK   [escritorio] resolución interna = css·dpr/px — 366×233 (dpr 1, px3)
+OK   [escritorio] recorrido → roots — 1 puntos A*, llega en 20.6 s, zonas heart/sendero/roots, anims idle/run/walk, máx 81 draw calls / 156k tri
+OK   [escritorio] recorrido → crystal — 6 puntos A*, llega en 38.4 s, zonas roots/sendero/crystal, anims idle/run/walk, máx 84 draw calls / 160k tri
+OK   [escritorio] recorrido → ponds — 6 puntos A*, llega en 32.4 s, zonas crystal/sendero/ponds, anims idle/run/walk, máx 83 draw calls / 144k tri
+OK   [escritorio] recorrido → ruins — 6 puntos A*, llega en 40.3 s, zonas ponds/sendero/heart/ruins, anims idle/run/walk, máx 86 draw calls / 148k tri
+OK   [escritorio] recorrido → heart — 4 puntos A*, llega en 28.9 s, zonas ruins/sendero/heart, anims idle/run/walk, máx 93 draw calls / 151k tri
+OK   [escritorio] toque cercano → camina y para — idle,walk
+OK   [escritorio] toque lejano (5.2 H) → corre y pasa a caminar — idle → walk → run → walk → idle
+OK   [escritorio] rodea la columna del titán (no la atraviesa) — 3 puntos A*, distancia mínima a la columna 1.28 u, final (0.4, 5.2)
+OK   [escritorio] sube a la mano abierta del titán (plataforma) — altura 1.50 (palma 1.5), final (-4.0, -3.0)
+OK   [escritorio] sube escalones (1.5 → 2.5) con suavidad — altura 1.50 → 2.50, mayor subida entre muestras 0.20
+OK   [escritorio] ondas al pisar charcas — 20 ondas creadas
+OK   [escritorio] doble toque parado → salta en el sitio — desplazamiento 0.000 u, toques separados 66 ms (intento 1)
+OK   [escritorio] SALTAR en marcha → salta hacia delante y levanta polvo — avance 2.75 u, polvo 427
+OK   [escritorio] mantener pulsado sigue al dedo y termina en el último punto — final a 0.00 u del destino planificado, 0.00 u del punto soltado (alcanzable), llega en 11.2 s, 20 fps; destino (9.10, -13.80), final (9.10, -13.80), re-planeos 0
+OK   [escritorio] girar cámara 90° desplaza la dirección 2 posiciones — 6 → 0
+OK   [escritorio] zoom y tamaño de píxel — zoom 1.60→2.00, ancho interno 366→275
+OK   [escritorio] sin scroll ni zoom del navegador — {"sx":0,"sy":0,"scale":1}
+OK   [escritorio] sin errores JS
+32/33 comprobaciones OK

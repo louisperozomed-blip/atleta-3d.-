@@ -1,0 +1,14 @@
+OK   deslizamiento del pie apoyado (walk, 8/8 direcciones) — media 0.005 px/frame, máx 0.954 px, frames > 1 px: 0/3118 · E 0.03 N 0.00 NE 0.00 NW 0.00 S 0.00 SE 0.00 SW 0.00 W 0.00
+OK   deslizamiento del pie apoyado (run, 8/8 direcciones) — media 0.000 px/frame, máx 0.000 px, frames > 1 px: 0/111 · E 0.00 N 0.00 NE 0.00 NW 0.00 S 0.00 SE 0.00 SW 0.00 W 0.00
+OK   sube un escalón de 0.50 u: el pie apoyado nunca se hunde ni flota fuera del cambio de nivel — 160 frames con pie apoyado: hundido > 1 px 0, resto |desfase| ≤ 0.27 px; cambio de nivel 133 ms (impulso: el pie de atrás despega al subir el cuerpo, máx 23.8 px); parado al final: 1 px; deslizamiento máx 0.00 px; 31 pisadas
+OK   baja un escalón de 0.50 u: el pie apoyado nunca se hunde ni flota fuera del cambio de nivel — 122 frames con pie apoyado: hundido > 1 px 0, resto |desfase| ≤ 0.17 px; cambio de nivel 67 ms (la bota llega al nivel de abajo y el cuerpo cae, máx 9.1 px); parado al final: 1 px; deslizamiento máx 0.00 px; 17 pisadas
+OK   charca: pies sobre la superficie andando y parado dentro del agua — 118 frames con pie apoyado (68 en el agua): |desfase| máx 0.00 px; parado en el agua: 0 px; deslizamiento máx 0.00 px
+OK   charca: cada pisada en el agua es de tipo agua y deja su onda — 23 pisadas (ddddwwwwwdwwwwwwddddddd), 11 en agua, 11 ondas
+OK   frenado walk: para exacto, sin pasarse, sin tirones — error final 0.0000 u, se pasa 0.0000 u, deceleración máx 9.10 u/s² (límite 11.42), ajuste final al llegar 0.011 u/s (≤ 0.096) en el punto exacto
+OK   frenado walk: asentamiento y hundimiento al parar — walk>idle, hundimiento 2.40 px
+OK   frenado walk: el pie no desliza al frenar — 13 muestras, máx 0.000 px, > 1 px: 0
+OK   frenado run: para exacto, sin pasarse, sin tirones — error final 0.0000 u, se pasa 0.0000 u, deceleración máx 11.42 u/s² (límite 11.42), ajuste final al llegar 0.000 u/s (≤ 0.096) en el punto exacto
+OK   frenado run: asentamiento y hundimiento al parar — walk>run>walk>idle, hundimiento 2.40 px
+OK   frenado run: el pie no desliza al frenar — 207 muestras, máx 0.000 px, > 1 px: 0
+OK   sin errores JS — ninguno
+13/13 OK
