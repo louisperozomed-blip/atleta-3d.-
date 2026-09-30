@@ -145,12 +145,23 @@ async function suite(browser, label, opts, touch) {
   await page.evaluate(() => { W.teleport(3.5, -5.5); });
   await sleep(500);
   let s0 = await S(page);
-  p = await scr(page, s0.x + 1.2, s0.z);
-  await tap(page, p[0], p[1], touch); await sleep(60); await tap(page, p[0], p[1], touch);
-  let jumped = false;
-  w = await waitIdle(page, 8000, 60, (s) => { if (s.jump) jumped = true; });
-  let s1 = await S(page);
-  check(`[${label}] doble toque parado → salta en el sitio`, jumped && Math.hypot(s1.x - s0.x, s1.z - s0.z) < 0.05, `desplazamiento ${Math.hypot(s1.x - s0.x, s1.z - s0.z).toFixed(3)} u`);
+  // el intervalo real entre los dos toques se mide en la página; si el arnés (render lento) los separa más
+  // que la ventana de doble toque (320 ms), no es un doble toque: se repite (hasta 3 intentos)
+  await page.evaluate(() => { W.__ups = []; W.renderer.domElement.addEventListener("pointerup", () => W.__ups.push(performance.now())); });
+  let jumped = false, s1, gap = 0, tries = 0;
+  for (; tries < 3; tries++) {
+    await page.evaluate(() => { W.teleport(3.5, -5.5); W.__ups.length = 0; });
+    await sleep(500);
+    s0 = await S(page);
+    p = await scr(page, s0.x + 1.2, s0.z);
+    await tap(page, p[0], p[1], touch); await sleep(60); await tap(page, p[0], p[1], touch);
+    jumped = false;
+    w = await waitIdle(page, 8000, 60, (s) => { if (s.jump) jumped = true; });
+    s1 = await S(page);
+    gap = await page.evaluate(() => W.__ups.length >= 2 ? W.__ups[1] - W.__ups[0] : -1);
+    if (gap >= 0 && gap <= 320) break;
+  }
+  check(`[${label}] doble toque parado → salta en el sitio`, jumped && Math.hypot(s1.x - s0.x, s1.z - s0.z) < 0.05, `desplazamiento ${Math.hypot(s1.x - s0.x, s1.z - s0.z).toFixed(3)} u, toques separados ${gap.toFixed(0)} ms (intento ${tries + 1})`);
   // --- 7. SALTAR en marcha: hacia delante ------------------------------------------------------------
   await page.evaluate(() => { W.teleport(-8.5, 0.5); W.goTo(-3, 5.9); });
   await sleep(900);
