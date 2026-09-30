@@ -119,7 +119,8 @@
       uFog: { value: new THREE.Vector4(A.fog.top, A.fog.k, A.fog.wisp, 0) },
       uEdge: { value: new THREE.Vector2(A.edge.sil, A.edge.crease) },
       uFlags: { value: new THREE.Vector4(1, 1, 1, 1) },
-      uPlayer: { value: new THREE.Vector4(0, -99, 0, 0) },       // xyz + radio del hueco en la niebla (etapa 3)
+      uPlayer: { value: new THREE.Vector4(0, -99, 0, 0) },       // xyz + radio del hueco en la niebla (feel.js)
+      uTrail: { value: [0, 1, 2].map(() => new THREE.Vector4()) },   // estela: x, z, -, radio (se cierra detrás)
       uWpp: { value: 0.03 },
     };
     const mat = new THREE.ShaderMaterial({
@@ -134,6 +135,7 @@
         uniform float uTime, uHalf, uWpp;
         uniform vec3 uPal[NP];
         uniform vec3 uInk, uFogA, uFogB;
+        uniform vec4 uTrail[3];
         varying vec2 vUv;
         float b2(vec2 a){ a = floor(a); return fract(a.x / 2. + a.y * a.y * .75); }
         float bayer4(vec2 a){ return b2(.5 * a) * .25 + b2(a); }
@@ -192,10 +194,19 @@
           if (uFlags.z > 0.5) {
             vec4 cov = texture2D(uCover, (wp.xz + uHalf) / (2.0 * uHalf));
             float dens = cov.g * 1.6;
-            float wisp = vnoise(wp.xz * 0.32 + vec2(uTime * 0.06, uTime * 0.035)) * 0.65 + vnoise(wp.xz * 0.9 - vec2(uTime * 0.11, -uTime * 0.05)) * 0.35;
+            // remolino: cerca del personaje los jirones giran a su alrededor (más si corre)
+            vec2 rel = wp.xz - uPlayer.xz; float dP = length(rel);
+            float sw = uPlayer.w > 0.0 ? (1.2 + 0.25 * uFog.w) * exp(-dP * 0.8) * (1.0 + 0.4 * sin(uTime * 0.6)) : 0.0;
+            vec2 wq = uPlayer.xz + mat2(cos(sw), sin(sw), -sin(sw), cos(sw)) * rel;
+            float wisp = vnoise(wq * 0.32 + vec2(uTime * 0.06, uTime * 0.035)) * 0.65 + vnoise(wq * 0.9 - vec2(uTime * 0.11, -uTime * 0.05)) * 0.35;
             float top = cov.b * 6.0 + uFog.x + dens * 0.55 + (wisp - 0.5) * uFog.z;   // capa sobre el suelo local
             // hueco alrededor del personaje (etapa 3): la niebla se abre y se arremolina
-            float hole = uPlayer.w > 0.0 ? smoothstep(uPlayer.w, uPlayer.w * 0.35, length(wp.xz - uPlayer.xz) * (0.85 + 0.3 * wisp)) : 0.0;
+            float hole = 0.0;
+            if (uPlayer.w > 0.0) {
+              hole = smoothstep(uPlayer.w, uPlayer.w * 0.35, dP * (0.85 + 0.3 * wisp));
+              for (int i = 0; i < 3; i++) { vec4 T = uTrail[i]; if (T.w <= 0.0) continue;
+                hole = max(hole, smoothstep(T.w, T.w * 0.35, length(wp.xz - T.xy) * (0.85 + 0.3 * wisp))); }
+            }
             float fa = 1.0 - exp(-uFog.y * max(0.0, top - wp.y) * (0.25 + dens));
             fa *= 1.0 - hole * 0.85;
             fa = max(fa, sky);

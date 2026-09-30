@@ -37,6 +37,8 @@
       stone: ["bandpass", 2200, 2.5, 0.05, 0.2],
       water: ["bandpass", 1300, 4, 0.14, 0.2],
       grass: ["highpass", 2600, 0.7, 0.11, 0.12],
+      leaves: ["highpass", 1800, 0.9, 0.16, 0.2],
+      metal: ["bandpass", 2600, 9, 0.12, 0.16],
     }[kind] || ["lowpass", 900, 0.9, 0.09, 0.2];
     f.type = P[0]; f.frequency.value = P[1]; f.Q.value = P[2];
     g.gain.setValueAtTime(0.0001, t);
@@ -52,12 +54,65 @@
       og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.25 * s, t + 0.005); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
       o.connect(og); og.connect(A.master); o.start(t); o.stop(t + 0.09);
     }
+    // hojas secas: crujido = varios chasquidos muy cortos
+    if (kind === "leaves") for (let i = 0; i < 4; i++) {
+      const b = c.createBufferSource(), bf = c.createBiquadFilter(), bg = c.createGain(), t0 = t + 0.012 + i * (0.018 + Math.random() * 0.02);
+      b.buffer = A.noise; bf.type = "bandpass"; bf.frequency.value = 2500 + Math.random() * 2500; bf.Q.value = 1.5;
+      bg.gain.setValueAtTime(0.0001, t0); bg.gain.exponentialRampToValueAtTime(0.14 * s, t0 + 0.003); bg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.025);
+      b.connect(bf); bf.connect(bg); bg.connect(A.master); b.start(t0, Math.random() * 0.3, 0.03);
+    }
+    // metal: golpe con resonancia (placa hueca)
+    if (kind === "metal") for (const [fr, gn, dec] of [[520, 0.12, 0.35], [1310, 0.06, 0.22], [2270, 0.035, 0.15]]) {
+      const o = c.createOscillator(), og = c.createGain();
+      o.type = "triangle"; o.frequency.setValueAtTime(fr * (0.97 + Math.random() * 0.06), t);
+      og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(gn * s, t + 0.004); og.gain.exponentialRampToValueAtTime(0.0001, t + dec);
+      o.connect(og); og.connect(A.master); o.start(t); o.stop(t + dec + 0.02);
+    }
     if (kind === "water") {
       const o = c.createOscillator(), og = c.createGain();
       o.frequency.setValueAtTime(1500, t); o.frequency.exponentialRampToValueAtTime(600, t + 0.06);
       og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.06 * s, t + 0.004); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
       o.connect(og); og.connect(A.master); o.start(t); o.stop(t + 0.08);
     }
+  };
+  // Ambiente: viento (ruido filtrado que respira), goteo (gotas al azar en las charcas y bajo las copas),
+  // zumbido eléctrico lejano junto a las máquinas (50 Hz + armónicos, con cortes). Volúmenes suavizados.
+  let amb = null;
+  function makeAmbient(c) {
+    const out = c.createGain(); out.gain.value = 1; out.connect(A.master);
+    const len = c.sampleRate * 2, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    let b = 0; for (let i = 0; i < len; i++) { b = b * 0.98 + (Math.random() * 2 - 1) * 0.02; d[i] = b * 6; }   // ruido marrón
+    const wind = c.createBufferSource(); wind.buffer = buf; wind.loop = true;
+    const wf = c.createBiquadFilter(); wf.type = "lowpass"; wf.frequency.value = 420; wf.Q.value = 0.6;
+    const wg = c.createGain(); wg.gain.value = 0;
+    wind.connect(wf); wf.connect(wg); wg.connect(out); wind.start();
+    const hg = c.createGain(); hg.gain.value = 0;
+    const hf = c.createBiquadFilter(); hf.type = "lowpass"; hf.frequency.value = 380;
+    [[50, 0.5, "sawtooth"], [100, 0.3, "sine"], [150, 0.15, "square"]].forEach(([f, g, ty]) => {
+      const o = c.createOscillator(), og = c.createGain(); o.type = ty; o.frequency.value = f; og.gain.value = g; o.connect(og); og.connect(hf); o.start();
+    });
+    hf.connect(hg); hg.connect(out);
+    return { wg, wf, hg, dripT: 0, cur: { wind: 0, drip: 0, hum: 0 } };
+  }
+  function drip(c, v) {
+    const t = c.currentTime, o = c.createOscillator(), g = c.createGain(), f0 = 900 + Math.random() * 1400;
+    o.type = "sine"; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f0 * 1.9, t + 0.05);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05 * v, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    o.connect(g); g.connect(A.master); o.start(t); o.stop(t + 0.14);
+  }
+  A.ambient = function (target, dt) {
+    const c = A.ctx;
+    if (!c || c.state !== "running" || !A.enabled) return;
+    if (!amb) amb = makeAmbient(c);
+    const k = 1 - Math.exp(-dt * 1.5), cur = amb.cur;
+    for (const key of ["wind", "drip", "hum"]) cur[key] += (target[key] - cur[key]) * k;
+    const t = c.currentTime, breathe = 0.7 + 0.3 * Math.sin(t * 0.23) * Math.sin(t * 0.37 + 1);
+    amb.wg.gain.setTargetAtTime(0.09 * cur.wind * breathe, t, 0.2);
+    amb.wf.frequency.setTargetAtTime(300 + 260 * breathe, t, 0.3);
+    const cut = Math.sin(t * 7.1) * Math.sin(t * 3.3) > 0.75 ? 0.3 : 1;          // la corriente falla a ratos
+    amb.hg.gain.setTargetAtTime(0.03 * cur.hum * cut, t, 0.05);
+    amb.dripT -= dt;
+    if (amb.dripT <= 0) { amb.dripT = 0.25 + Math.random() * 1.6; if (Math.random() < cur.drip) drip(c, 0.6 + Math.random() * 0.4); }
   };
   ["pointerdown", "keydown", "touchstart"].forEach((ev) => addEventListener(ev, () => A.unlock(), { passive: true }));
 })();

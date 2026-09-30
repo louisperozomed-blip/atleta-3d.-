@@ -182,6 +182,7 @@
   // ---------------------------------------------------------------------------
   function titan() {
     const g = 1.5;                                         // altura de la plaza
+    W.machines.push([1, 0.5, 12]);
     const bone = (i) => (i % 3 ? COL.bone : COL.boneDark);
     // columna tendida a lo largo de x, en el lado norte (z = 3.2)
     for (let x = -3.2, i = 0; x <= 5.6; x += 0.8, i++) {
@@ -285,6 +286,7 @@
     W.M.put("terminal", x, y, z, { ry, rx: broken ? 0.35 : (R() - 0.5) * 0.12, rz: broken ? 0.2 : (R() - 0.5) * 0.12 });
     W.addEmitter(x + Math.sin(ry) * 0.4, y + 0.7, z + Math.cos(ry) * 0.4, 0x46e1ff, 0.45, 2.6, { kind: "screen", flicker: true });
     W.addObstacle(x, z, 0.35, "terminal"); P.claim(x, z, 0.7);
+    W.machines.push([x, z, 6]);
     W.plates.push([x, z, 0.5]);
   }
   function beacon(x, z) {
@@ -293,6 +295,7 @@
     W.M.put("beacon", x, y, z, { ry: R() * 3, rz: (R() - 0.5) * 0.15 });
     W.addEmitter(x, y + 1.35, z, COL.emerg, 0.8, 4, { kind: "emerg", dying: true });
     W.addObstacle(x, z, 0.15, "beacon"); P.claim(x, z, 0.4);
+    W.machines.push([x, z, 4]);
   }
 
   // ---------------------------------------------------------------------------
@@ -535,6 +538,7 @@
   // Entre zonas y el conjunto
   // ---------------------------------------------------------------------------
   W.plates = [];                                // placas de metal (pisada metálica, etapa 3)
+  W.machines = [];                              // máquinas que zumban (audio ambiental): x, z, radio
   W.fireflyZones = [];
   W.reflections = [];
   W.reflect = function (x, z, color, h) {       // reflejo de algo que brilla sobre el agua cercana

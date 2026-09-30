@@ -356,3 +356,34 @@ con SwiftShader).
 
 `review/art2/antes_despues.png`, `review/art2/zonas_vista.png` (vista amplia de las 5 zonas y el
 personaje sobre la mano del titán), `review/art2/{mano_titan,craneo_titan,charca_dolmen}.png`.
+
+### E3 — Sentimiento al caminar (`src/feel.js`, parches en `character.js`, `look.js`, `interact.js`, `audio.js`, `main.js`)
+Cada efecto tiene su interruptor en `W.FEEL.on` (luz, visor, niebla, cámara, primer plano, reflejo, ambiente).
+- **Luz que envuelve**: la cobertura bajo sus pies, suavizada (~0.5 s), apaga su sol hasta un 62 % y su
+  cielo hasta un 55 % (se oscurece poco a poco, pero siempre se le distingue). Hongos, pantallas y agua a
+  su alrededor le dan **luz fría desde abajo** (más en botas y en lo que mira al suelo). Junto al farol,
+  una **envolvente cálida** desde todas partes además de la luz puntual (antes quedaba a contraluz).
+- **Visor**: los píxeles oscuros y brillantes de la franja del casco (color + mapa especular) tienen un
+  brillo verde azulado propio, muy tenue a cielo abierto y más visible cuanto más oscuro está.
+- **Pisadas según el terreno** (`W.surfaceAt`, comprobado andando: `mano` → metal, `bosque` → hojas,
+  `charco` → agua, `sendero` → tierra): chapoteo con ondas y **su reflejo en la charca** (el frame volteado
+  bajo el suelo, oscuro y ondulado); crujido de hojas secas (varios chasquidos) con hojas que saltan;
+  pisada metálica (golpe con resonancia de placa hueca) con una **chispa mínima**; polvo en piedra y tierra.
+- **Niebla**: se abre alrededor del personaje (más si corre), los jirones se **arremolinan** a su
+  alrededor y una estela de 3 huecos se **cierra detrás** en ~1.3 s.
+- **Cámara**: sigue con un leve retraso (suavizado más lento) y un poco de anticipación hacia donde
+  camina; en reposo (> 0.8 s) se acerca un 9 % poco a poco, y al correr se aleja un 10 %.
+- **Primer plano**: 8 siluetas de tinta (ramas con hojas, lianas, ramitas muertas, helechos) dibujadas
+  en un lienzo, pintadas encima de todo en el borde de la pantalla y moviéndose más rápido que el mundo
+  (paralaje 1.35–1.75); la silueta depende de la zona y la densidad de lo cubierto que esté.
+- **Audio ambiental** (WebAudio, sin archivos; el botón «sonido» lo silencia todo): viento de ruido
+  marrón que respira, más fuerte a cielo abierto; goteo en las charcas y bajo las copas; zumbido eléctrico
+  de 50 Hz con armónicos y cortes junto a las máquinas (titán, terminales, balizas: `W.machines`).
+
+| Fallo encontrado | Corrección |
+|---|---|
+| Bajo las copas el personaje se perdía del todo en el negro | Oscurecimiento máximo 62 % (antes 88 %) y visor que sube con la oscuridad. |
+| Junto al farol quedaba a contraluz (el farol está detrás, en el hueco) | Envolvente cálida por cercanía al farol. |
+
+`review/art3/antes_despues.png` (sin/con, en oscuridad, en una charca y junto al farol) y
+`review/art3/caminar.gif` (cementerio con niebla → reposo con la cámara acercándose → carrera por el bosque).

@@ -19,6 +19,8 @@
       uColor: { value: null }, uNormal: { value: null }, uSpec: { value: null },
       uRect: { value: new THREE.Vector4() }, uSunW: { value: new THREE.Vector3() },
       uNormalAmt: { value: 1 }, uGrade: { value: 0.6 }, uGain: { value: 1.12 },
+      // luz del entorno (feel.js): copas que apagan sol y cielo (x, y), luz fría desde abajo, brillo del visor
+      uCovC: { value: new THREE.Vector2(1, 1) }, uUp: { value: new THREE.Vector3() }, uWarm: { value: new THREE.Vector3() }, uVisor: { value: 0 }, uTime: { value: 0 },
       uWarp: { value: new THREE.Vector4() },               // túnica: (amp x, amp y, belt v, hem v) — etapa 3
       uFootA: { value: new THREE.Vector4() }, uFootB: { value: new THREE.Vector4() },   // pies anclados (u, v, du, dv)
       uFootR: { value: new THREE.Vector2(7 / 120, 22 / 136) },                             // (sigma u, alto rodilla v)
@@ -84,7 +86,7 @@
         float wh = exp(-pow((q.x - F.x) / uFootR.x, 2.0));
         return F.zw * wv * wh;
       }
-      uniform float uNormalAmt, uGrade, uGain;
+      uniform float uNormalAmt, uGrade, uGain, uVisor, uTime; uniform vec2 uCovC; uniform vec3 uUp, uWarm;
       varying vec2 vUv; varying vec2 vQ; varying vec3 vViewPos;
       void main() {
         // deformación de la túnica (etapa 3): desplaza el muestreo en la franja cintura-bajo
@@ -119,7 +121,7 @@
         vec3 diff = vec3(0.0), spec = vec3(0.0), rim = vec3(0.0);
         #if NUM_HEMI_LIGHTS > 0
           float hl = dot(n, hemisphereLights[0].direction) * 0.5 + 0.5;
-          diff += mix(hemisphereLights[0].groundColor, hemisphereLights[0].skyColor, hl);
+          diff += mix(hemisphereLights[0].groundColor, hemisphereLights[0].skyColor, hl) * uCovC.y;
         #endif
         #if NUM_DIR_LIGHTS > 0
           float sh = 1.0;
@@ -128,6 +130,7 @@
           #endif
           vec3 L = directionalLights[0].direction;
           float w = clamp((dot(n, L) + 0.35) / 1.35, 0.0, 1.0);
+          sh *= uCovC.x;
           diff += directionalLights[0].color * w * sh;
           spec += directionalLights[0].color * sh * sm * pow(max(dot(n, normalize(L + V)), 0.0), shin) * (shin + 8.0) / 60.0;
           float e = smoothstep(0.55, 0.92, length(n.xy));
@@ -154,6 +157,15 @@
         float ao = mix(1.0 - uAO.z, 1.0, smoothstep(0.0, uAO.y, hgt));
         vec3 col = c.rgb * diffT * uGain * ao + (spec + rim) * 0.5 * ao;
         col += c.rgb * uGround * uBounce * (1.0 - smoothstep(0.0, uAO.y * 1.4, hgt)) * (0.35 + 0.65 * clamp(0.5 - 0.5 * n.y, 0.0, 1.0));
+        // luz cálida que lo envuelve junto al farol (desde todas partes, más en lo que mira al farol ya lo hace la puntual)
+        col += c.rgb * uWarm * (0.75 + 0.25 * n.z);
+        // luz fría desde abajo (agua y hongos que brillan): más en las botas y en lo que mira al suelo
+        float low = 1.0 - smoothstep(0.0, 0.62, hgt);
+        col += (c.rgb * 0.8 + 0.12) * uUp * low * low * (0.45 + 0.55 * clamp(0.5 - 0.5 * n.y, 0.0, 1.0));
+        // visor del casco: píxeles oscuros y brillantes en la franja de la cabeza, con brillo propio tenue
+        float lumC = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+        float vis = step(0.13, q.y) * step(q.y, 0.34) * (1.0 - smoothstep(0.08, 0.16, lumC)) * smoothstep(0.5, 0.7, sm);
+        col += vec3(0.32, 0.78, 0.72) * vis * uVisor * (0.85 + 0.15 * sin(uTime * 1.7));
         // ajuste hacia la paleta del mundo: medios algo más fríos, sombras hacia violeta;
         // negros y altas luces (crema, naranja) se mantienen
         float lum = dot(col, vec3(0.299, 0.587, 0.114));

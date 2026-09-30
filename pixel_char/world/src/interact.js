@@ -7,6 +7,7 @@
   let stepSlot = 0;
   // terreno bajo el pie -> tipo de impacto
   function surfaceKind(x, z) {
+    if (W.surfaceAt) return W.surfaceAt(x, z);      // feel.js: agua, hojas, metal, piedra, tierra, hierba
     const k = W.kindAt(x, z), K = W.K;
     if (k === K.PUDDLE) return "water";
     if (k === K.PATH || k === K.PLAZA) return "dust";
@@ -17,7 +18,10 @@
     dust: { pal: [[0.62, 0.66, 0.62], [0.5, 0.52, 0.5], [0.72, 0.74, 0.68]], spd: 0.55, up: 0.55, life: 0.45, n: 7 },
     stone: { pal: [[0.6, 0.64, 0.7], [0.45, 0.5, 0.56], [0.36, 0.62, 0.42]], spd: 0.6, up: 0.6, life: 0.4, n: 5 },
     water: { pal: [[0.75, 0.97, 1], [0.5, 0.88, 0.95], [1, 1, 1]], spd: 0.7, up: 1.6, life: 0.45, n: 9 },
-    grass: { pal: [[0.36, 0.64, 0.4], [0.45, 0.72, 0.45], [0.8, 1, 0.5]], spd: 0.5, up: 1.0, life: 0.5, n: 6 },
+    grass: { pal: [[0.3, 0.42, 0.33], [0.36, 0.48, 0.38], [0.42, 0.55, 0.42]], spd: 0.5, up: 1.0, life: 0.5, n: 6 },
+    // hojas secas que saltan al pisar (crujido), chispa mínima en el metal
+    leaves: { pal: [[0.45, 0.28, 0.2], [0.36, 0.3, 0.22], [0.5, 0.36, 0.24]], spd: 0.75, up: 1.5, life: 0.75, n: 7 },
+    metal: { pal: [[1, 0.9, 0.62], [1, 0.72, 0.36], [1, 0.95, 0.8]], spd: 1.5, up: 1.7, life: 0.22, n: 2 },
   };
   W.afterCharacter = function (dt) {
     const p = W.player, fx = W.fx, st = W.character.st;
@@ -30,7 +34,7 @@
         const y = W.heightAt(e.x, e.z);
         fx.dust(e.x, kind === "water" ? y + 0.045 : y, e.z, Math.round(P.n * (run ? 1.5 : 1)), P);
         if (kind === "water") fx.ripple(e.x, y + 0.045, e.z, run ? 0.7 : 0.5);
-        else fx.footprint(e.x, y, e.z, e.heading, kind === "grass" ? 0.22 : 0.38);
+        else if (kind !== "metal") fx.footprint(e.x, y, e.z, e.heading, kind === "grass" || kind === "leaves" ? 0.22 : 0.38);
         // hierba aplastada un momento
         const s = W.U.uSteps.value[stepSlot++ % 4];
         s.x = e.x; s.y = e.z; s.z = W.U.uTime.value; s.w = run ? 1 : 0.8;

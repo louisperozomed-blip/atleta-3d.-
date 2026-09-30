@@ -94,19 +94,27 @@
     // --- personaje -------------------------------------------------------------------
     const player = (W.player = new W.Player(0, -6.2));
     const character = (W.character = W.makeCharacter(scene, assets.tex, assets.meta));
+    if (W.initFeel) W.initFeel(scene);
 
     // --- cámara isométrica + post-proceso pixel art ----------------------------------
     const cam = (W.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200));
     const post = (W.post = W.makePost());
     let rh = 1;
+    let vw = 1, vh = 1;
+    // proyección (zoom del jugador × acercamiento suave de la cámara en reposo/carrera, feel.js)
+    function setProj() {
+      const a = vw / vh, zk = (W.FEEL && W.FEEL.zoomK) || 1, fh = (12 / (ui.zoom * zk)) * Math.max(1, (1 / a) / 1.3);   // en vertical se ve más alto
+      cam.left = -fh * a / 2; cam.right = fh * a / 2; cam.top = fh / 2; cam.bottom = -fh / 2; cam.updateProjectionMatrix();
+      W.viewHalf = Math.max(fh * a, fh) * 0.75 + 4;
+    }
+    W.setProj = setProj;
     function resize() {
       const px = PIX[ui.pi], w = Math.max(1, Math.floor(wrap.clientWidth * dpr / px)), h = Math.max(1, Math.floor(wrap.clientHeight * dpr / px));
-      renderer.setSize(w, h, false); post.rt.setSize(w, h); rh = h;
+      renderer.setSize(w, h, false); post.rt.setSize(w, h); rh = h; vw = w; vh = h;
       if (W.ambient) W.ambient.mat.uniforms.uPx.value = 1;
-      const a = w / h, fh = (12 / ui.zoom) * Math.max(1, (1 / a) / 1.3);   // en vertical se ve más alto
-      cam.left = -fh * a / 2; cam.right = fh * a / 2; cam.top = fh / 2; cam.bottom = -fh / 2; cam.updateProjectionMatrix();
+      setProj();
+      const a = w / h, fh = cam.top - cam.bottom;
       const pxBtn = $("px"); if (pxBtn) pxBtn.textContent = "px" + px;
-      W.viewHalf = Math.max(fh * a, fh) * 0.75 + 4;
     }
     W.resize = resize;
     addEventListener("resize", resize);
@@ -185,8 +193,12 @@
       if (W.afterCharacter) W.afterCharacter(dt, t);
       const beat = 0;
       if (refl) refl.mat.uniforms.uTheta.value = ui.theta;
+      if (W.updateFeel) W.updateFeel(dt, t, camT, cam);
       // cámara: sigue con suavidad
-      camT.lerp(tmp.set(player.x, player.y + 1.0, player.z), W.camSnap ? 1 : 1 - Math.exp(-dt * 4));
+      // seguimiento con un leve retraso y un poco de anticipación hacia donde camina (feel.js: F.on.cam)
+      const ahead = W.FEEL && W.FEEL.on.cam ? Math.min(player.speed || 0, 4.5) * 0.22 : 0;
+      tmp.set(player.x + Math.cos(player.heading) * ahead, player.y + 1.0, player.z + Math.sin(player.heading) * ahead);
+      camT.lerp(tmp, W.camSnap ? 1 : 1 - Math.exp(-dt * (W.FEEL && W.FEEL.on.cam ? 3 : 4)));
       W.camSnap = false;
       const EL = W.CAM_EL;
       cam.position.set(Math.sin(ui.theta) * Math.cos(EL), Math.sin(EL), Math.cos(ui.theta) * Math.cos(EL)).multiplyScalar(40).add(camT);
@@ -223,6 +235,7 @@
       renderer.setRenderTarget(null); renderer.render(post.scene, post.cam);
       // suelta las texturas del post (la profundidad del RT no puede seguir enlazada mientras se pinta en él)
       for (let u = 0; u < 4; u++) { renderer.state.activeTexture(gl.TEXTURE0 + u); renderer.state.bindTexture(gl.TEXTURE_2D, null); }
+      if (W.renderForeground) W.renderForeground(renderer);      // ramas y lianas en primer plano (paralaje)
       if (W.afterRender) W.afterRender();
       fpsN++; fpsT += dt;
       if (fpsT > 0.5) { W.fps = fpsN / fpsT; fpsN = 0; fpsT = 0; }
