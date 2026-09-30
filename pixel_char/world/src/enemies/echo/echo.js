@@ -1,4 +1,5 @@
-// enemy.js — el "eco": un segundo personaje con las mismas animaciones (recoloreadas en tonos fríos, visor y
+// enemies/echo/echo.js — el "eco" (enemigo de prueba, guardado; se activa desde el panel de pruebas ⚙ →
+// Enemigo → Eco, con W.setEnemyType("echo") o con #enemy=echo en la dirección): un segundo personaje con las mismas animaciones (recoloreadas en tonos fríos, visor y
 // cuchilla cian que brillan) y la misma máquina de estados de combate (fighter.js).
 //
 // IA: dormido junto a su claro hasta que el jugador se acerca (4.5 u) o le ataca; entonces persigue con A*
@@ -11,10 +12,9 @@
 (function () {
   "use strict";
   const W = (window.W = window.W || {});
-  const foes = (W.foes = []);
   const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
 
-  W.spawnFoe = function (x, z, assets, opts) {
+  function spawnEcho(x, z, assets, opts) {
     opts = opts || {};
     const body = new W.Player(x, z);
     const ch = W.makeCharacter(W.scene, assets.tex, assets.meta, assets.ctex, assets.cmeta, { echo: true });
@@ -23,12 +23,12 @@
     f.dmgK = opts.dmgK || 1.3;
     f.home = { x, z, heading: opts.heading != null ? opts.heading : -Math.PI / 2 };
     body.heading = f.home.heading;
-    f.ai = opts.ai === false ? null : W.makeFoeAI(f);
-    foes.push(f);
+    f.ai = opts.ai === false ? null : makeEchoAI(f);
+    f.label = "ECO";
     return f;
-  };
+  }
 
-  W.makeFoeAI = function (f) {
+  function makeEchoAI(f) {
     const ai = {
       enabled: true, state: "dormant", t: 0, replan: 0, cool: 0.6, warnT: -1, warnKind: "", backT: 0, strafe: 1,
       rand: (() => { let s = 12345; return () => ((s = (s * 16807) % 2147483647) / 2147483647); })(),   // determinista
@@ -101,13 +101,11 @@
       },
     };
     return ai;
-  };
+  }
 
   // aviso antes de cada golpe del eco: al empezar WIND UP (o LEAP)
-  const prevExtra = W.onCombatFrameExtra;
-  W.onCombatFrameExtra = function (f, a) {
-    if (prevExtra) prevExtra(f, a);
-    if (f.team !== "foe" || !f.ai) return;
+  function onFrame(f, a) {
+    if (!f.ai) return;
     if (a.name.startsWith("attack") && a.f === 1) {
       f.ai.warnT = 0; f.ai.warnKind = a.name === "attack3" ? "heavy" : "light";
       if (W.combatStar) W.combatStar(f.body.x, f.body.y + W.CHAR_H * 0.92, f.body.z, a.name === "attack3" ? 0.9 : 0.7, a.name === "attack3" ? 0xffa050 : 0x9ff4ff, 0.3);
@@ -116,28 +114,15 @@
     }
   };
 
-  W.updateFoes = function (dt, theta, thetaT) {
-    for (const f of foes) {
-      if (f.ai) f.ai.update(dt);
-      f.update(dt);
-      f.body.update(dt);
-      f.ch.update(dt, f.body, theta, thetaT);
-    }
-    // botón REAPARECER: visible si el eco o el jugador han muerto
-    const rb = document.getElementById("respawn");
-    if (rb) {
-      const need = foes.some((f) => !f.alive) || (W.pf && !W.pf.alive);
-      if (rb._shown !== need) { rb._shown = need; rb.classList.toggle("hot", need); }
-    }
-  };
-  W.respawnAll = function () {
-    for (const f of foes) { f.respawn(f.home.x, f.home.z); f.body.heading = f.home.heading; if (f.ai) { f.ai.state = "dormant"; f.ai.cool = 0.6; f.ai.warnT = -1; } }
-    const p = W.pf;
-    if (p && !p.alive) p.respawn();
-    W.combatLog.push({ ev: "respawn", t: +W.U.uTime.value.toFixed(3) });
-  };
-  W.initFoeUI = function () {
-    const rb = document.getElementById("respawn");
-    if (rb) rb.addEventListener("click", (e) => { e.stopPropagation(); W.respawnAll(); });
-  };
+  W.registerEnemy("echo", {
+    label: "Eco (prueba)",
+    // el claro junto al inicio (a ~4.9 u; 4 u de suelo libre y llano alrededor)
+    spawnPoints() {
+      const p = W.player, s = W.findSpot(2.8, -10.2, p.y);
+      return s ? [{ x: s.x, z: s.z, heading: Math.atan2(p.z - s.z, p.x - s.x), zone: "heart" }] : [];
+    },
+    spawn(p, assets) { return spawnEcho(p.x, p.z, assets, { heading: p.heading }); },
+    onFrame,
+    respawn(f) { f.respawn(f.home.x, f.home.z); f.body.heading = f.home.heading; if (f.ai) { f.ai.state = "dormant"; f.ai.cool = 0.6; f.ai.warnT = -1; } },
+  });
 })();

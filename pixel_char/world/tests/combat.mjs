@@ -23,7 +23,7 @@ async function open(opts) {
   await page.route("**/three.min.js", (r) => r.fulfill({ body: fs.readFileSync(process.env.THREE_LOCAL), contentType: "application/javascript" }));
   await page.route("https://fonts.googleapis.com/**", (r) => r.fulfill({ body: "", contentType: "text/css" }));
   page.on("pageerror", (e) => { errors.push(e.message); console.log("pageerror:", e.message); });
-  await page.goto("file://" + path.resolve(html));
+  await page.goto("file://" + path.resolve(html) + (process.env.HASH || ""));
   await page.waitForFunction(() => window.W && W.ready, null, { timeout: 120000 });
   await page.evaluate(() => {
     W.manual = true;

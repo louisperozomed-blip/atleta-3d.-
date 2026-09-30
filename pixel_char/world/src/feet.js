@@ -21,12 +21,14 @@
   // Locomoción guiada por los pies: cadencia fija, velocidad = lo que avanza el pie dibujado +
   // lo que la pierna apoyada puede absorber durante un apoyo (MAXW texeles), por dirección.
   const MAXW = { walk: 15, run: 16 };
-  W.locoParams = function (anim, dir) {
-    const F = W.FEET && W.FEET[anim + "_" + DIRS[dir]];
-    const fps = 12;
+  // ch (opcional): el personaje dueño de los pies (el enemigo tiene su propio atlas, pies y escala)
+  W.locoParams = function (anim, dir, ch) {
+    const FS = (ch && ch.feet) || W.FEET;
+    const F = FS && FS[anim + "_" + DIRS[dir]];
+    const fps = (ch && ch.locoFps) || 12;
     if (!F) return null;
     const c = F.contact;
-    const tex = W.CHAR_H * Math.cos(W.CAM_EL) / 103;          // u de pantalla por texel del atlas del mundo
+    const tex = ch && ch.feet ? ch.unitsH : W.CHAR_H * Math.cos(W.CAM_EL) / 103;   // u de pantalla por texel del atlas del mundo
     if (anim === "walk") {
       // hueco máximo entre contactos (en frames, cíclico)
       let gap = 0;
@@ -45,15 +47,16 @@
     const [FW, FH] = meta.frame_size, [PVX, PVY] = meta.pivot;
     const EL = W.CAM_EL;
     const st = { anchor: null, release: null, key: "", frame: -1, lastScreen: null, stance: 0, lastTheta: null, lastGround: null };
+    const FEETS = () => ch.feet || W.FEET;
 
     function feetOf(anim, dir, f) {
-      const r = W.FEET && W.FEET[anim + "_" + DIRS[dir]];
+      const r = FEETS() && FEETS()[anim + "_" + DIRS[dir]];
       if (!r) return null;
       const fr = r.frames[f];
       return { feet: fr.feet.map((q) => ({ x: q.x * SC, y: q.y * SC })), grounded: anim === "walk" ? true : !!r.contact[f], contact: !!r.contact[f] };
     }
     function anyFeet(anim, dir, f) {
-      const r = W.FEET && W.FEET[anim + "_" + DIRS[dir]];
+      const r = FEETS() && FEETS()[anim + "_" + DIRS[dir]];
       return r ? r.frames[f].feet.map((q) => ({ x: q.x * SC, y: q.y * SC })) : null;
     }
     // coordenadas de pantalla (en unidades de mundo) de un punto del plano del sprite
@@ -70,7 +73,7 @@
     // del sprite va 0.15 u por delante del centro
     function groundPoint(q, anim, dir, f, base, sx, sy, camTheta) {
       const R = { x: Math.cos(camTheta), z: -Math.sin(camTheta) };
-      const lowT = W.FX.matter ? (W.FEET[anim + "_" + DIRS[dir]].frames[f].lowest || 0) * SC : 0;
+      const lowT = W.FX.matter ? (FEETS()[anim + "_" + DIRS[dir]].frames[f].lowest || 0) * SC : 0;
       const dep = (q.y - lowT) * ch.unitsH * sy / Math.sin(EL), TX = Math.sin(camTheta), TZ = Math.cos(camTheta);
       const wx = base.gx + R.x * q.x * ch.unitsH * sx, wz = base.gz + R.z * q.x * ch.unitsH * sx;
       return { wx, wz, px: wx + TX * (0.15 + dep), pz: wz + TZ * (0.15 + dep) };
@@ -135,7 +138,7 @@
           if (!W.FX.anchor) { dx = 0; dy = 0; }
           const m = Math.hypot(dx, dy);
           st.desired = m;
-          const mw = (W.locoParams(anim, dir) || {}).maxw || 12;
+          const mw = (W.locoParams(anim, dir, ch) || {}).maxw || 12;
           if (m > mw) { dx *= mw / m; dy *= mw / m; }
           a.d = [dx, dy];
           applied = [dx, dy];
@@ -149,7 +152,7 @@
         // próxima pisada: dónde y cuándo se apoyará la bota delantera (para subir escalones: el cuerpo
         // empieza a subir justo antes, así la bota no se hunde en el escalón al apoyarse)
         st.next = null;
-        const lp = (anim === "walk" || anim === "run") && !p.jump && p.speed > 0.05 && ch.st ? W.locoParams(anim, dir) : null;
+        const lp = (anim === "walk" || anim === "run") && !p.jump && p.speed > 0.05 && ch.st ? W.locoParams(anim, dir, ch) : null;
         if (lp) {
           let acc = 0; const starts = lp.weights.map((w) => { const a = acc; acc += w; return a; });
           let fc = -1;

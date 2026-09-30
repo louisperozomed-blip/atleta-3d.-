@@ -39,7 +39,7 @@
       // pies anclados: la velocidad de marcha sale de los pies (u/s por dirección)
       const chr = this.ch || W.character;
       if (W.FX && W.FX.anchor && W.locoParams && chr) {
-        const lp = W.locoParams("walk", chr.st.dir);
+        const lp = W.locoParams("walk", chr.st.dir, chr);
         if (lp) return lp.v * (W.speedMul || 1);
       }
       // variante E: la velocidad se ajusta a la zancada medida de la dirección que se ve
@@ -49,7 +49,7 @@
       }
       return v * W.CHAR_H * (W.speedMul || 1);
     }
-    get runV() { return P.runSpeed * W.CHAR_H * (W.speedMul || 1); }
+    get runV() { return P.runSpeed * W.CHAR_H * (this.runMul || 1) * (W.speedMul || 1); }
     remaining() {
       let d = 0, px = this.x, pz = this.z;
       for (const q of this.path) { d += Math.hypot(q.x - px, q.z - pz); px = q.x; pz = q.z; }
@@ -73,7 +73,7 @@
     }
     // intenta moverse (dx, dz); desliza por la pared si choca
     tryMove(dx, dz) {
-      const r = P.radius;
+      const r = this.radius || P.radius;
       const ok = (x, z) => {
         // sonda del borde del cuerpo a lo largo de la dirección real del movimiento (antes, con el signo de
         // cada componente, un residuo de 1e-17 en x lanzaba la sonda hacia un acantilado al andar en z)

@@ -113,6 +113,12 @@
     else if (kind === "deathblow") { tone(c, t, "sine", 90, 35, 0.6, 0.45); noiseHit(c, t, "lowpass", 3000, 200, 0.7, 0.45, 0.4); tone(c, t, "triangle", 2200, 2100, 0.08, 0.6); }
     else if (kind === "death") { tone(c, t, "sine", 80, 40, 0.35, 0.35); noiseHit(c, t, "lowpass", 900, 200, 0.6, 0.25, 0.3); }
     else if (kind === "warn") { tone(c, t, "sine", 980, 1480, 0.05, 0.12); }
+    // autómata: zumbido grave mecánico al preparar el ataque (motor que se carga + chirrido de metal)
+    else if (kind === "charge" || kind === "chargeHeavy") {
+      const h = kind === "chargeHeavy" ? 1.35 : 1, d = 0.55 * h;
+      tone(c, t, "sawtooth", 46, 72, 0.16 * h, d); tone(c, t, "square", 92, 140, 0.05 * h, d * 0.9);
+      noiseHit(c, t + 0.05, "bandpass", 700, 1900, 6, 0.07 * h, d * 0.7);
+    } else if (kind === "stomp") { tone(c, t, "sine", 70, 38, 0.3 * (surface || 1), 0.16); noiseHit(c, t, "lowpass", 600, 150, 0.7, 0.18 * (surface || 1), 0.12); }
   };
   // Ambiente: viento (ruido filtrado que respira), goteo (gotas al azar en las charcas y bajo las copas),
   // zumbido eléctrico lejano junto a las máquinas (50 Hz + armónicos, con cortes). Volúmenes suavizados.

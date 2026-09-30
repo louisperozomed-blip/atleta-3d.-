@@ -12,9 +12,12 @@
   "use strict";
   const W = (window.W = window.W || {});
   const fighters = (W.fighters = []);
-  const DMG = { attack1: 10, attack2: 12, attack3: 22 };
-  const REACH = { attack1: 1.6, attack2: 1.65, attack3: 1.95 };
-  const ARC = { attack1: 70, attack2: 70, attack3: 85 };
+  // ataques del jugador; cada enemigo puede traer su tabla (f.attacks: dmg, reach, arc, stop, kb, heavy, post)
+  const PLAYER_ATTACKS = {
+    attack1: { dmg: 10, reach: 1.6, arc: 70, stop: 0.075, kb: 0.35, post: 38 },
+    attack2: { dmg: 12, reach: 1.65, arc: 70, stop: 0.085, kb: 0.35, post: 38 },
+    attack3: { dmg: 22, reach: 1.95, arc: 85, stop: 0.12, kb: 0.6, heavy: true, post: 48 },
+  };
   const STOP = { attack1: 0.075, attack2: 0.085, attack3: 0.12, parry: 0.11, parryHeavy: 0.13, block: 0.06, deathblow: 0.16 };
   const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
   W.combatLog = [];
@@ -22,7 +25,7 @@
   // aviso sobre el personaje de lo que acaba de pasar (¡PARRY!, BLOQUEO...): así se ve si ha salido
   const FB = {
     parry: ["¡PARRY!", "#ffe08a", "who"], block: ["BLOQUEO", "#b8d8ff", "who"], guardbreak: ["GUARDIA ROTA", "#ff6a4a", "who"],
-    evade: ["ESQUIVA", "#9fe8c8", "who"], stun: ["ATURDIDO", "#fff3b0", "who"], deathblow: ["¡REMATE!", "#ffb070", "who"],
+    evade: ["ESQUIVA", "#9fe8c8", "who"], playerPostureBreak: ["POSTURA ROTA", "#ff8a5a", "who"], stun: ["ATURDIDO", "#fff3b0", "who"], deathblow: ["¡REMATE!", "#ffb070", "who"],
   };
   const pops = [];
   function feedback(e) {
@@ -31,17 +34,22 @@
     const f = fighters.find((x) => x.name === e[d[2]]);
     if (!f) return;
     // los avisos defensivos solo para el jugador; aturdido y remate, sobre el eco
-    if ((e.ev === "parry" || e.ev === "block" || e.ev === "guardbreak" || e.ev === "evade") && f.team !== "player") return;
+    if ((e.ev === "block" || e.ev === "guardbreak" || e.ev === "evade") && f.team !== "player") return;
+    if (e.ev === "parry" && f.team !== "player") { el0("¡DESVÍA!", "#9ff4ff", f); return; }
     const el = document.createElement("div");
     el.className = "cpop"; el.textContent = d[0]; el.style.color = d[1];
     document.getElementById("wrap").appendChild(el);
     pops.push({ el, f, t: 0 });
   }
+  function el0(txt, col, f) {
+    const el = document.createElement("div"); el.className = "cpop"; el.textContent = txt; el.style.color = col;
+    document.getElementById("wrap").appendChild(el); pops.push({ el, f, t: 0 });
+  }
   function updatePops(dt) {
     for (let i = pops.length - 1; i >= 0; i--) {
       const q = pops[i]; q.t += dt;
       if (q.t > 0.9) { q.el.remove(); pops.splice(i, 1); continue; }
-      const b = q.f.body, s = W.toScreen(b.x, b.y + W.CHAR_H * 1.35, b.z);
+      const b = q.f.body, s = W.toScreen(b.x, b.y + (q.f.ch && q.f.ch.height || W.CHAR_H) * 1.35, b.z);
       q.el.style.left = s[0] + "px"; q.el.style.top = (s[1] - q.t * 26) + "px";
       q.el.style.opacity = q.t < 0.6 ? 1 : 1 - (q.t - 0.6) / 0.3;
       q.el.style.transform = "translate(-50%,-100%) scale(" + (q.t < 0.08 ? 0.6 + q.t * 5 : 1) + ")";
@@ -159,21 +167,22 @@
     if (W.onCombatFrameExtra) W.onCombatFrameExtra(f, a);
   };
   function resolve(att, a) {
-    const b = att.body, reach = REACH[a.name], arc = ARC[a.name] * Math.PI / 180;
+    const AT = (att.attacks || PLAYER_ATTACKS)[a.name] || PLAYER_ATTACKS.attack1;
+    const b = att.body, reach = AT.reach, arc = AT.arc * Math.PI / 180;
     let any = false;
     for (const t of fighters) {
       if (t === att || t.team === att.team || !t.alive) continue;
       const dx = t.body.x - b.x, dz = t.body.z - b.z, d = Math.hypot(dx, dz);
       const ang = Math.abs(norm(Math.atan2(dz, dx) - b.heading));
-      const inArc = d <= reach + 0.3 && (ang <= arc || d < 0.6);
+      const inArc = d <= reach + (t.radiusHit || 0.3) && (ang <= arc || d < 0.6 + (t.radiusHit || 0));
       log({ ev: "swing", who: att.name, anim: a.name, d: +d.toFixed(2), ang: Math.round(ang * 180 / Math.PI), inArc });
       if (!inArc) continue;
       any = true;
       const dir = Math.atan2(dz, dx);
       const def = t.defense();
-      const heavy = a.name === "attack3";
+      const heavy = !!AT.heavy;
       const cx = (b.x + t.body.x) / 2, cz = (b.z + t.body.z) / 2, cy = Math.max(b.y, t.body.y) + 1.05;
-      const dmg = DMG[a.name] * (att.dmgK || 1);
+      const dmg = AT.dmg * (att.dmgK || 1);
       if (def === "evade") {
         log({ ev: "evade", who: t.name, anim: a.name });
         continue;
@@ -186,7 +195,7 @@
         stop(heavy ? STOP.parryHeavy : STOP.parry);
         W.shakeCam(dx, dz, 0.05, 0.22);
         if (W.sfx) W.sfx.combat("parry");
-        const broke = att.addPosture(heavy ? 48 : 38);
+        const broke = att.addPosture(AT.post || (heavy ? 48 : 38));
         if (!broke) att.start("hit", { kb: 0.3, kdir: dir + Math.PI, moved: 0, speed: 1.35, recoil: true });
         t.parries = (t.parries || 0) + 1;
         log({ ev: "parry", who: t.name, from: att.name, anim: a.name, win: +t.parryWindow().toFixed(3), post: Math.round(att.post), broke });
@@ -219,13 +228,13 @@
       // golpe limpio (remate si está aturdido)
       const deathblow = t.stunned;
       const dm = deathblow ? Math.max(40, dmg * 3) : dmg;
-      const res = t.hurt({ dmg: dm, dir, kb: heavy ? 0.6 : 0.35 });
+      const res = t.hurt({ dmg: dm, dir, kb: AT.kb || (heavy ? 0.6 : 0.35) });
       if (!deathblow && t.alive) t.addPosture(dm * 0.7);
       const kind = groundBurst(t.body.x, t.body.z, heavy ? 14 : 9, heavy);
       W.fx.dust(t.body.x - Math.cos(dir) * 0.1, t.body.y + 0.9, t.body.z - Math.sin(dir) * 0.1, heavy ? 16 : 10, { pal: EMBER, spd: 1.8, up: 1.3, life: 0.35 });
       if (deathblow) flashLight(t.body.x, t.body.y + 1.1, t.body.z, 0xffd0a0, 6);
       star(t.body.x - Math.cos(dir) * 0.15, t.body.y + 1.0, t.body.z - Math.sin(dir) * 0.15, deathblow ? 1.8 : heavy ? 1.1 : 0.8, deathblow ? 0xfff4d8 : 0xffc890, deathblow ? 0.24 : 0.13);
-      stop(deathblow ? STOP.deathblow : STOP[a.name]);
+      stop(deathblow ? STOP.deathblow : AT.stop);
       W.shakeCam(dx, dz, deathblow ? 0.14 : heavy ? 0.11 : 0.06, heavy || deathblow ? 0.32 : 0.22);
       if (W.sfx) W.sfx.combat(deathblow ? "deathblow" : heavy ? "hitHeavy" : "hit", kind);
       log({ ev: deathblow ? "deathblow" : "hit", who: t.name, from: att.name, anim: a.name, dmg: Math.round(dm), hp: Math.round(t.hp), res, surface: kind });
@@ -235,7 +244,7 @@
   W.onStun = function (f) {
     if (W.sfx) W.sfx.combat("stun");
     flashLight(f.body.x, f.body.y + 1.3, f.body.z, 0xfff0c0, 3);
-    log({ ev: "stun", who: f.name });
+    log({ ev: f.team === "player" ? "playerPostureBreak" : "stun", who: f.name });
   };
 
   // ---- barras ---------------------------------------------------------------------------------------
@@ -245,7 +254,8 @@
     const el = document.createElement("div");
     el.id = "cbars";
     el.innerHTML = `<div class="cb"><span>VIDA</span><div class="bb"><i id="hpP"></i></div></div>
-      <div class="cb"><span>STAM</span><div class="bb"><i id="stP"></i></div></div>`;
+      <div class="cb"><span>STAM</span><div class="bb"><i id="stP"></i></div></div>
+      <div class="cb"><span>POST</span><div class="bb"><i id="poP"></i></div></div>`;
     wrap.appendChild(el);
     const foe = document.createElement("div");
     foe.id = "ebars";
@@ -261,7 +271,7 @@
       #cbars .cb{display:flex;align-items:center;gap:6px;margin-bottom:5px}#cbars span{width:34px}
       .bb{width:96px;height:7px;background:rgba(0,0,0,.55);border:1px solid #3a2a22;position:relative;overflow:hidden}
       .bb i{position:absolute;left:0;top:0;bottom:0;background:#e8743a;transition:width .08s}
-      #stP{background:#9fd7a8!important}#ebars{position:absolute;pointer-events:none;transform:translate(-50%,-100%);display:none;text-align:center}
+      #stP{background:#9fd7a8!important}#poP{background:#ffd27a!important}#ebars{position:absolute;pointer-events:none;transform:translate(-50%,-100%);display:none;text-align:center}
       #ebars .bb{width:70px;height:5px;margin:2px auto}#ebars .en{font-size:6px;color:#9fe8ff;margin-bottom:2px}
       #hpE{background:#c9483a!important}#poE{background:#ffd27a!important;left:auto!important;right:50%!important;transform:translateX(50%)}
       #cpad{position:absolute;right:calc(12px + env(safe-area-inset-right,0px));bottom:calc(128px + env(safe-area-inset-bottom,0px));pointer-events:none}
@@ -273,23 +283,28 @@
       .cpop{position:absolute;pointer-events:none;font-size:11px;text-shadow:2px 2px 0 #000,-1px -1px 0 #000;white-space:nowrap;z-index:5}
       #ebars.stun .en{color:#fff3b0}#respawn{display:none}#respawn.hot{display:inline-block;background:#6a2a1a!important;border-color:#ff9a5a!important}#cbars.low #hpP{background:#ff4a3a!important}`;
     document.head.appendChild(css);
-    return { hpP: el.querySelector("#hpP"), stP: el.querySelector("#stP"), box: el, foe, hpE: foe.querySelector("#hpE"), poE: foe.querySelector("#poE"), en: foe.querySelector(".en") };
+    return { hpP: el.querySelector("#hpP"), stP: el.querySelector("#stP"), poP: el.querySelector("#poP"), box: el, foe, hpE: foe.querySelector("#hpE"), poE: foe.querySelector("#poE"), en: foe.querySelector(".en") };
   }
   function updateHud() {
     if (!hud) return;
     const p = W.pf;
     hud.hpP.style.width = (100 * p.hp / p.hpMax).toFixed(1) + "%";
     hud.stP.style.width = (100 * p.st / p.stMax).toFixed(1) + "%";
+    hud.poP.style.width = (100 * p.post / p.postMax).toFixed(1) + "%";
     hud.box.classList.toggle("low", p.hp < p.hpMax * 0.3);
-    const e = fighters.find((f) => f.team !== "player");
+    // barras del enemigo más cercano (vivo o recién caído, sin desvanecer)
+    let e = null, bd = 1e9;
+    for (const f of fighters) { if (f.team === "player" || f.hidden) continue; const d = Math.hypot(f.body.x - p.body.x, f.body.z - p.body.z); if (d < bd) { bd = d; e = f; } }
+    if (e && bd > 14) e = null;
     if (!e || !W.toScreen) { hud.foe.style.display = "none"; return; }
-    const s = W.toScreen(e.body.x, e.body.y + W.CHAR_H * 1.15, e.body.z);
+    const s = W.toScreen(e.body.x, e.body.y + (e.ch.height || W.CHAR_H) * 1.15, e.body.z);
     hud.foe.style.display = "block";
     hud.foe.style.left = s[0] + "px"; hud.foe.style.top = s[1] + "px";
     hud.hpE.style.width = (100 * e.hp / e.hpMax).toFixed(1) + "%";
     hud.poE.style.width = (100 * e.post / e.postMax).toFixed(1) + "%";
     hud.foe.classList.toggle("stun", e.stunned);
-    const lbl = e.stunned ? "ATURDIDO" : !e.alive ? "ECO ✕" : "ECO";
+    const nm = e.label || "ECO";
+    const lbl = e.stunned ? "ATURDIDO" : !e.alive ? nm + " ✕" : nm;
     if (hud.en.textContent !== lbl) hud.en.textContent = lbl;
     hud.foe.style.opacity = e.alive ? 1 : 0.35;
   }
@@ -302,22 +317,22 @@
     W.pf = W.addFighter(new W.Fighter(W.player, { team: "player", name: "jugador", hp: 100, stamina: 100 }), W.character);
     hud = makeHud();
     W.assets = assets;
-    // el eco aparece en el claro junto al inicio (a ~4.9 u; 4 u de suelo libre y llano alrededor)
-    const p = W.player;
-    const s = W.findSpot(2.8, -10.2, p.y);
-    W.foeSpawn = s;
-    if (W.spawnFoe && s) W.foe = W.spawnFoe(s.x, s.z, assets, { heading: Math.atan2(p.z - s.z, p.x - s.x) });
+    // enemigos del tipo elegido (enemies/core.js: por defecto el Autómata del bosque; el eco, desde el panel)
+    if (W.spawnEnemies) W.spawnEnemies();
     if (W.initFoeUI) W.initFoeUI();
   };
   // punto libre (sin obstáculo ni agua, al nivel h) más cercano a (x, z)
-  W.findSpot = function (x, z, h) {
+  // clear: radio de suelo libre alrededor (por defecto 0.5 u)
+  W.findSpot = function (x, z, h, clear) {
+    clear = clear || 0.5;
     for (let r = 0; r < 6; r += 0.25) {
       for (let k = 0; k < Math.max(1, Math.round(r * 12)); k++) {
         const a = k / Math.max(1, Math.round(r * 12)) * Math.PI * 2, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
         if (!W.cellFree(px, pz) || W.kindAt(px, pz) === W.K.PUDDLE) continue;
         if (h != null && Math.abs(W.heightAt(px, pz) - h) > 0.3) continue;
         let ok = true;
-        for (let j = 0; j < 8 && ok; j++) { const b = j * Math.PI / 4; ok = W.cellFree(px + Math.cos(b) * 0.5, pz + Math.sin(b) * 0.5); }
+        for (let rr = 0.5; rr <= clear + 1e-6 && ok; rr += 0.5)
+          for (let j = 0; j < 8 && ok; j++) { const b = j * Math.PI / 4; ok = W.cellFree(px + Math.cos(b) * rr, pz + Math.sin(b) * rr) && (h == null || Math.abs(W.heightAt(px + Math.cos(b) * rr, pz + Math.sin(b) * rr) - W.heightAt(px, pz)) < 0.3); }
         if (ok) return { x: px, z: pz };
       }
     }

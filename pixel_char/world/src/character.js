@@ -5,11 +5,14 @@
 (function () {
   "use strict";
   const W = (window.W = window.W || {});
-  const ANIMS = ["idle", "walk", "run", "jump"];
+  const ANIMS0 = ["idle", "walk", "run", "jump"];
   const NF = 6;
 
   W.makeCharacter = function (scene, tex, meta, ctex, cmeta, opts) {
     opts = opts || {};
+    // atlas propio (el enemigo): su lista de animaciones, sus pies y su altura en el mundo
+    const ANIMS = meta.anims || ANIMS0;
+    const FEETS = opts.feet || W.FEET;
     const [FW, FH] = meta.frame_size, [PVX, PVY] = meta.pivot, [AW, AH] = meta.atlas_size;
     const COLS = meta.columns, STAND = meta.standing_height_px;
     // hojas de combate (combat_atlas.json): otro atlas con celdas de 128x144 y pivote (64, 132); misma escala
@@ -20,7 +23,7 @@
       combat: cmeta ? { tex: ctex, FW: cmeta.frame_size[0], FH: cmeta.frame_size[1], PVX: cmeta.pivot[0], PVY: cmeta.pivot[1],
         AW: cmeta.atlas_size[0], AH: cmeta.atlas_size[1], COLS: cmeta.columns, emit: 1 } : null,
     };
-    const unitsV = W.CHAR_H / STAND;                         // unidades de mundo por texel (vertical del plano)
+    const unitsV = (opts.height || W.CHAR_H) / STAND;                         // unidades de mundo por texel (vertical del plano)
     const unitsH = unitsV * Math.cos(W.CAM_EL);              // horizontal: el plano vertical se ve acortado por cos(EL)
     const geo = new THREE.PlaneGeometry(1, 1);
     geo.translate(0.5, 0.5, 0);                              // origen en la esquina inferior izquierda
@@ -32,13 +35,14 @@
       uCovC: { value: new THREE.Vector2(1, 1) }, uUp: { value: new THREE.Vector3() }, uWarm: { value: new THREE.Vector3() }, uVisor: { value: 0 }, uTime: { value: 0 },
       uWarp: { value: new THREE.Vector4() },               // túnica: (amp x, amp y, belt v, hem v) — etapa 3
       uFootA: { value: new THREE.Vector4() }, uFootB: { value: new THREE.Vector4() },   // pies anclados (u, v, du, dv)
-      uFootR: { value: new THREE.Vector2(7 / 120, 22 / 136) },                             // (sigma u, alto rodilla v)
-      uAO: { value: new THREE.Vector3(125 / 136, 34 / 136, 0) },                            // (v del suelo, alto v, fuerza)
+      uFootR: { value: new THREE.Vector2(opts.feet ? 9 / FW : 7 / 120, opts.feet ? 26 / FH : 22 / 136) },                             // (sigma u, alto rodilla v)
+      uAO: { value: new THREE.Vector3(PVY / FH, (opts.feet ? 40 : 34) / FH, 0) },                            // (v del suelo, alto v, fuerza)
       uGround: { value: new THREE.Color(0, 0, 0) }, uBounce: { value: 0 },
       uBody: { value: new THREE.Vector3(0, 0.76, 0) },                                     // (hundimiento v, v rodilla, inclinación)
       uPal: { value: (W.PALETTE || [[0, 0, 0]]).map((c) => new THREE.Vector3(c[0], c[1], c[2])) },
       uQuant: { value: 0 }, uOutline: { value: 0 },
-      uEmit: { value: 0 }, uFlash: { value: 0 }, uEcho: { value: opts.echo ? 1 : 0 }, uWarn: { value: 0 },
+      uEmit: { value: opts.emit || 0 }, uFlash: { value: 0 }, uEcho: { value: opts.echo ? 1 : 0 }, uWarn: { value: 0 },
+      uFade: { value: 1 }, uEyeCol: { value: new THREE.Vector3().fromArray(opts.emitCol || (opts.echo ? [0.45, 0.95, 1.0] : [1.0, 0.55, 0.18])) }, uEyeK: { value: 1 },
     }]);
     uniforms.uColor.value = tex.color; uniforms.uNormal.value = tex.normal; uniforms.uSpec.value = tex.spec;
     const VS = `
@@ -97,7 +101,7 @@
         return F.zw * wv * wh;
       }
       uniform float uNormalAmt, uGrade, uGain, uVisor, uTime; uniform vec2 uCovC; uniform vec3 uUp, uWarm;
-      uniform float uEmit, uFlash, uEcho, uWarn;
+      uniform float uEmit, uFlash, uEcho, uWarn, uFade, uEyeK; uniform vec3 uEyeCol;
       varying vec2 vUv; varying vec2 vQ; varying vec3 vViewPos;
       void main() {
         // deformación de la túnica (etapa 3): desplaza el muestreo en la franja cintura-bajo
@@ -114,6 +118,8 @@
         uv.x -= uWarp.x * band * band * uRect.z;
         uv.y -= uWarp.y * band * uRect.w;
         vec4 c = texture2D(uColor, uv);
+        // desvanecerse (enemigo muerto): trama ordenada que se va comiendo el sprite
+        if (uFade < 0.999 && bayer4(gl_FragCoord.xy) * 0.94 + 0.03 > uFade) discard;
         if (c.a < 0.5) {
           // contorno de 1 píxel de render (como el de los objetos del mundo): si algún vecino es opaco
           if (uOutline > 0.5) {
@@ -200,8 +206,7 @@
         col = mix(col, col * vec3(0.86, 1.0, 1.1), 0.35 * mid * uGrade);
         col += vec3(0.018, 0.0, 0.03) * (1.0 - smoothstep(0.0, 0.22, lum)) * uGrade;
         // emisión propia (brilla en la oscuridad, sin depender de las luces)
-        vec3 emc = uEcho > 0.5 ? vec3(0.45, 0.95, 1.0) : vec3(1.0, 0.55, 0.18);
-        col += (c.rgb * 1.5 + emc * 0.35) * em;
+        col += (c.rgb * 1.5 + uEyeCol * 0.35) * em * uEyeK;
         // eco: brillo del visor (siempre) y destello de aviso antes de su golpe
         if (uEcho > 0.5) col += vec3(0.35, 0.95, 1.0) * vis * (0.9 + 0.5 * uWarn) + vec3(0.6, 0.95, 1.0) * uWarn * 0.25 * (0.6 + 0.4 * n.z);
         if (uQuant > 0.0) col = mix(col, quantize(clamp(col, 0.0, 1.0)), uQuant);
@@ -228,7 +233,7 @@
         void main(){ vec4 c = texture2D(uColor, vUv); if (c.a < 0.5) discard;
           vec2 p = floor(gl_FragCoord.xy);
           if (mod(p.x + p.y, 3.0) > 0.5) discard;
-          gl_FragColor = vec4(${opts.echo ? "0.45, 0.9, 1.0" : "0.95, 0.62, 0.34"}, 0.9); }`,
+          gl_FragColor = vec4(${opts.echo || opts.feet ? "0.45, 0.9, 1.0" : "0.95, 0.62, 0.34"}, 0.9); }`,
       depthTest: true, depthWrite: false, depthFunc: THREE.GreaterDepth, transparent: true,
       // un poco hacia la cámara: con un búfer de profundidad de 24 bits la silueta empataba con el propio
       // personaje y lo teñía entero; así solo aparece donde otra cosa está delante de verdad
@@ -296,7 +301,7 @@
       return S;
     }
     const ch = {
-      mesh, mat, uniforms, st, meta, cmeta, unitsV, unitsH, caster, blob, boots, sticker, ghost, integrated: true,
+      mesh, mat, uniforms, st, meta, cmeta, unitsV, unitsH, feet: opts.feet || null, locoFps: opts.locoFps || 12, height: opts.height || W.CHAR_H, caster, blob, boots, sticker, ghost, integrated: true,
       isCombat(anim) { return CANIMS.indexOf(anim) >= 0; },
       frameRect(anim, dir, f) {
         if (CANIMS.indexOf(anim) >= 0) {
@@ -345,7 +350,7 @@
           st.anim = an; st.frame = act.f; st.settle = null; st.wfx = null; st.fi = null; st.idleT = 0;
           st.lastHeading = p.heading;
           if (W.debugFrame) { st.dir = W.debugFrame.dir; }
-          this.place(p, camTheta, an, Math.min(5, act.f));
+          this.place(p, camTheta, an, Math.max(0, Math.min(5, act.f | 0)));
           return;
         }
         // --- animación -------------------------------------------------------
@@ -361,14 +366,14 @@
         if (anim !== st.anim) {
           // inercia: al pararse, 1-2 frames de asentamiento (frame de contacto + el cuerpo se hunde)
           if (anim === "idle" && (st.anim === "walk" || st.anim === "run") && W.FX.inertia) {
-            st.settle = { t: 0, from: st.anim, frame: (W.FEET && W.FEET[st.anim + "_" + meta.directions[st.dir]] ? W.FEET[st.anim + "_" + meta.directions[st.dir]].contact.indexOf(1) : 0) };
+            st.settle = { t: 0, from: st.anim, frame: (FEETS && FEETS[st.anim + "_" + meta.directions[st.dir]] ? FEETS[st.anim + "_" + meta.directions[st.dir]].contact.indexOf(1) : 0) };
             st.dipT = 0; st.dipA = 2.4;
           }
           if (anim === "idle") st.idleT = 0; st.anim = anim;
         }
         if (anim === "walk" || anim === "run") {
           let stride = W.walkStride(W.walkMode, st.dir, anim) * H;
-          const lp = W.FX.anchor && W.locoParams ? W.locoParams(anim, st.dir) : null;
+          const lp = W.FX.anchor && W.locoParams ? W.locoParams(anim, st.dir, this) : null;
           if (lp) stride = (anim === "walk" ? lp.v : p.runV) * 6 / lp.fps;     // u por ciclo a cadencia fija
           st.phase = (st.phase + (p.realSpeed || p.speed) * dt / stride) % 1;
         } else if (anim === "idle") st.idleT += dt;
@@ -410,8 +415,8 @@
           this.place(p, camTheta, st.settle.from, Math.max(0, st.settle.frame));
           return;
         } else if (anim === "idle") { st.settle = null; f = Math.floor(st.idleT * meta.animations.idle.fps) % NF; }
-        else if (W.FX.anchor && W.locoParams && W.locoParams(anim, st.dir)) {
-          const w = W.locoParams(anim, st.dir).weights; let acc = 0; f = 5;
+        else if (W.FX.anchor && W.locoParams && W.locoParams(anim, st.dir, this)) {
+          const w = W.locoParams(anim, st.dir, this).weights; let acc = 0; f = 5;
           for (let i = 0; i < 6; i++) { acc += w[i]; if (st.phase < acc) { f = i; st.fi = { f: i, u: (st.phase - (acc - w[i])) / w[i] }; break; } }
           if (!st.fi || st.fi.f !== f) st.fi = { f, u: 0.5 };
         }
@@ -420,7 +425,7 @@
         if (W.debugFrame) { anim = W.debugFrame.anim; st.dir = W.debugFrame.dir; f = W.debugFrame.f; st.anim = anim; st.fi = { f, u: 0.5 }; st.dipT = null; st.settle = null; }
         st.frame = f;
         // efectos del walk (bob, balanceo, squash, túnica) según la variante
-        if (anim === "walk") {
+        if (anim === "walk" && !opts.feet) {
           const k = Math.min(1, p.speed / Math.max(p.walkV * 0.6, 1e-3));
           st.wfx = W.walkFx(W.walkMode, st.dir, st.phase, st.fi, dt, st.wst || (st.wst = {}), k, st.turnRate);
         } else st.wfx = null;
@@ -488,11 +493,11 @@
         // pie exactamente sobre la superficie: el píxel opaco más bajo de los frames apoyados va a la línea del suelo
         let corr = 0;
         uniforms.uQuant.value = W.FX.matter ? 1 : 0; uniforms.uOutline.value = W.FX.matter ? 1 : 0;
-        if (W.FX.matter && W.FEET) {
-          const fr = W.FEET[anim + "_" + meta.directions[st.dir]];
+        if (W.FX.matter && FEETS) {
+          const fr = FEETS[anim + "_" + meta.directions[st.dir]];
           if (fr) {
             const grounded = anim === "idle" || anim === "walk" || (fr.contact && fr.contact[f]) || (anim === "jump" && (f === 0 || f === 5));
-            if (grounded) corr = fr.frames[f].lowest * (meta.scale_from_full || 0.5) * unitsV * sy;
+            if (grounded && fr.frames[f]) corr = fr.frames[f].lowest * (meta.scale_from_full || 0.5) * unitsV * sy;
           }
         }
         st.footCorr = corr;

@@ -572,3 +572,53 @@ aparte, abajo a la derecha (al alcance del pulgar), con «toca: parry · mantén
 acción defensiva muestra un aviso sobre el personaje: ¡PARRY!, BLOQUEO, GUARDIA ROTA, ESQUIVA; y sobre el eco,
 ATURDIDO y ¡REMATE!. Comprobado en móvil y escritorio (`tests/guard_ui.mjs`: tocar → parry, mantener → block,
 parry contra un golpe → «¡PARRY!»; captura `review/combat/guardia_movil.png`).
+
+---
+
+# Enemigo definitivo: el Autómata del bosque
+Hojas procesadas en `pixel_char/` (ver `pixel_char/PROGRESS.md`, «Enemigo», etapas 0-2): atlas
+`assets/enemy_{color,normal,spec}.png` + `enemy_atlas.json` (animaciones, fases, pies, posición del ojo).
+
+## Etapa 3 — Comportamiento y tipos de enemigo
+**Tipos de enemigo** (`src/enemies/`): cada tipo es un módulo que se registra con `W.registerEnemy(id, def)`
+(`core.js`: aparición, paso, reaparición, ganchos y panel de pruebas).
+- `enemies/automaton/automaton.js` — el Autómata del bosque, **por defecto**.
+- `enemies/echo/echo.js` — **el eco (enemigo de prueba) guardado tal cual**: mismo aspecto, IA, aviso y
+  reaparición que antes; solo se ha movido a su módulo y se registra como tipo `"echo"`.
+
+**Cómo volver a usar el eco**: botón ⚙ (arriba a la derecha) → panel PRUEBAS → «Enemigo: Eco (prueba)»; o
+abrir la página con `#enemy=echo` al final de la dirección; o desde la consola `W.setEnemyType("echo")`. Para
+volver: el mismo selector (`Autómata del bosque`) o `W.setEnemyType("automaton")`. (`#enemy=none` = sin
+enemigos, para las pruebas del mundo.)
+
+**Generalizado para varios cuerpos**: `makeCharacter` acepta un atlas propio (lista de animaciones, pies,
+altura, color de emisión, desvanecerse), `feet.js` ancla los pies de cualquier personaje con sus propios datos,
+`Player` admite radio y velocidad de carrera propios y `Fighter` admite tiempos de animación, aturdido,
+esquiva, retroceso y tabla de ataques propios.
+
+**El autómata** (1.4 veces la altura del personaje, 260 de vida, 120 de stamina):
+- Patrulla lenta (walk, 0.8 u/s) alrededor de su punto con pausas; al ver al jugador (8 u, o si le ataca) se
+  acerca por A* corriendo (run, 2.75 u/s) y se para a distancia de golpe. Si el jugador se aleja más de 15 u de
+  su zona, vuelve andando.
+- Ataques: **attack1** (zarpazo rápido: 18 de daño, alcance 2.2 u, arco ±75°) y **attack2** (barrido amplio:
+  26, alcance 2.5 u, arco ±115°, pesado). Preparación larga (×1.9) con **aviso**: el ojo parpadea fuerte a 7 Hz
+  durante la preparación, destello cian en el ojo y un zumbido grave mecánico.
+- Defensa ante los ataques del jugador (según el panel): bloquea (block, gasta su stamina; sin stamina se le
+  rompe la guardia) o hace **parry**, más probable cuanto más repite el jugador el mismo ataque
+  (probabilidad × (1 + 0.8 × repeticiones)); su parry quita 38-48 de **postura al jugador** (barra POST nueva;
+  llena = «POSTURA ROTA», tambaleo largo). Esquiva de lado cuando tiene poca vida (< 35 %) o tras encajar un
+  combo (2 golpes en 2.2 s), incluso desde la mitad del tambaleo; invulnerable desde el impulso.
+- Postura: cada parry del jugador contra sus ataques le suma 40 (attack1) o 50 (attack2); llena = **aturdido
+  3.2 s** (frames STAGGER de hit en bucle lento, el ojo titila), expuesto a un **remate** (×3, mínimo 40).
+- Golpes: hit con retroceso (reducido: es pesado). Muerte: death, se queda en el suelo, el ojo se apaga y a los
+  3 s se desvanece (trama ordenada, 2.5 s) mientras se levantan esporas.
+- **Dificultad** en el panel ⚙: reacción (×0.5-1.6: tiempo de reacción y ritmo de ataques), frecuencia de parry
+  y de bloqueo.
+
+Comprobado en el navegador (`tests/_beh.mjs`, `_dodge.mjs`): aparece a 11 u del inicio patrullando; bloqueo al
+100 % → «foeBlock, block»; parry al 100 % → «parry» y la postura del jugador 0 → 38; con poca vida esquiva y el
+golpe siguiente falla; tres parries del jugador → aturdido → remate de 40; muerte → se desvanece (1 → 0.31 → 0)
+y queda oculto; REAPARECER lo devuelve con 260; cambio al eco (1 enemigo) y vuelta (3 autómatas).
+
+Regresión: la batería de combate anterior contra el eco (`HASH=#enemy=echo node tests/combat.mjs`) pasa 31/31,
+sin errores JS: el eco guardado se comporta exactamente como antes.

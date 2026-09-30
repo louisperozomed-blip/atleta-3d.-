@@ -27,20 +27,24 @@
 
   let CM = null;                                   // meta de combate (atlas)
   function meta() { return CM || (CM = W.CMETA); }
-  function cum(an) {
-    const m = meta().animations[an], out = [0];
-    for (const ms of m.ms) out.push(out[out.length - 1] + ms / 1000);
-    return out;
+  // tiempos acumulados de cada animación, por meta (el jugador usa combat_atlas.json; cada tipo de
+  // enemigo, el suyo)
+  function cumOf(M, an) {
+    M._cum = M._cum || {};
+    if (!M._cum[an]) {
+      const out = [0];
+      for (const ms of M.animations[an].ms) out.push(out[out.length - 1] + ms / 1000);
+      M._cum[an] = out;
+    }
+    return M._cum[an];
   }
-  const CUM = {};
-  function frameAt(an, t, speed) {
-    const c = CUM[an] || (CUM[an] = cum(an));
-    const tt = t * (speed || 1);
-    for (let i = 0; i < 6; i++) if (tt < c[i + 1]) return i;
+  function frameAt(an, t, M) {
+    const c = cumOf(M || meta(), an);
+    for (let i = 0; i < 6; i++) if (t < c[i + 1]) return i;
     return 6;                                        // terminó
   }
   W.combatFrameAt = frameAt;
-  W.combatDur = function (an) { return (CUM[an] || (CUM[an] = cum(an)))[6]; };
+  W.combatDur = function (an, M) { return cumOf(M || meta(), an)[6]; };
   const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
 
   class Fighter {
@@ -57,11 +61,17 @@
       this.guardHeld = false; this.guardT = -9; this.lastGuardT = -9; this.pen = 0;
       this.flash = 0; this.time = 0;
       this.prepK = o.prepK || 1;                    // >1: preparación de los ataques más lenta (enemigo)
+      this.cm = o.meta || null;                     // meta de animaciones propio (enemigos)
+      this.stunTime = o.stunTime || C.stunTime; this.stunRate = o.stunRate || 4;
+      this.dodgeDist = o.dodgeDist || C.dodgeDist; this.kbK = o.kbK == null ? 1 : o.kbK;
+      this.dodgeInv = o.dodgeInv || [2, 3];         // frames invulnerables de la esquiva (DASH)
+      this.attackWant = o.attackWant || { attack1: 1.0, attack2: 1.0, attack3: 1.15 };
       this.log = [];
     }
+    M() { return this.cm || meta(); }
     get alive() { return this.hp > 0; }
     get acting() { return !!this.act; }
-    get invulnerable() { return !!(this.act && this.act.name === "dodge" && this.act.f >= 2 && this.act.f <= 3); }
+    get invulnerable() { return !!(this.act && this.act.name === "dodge" && this.act.f >= this.dodgeInv[0] && this.act.f <= this.dodgeInv[1]); }
     get stunned() { return !!(this.act && this.act.name === "stun"); }
     parryWindow() { return Math.max(0.07, C.parryWin - this.pen); }
     // ---- entradas ------------------------------------------------------------------------
@@ -97,7 +107,7 @@
         return true;
       }
       if (a.name === "death" || a.name === "stun") return false;
-      const cm = meta().animations[a.name] || {};
+      const cm = this.M().animations[a.name] || {};
       const cancel = cm.cancel || {};
       const f = a.f;
       if (a.name.startsWith("attack")) {
@@ -115,7 +125,7 @@
     doAction(type, data, t0) {
       if (type === "attack") {
         const a = this.act;
-        const next = a && a.name.startsWith("attack") ? meta().animations[a.name].next : null;
+        const next = a && a.name.startsWith("attack") ? this.M().animations[a.name].next : null;
         // pulsado en IMPACT: queda marcado y el golpe siguiente empieza al entrar en FOLLOW THROUGH
         if (next && a.f < 4) { a.chain = true; a.chainData = data; return; }
         this.startAttack(next || "attack1", data);
@@ -144,7 +154,7 @@
       if (tgt) {
         const dx = tgt.body.x - b.x, dz = tgt.body.z - b.z, d = Math.hypot(dx, dz);
         a.aim = Math.atan2(dz, dx);
-        const want = name === "attack3" ? 1.15 : 1.0;
+        const want = this.attackWant[name] || 1.0;
         a.lunge = Math.max(0, Math.min(d - want, name === "attack3" ? 1.6 : 0.9));
         a.target = tgt;
       } else a.lunge = name === "attack3" ? 0.9 : name === "attack2" ? 0.35 : 0.25;   // estocada al aire
@@ -164,15 +174,23 @@
       this.hp = Math.max(0, this.hp - opts.dmg);
       this.flash = 1;
       const b = this.body;
-      if (this.hp <= 0) { b.heading = opts.dir + Math.PI; this.start("death", { kb: (opts.kb || 0.4) * 0.8, kdir: opts.dir, moved: 0 }); return "death"; }
+      if (this.hp <= 0) { b.heading = opts.dir + Math.PI; this.start("death", { kb: (opts.kb || 0.4) * 0.8 * this.kbK, kdir: opts.dir, moved: 0 }); return "death"; }
       b.heading = opts.dir + Math.PI;                   // mira a quien le golpea
-      this.start("hit", { kb: opts.kb || 0.35, kdir: opts.dir, moved: 0, gb: !!opts.guardBreak, speed: opts.guardBreak ? 0.62 : 1 });
+      this.start("hit", { kb: (opts.kb || 0.35) * this.kbK, kdir: opts.dir, moved: 0, gb: !!opts.guardBreak, speed: opts.guardBreak ? 0.62 : 1 });
       return "hit";
     }
     addPosture(v) {
       this.post = Math.min(this.postMax, this.post + v); this.postT = 0;
       if (this.post >= this.postMax && this.alive && !this.stunned && this.team !== "player") {
-        this.start("stun", { t: 0, dur: C.stunTime });
+        this.start("stun", { t: 0, dur: this.stunTime });
+        if (W.onStun) W.onStun(this);
+        return true;
+      }
+      if (this.post >= this.postMax && this.alive && this.team === "player") {
+        // el jugador con la postura rota (el enemigo le ha hecho parry): tambaleo largo, sin defensa
+        this.post = this.postMax * 0.3;
+        this.guardHeld = false;
+        this.start("hit", { kb: 0.3, kdir: this.body.heading + Math.PI, moved: 0, gb: true, speed: 0.5 });
         if (W.onStun) W.onStun(this);
         return true;
       }
@@ -212,7 +230,7 @@
       b.path.length = 0; b.speed = 0;
       a.t += dt;
       if (a.name === "stun") {
-        a.f = 2 + (Math.floor(a.t * 4) % 2);             // tambaleo (frames STAGGER de hit)
+        a.f = 2 + (Math.floor(a.t * this.stunRate) % 2);   // tambaleo (frames STAGGER de hit)
         if (a.t >= a.dur) { this.post = this.postMax * 0.35; this.act = null; }
         return;
       }
@@ -220,7 +238,7 @@
       let sp = a.speed;
       if (a.slow && a.slow !== 1 && a.name.startsWith("attack") && a.f < 3) sp /= a.slow;
       a.tt = (a.tt || 0) + dt * sp;
-      const f = frameAt(a.name, a.tt);
+      const f = frameAt(a.name, a.tt, this.M());
       if (a.name === "block") {
         // bucle de la guardia (HOLD 1-2) mientras se mantiene; 3 = recibe un golpe; 5 = baja
         if (a.react != null) { a.react -= dt; a.f = 3; if (a.react <= 0) a.react = null; }
@@ -243,7 +261,7 @@
       a.fPrev = a.f; a.f = f;
       if (a.f !== a.fPrev && W.onCombatFrame) W.onCombatFrame(this, a);
       // combo: pulsación dentro de la ventana de encadenado
-      if (a.name.startsWith("attack") && a.chain && a.f >= 4) { a.chain = false; this.startAttack(meta().animations[a.name].next, a.chainData); return; }
+      if (a.name.startsWith("attack") && a.chain && a.f >= 4) { a.chain = false; this.startAttack(this.M().animations[a.name].next, a.chainData); return; }
       this.motion(a, dt);
     }
     // desplazamientos del cuerpo durante las acciones (estocada, esquiva, retroceso)
@@ -255,8 +273,8 @@
           b.heading += d * Math.min(1, dt * 22);
         }
         // la estocada ocurre durante la preparación y el impacto (frames 1-3)
-        const c = CUM[a.name] || (CUM[a.name] = cum(a.name));
-        const t0 = c[a.name === "attack3" ? 1 : 1], t1 = c[4];
+        const c = cumOf(this.M(), a.name);
+        const t0 = c[1], t1 = c[4];
         const u = Math.min(1, Math.max(0, (a.tt - t0) / (t1 - t0)));
         const want = a.lunge * (1 - Math.pow(1 - u, 2));
         const step = want - a.moved;
@@ -271,9 +289,9 @@
           a.moved += step;
         }
       } else if (a.name === "dodge") {
-        const c = CUM.dodge || (CUM.dodge = cum("dodge"));
+        const c = cumOf(this.M(), "dodge");
         const u = Math.min(1, Math.max(0, (a.tt - c[1] * 0.5) / (c[5] - c[1] * 0.5)));
-        const want = C.dodgeDist * (1 - Math.pow(1 - u, 2.2));
+        const want = this.dodgeDist * (1 - Math.pow(1 - u, 2.2));
         const step = want - a.moved;
         if (step > 0) { b.tryMove(Math.cos(a.dir) * step, Math.sin(a.dir) * step); a.moved += step; }
       } else if (a.name === "hit" || a.name === "death") {

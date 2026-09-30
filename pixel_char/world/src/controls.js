@@ -42,7 +42,7 @@
     let best = null, bd = 1e9;
     for (const f of W.foes || []) {
       if (!f.alive) continue;
-      const b = f.body, a = W.toScreen(b.x, b.y, b.z), h = W.toScreen(b.x, b.y + W.CHAR_H, b.z);
+      const b = f.body, a = W.toScreen(b.x, b.y, b.z), h = W.toScreen(b.x, b.y + (f.ch.height || W.CHAR_H), b.z);
       const H = Math.abs(a[1] - h[1]), w = H * 0.42 + 22, top = h[1] - 18, bot = a[1] + 16;
       if (cx < a[0] - w || cx > a[0] + w || cy < top || cy > bot) continue;
       const d = Math.hypot(cx - a[0], cy - (a[1] + h[1]) / 2);

@@ -7,7 +7,7 @@ from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORDER = ["core.js", "terrain.js", "props.js", "modules.js", "zones.js", "effects.js", "look.js", "player.js", "walk.js", "feet.js", "character.js",
-         "fighter.js", "combat.js", "enemy.js", "interact.js", "audio.js", "feel.js", "nav.js", "controls.js", "main.js"]
+         "fighter.js", "combat.js", "enemies/core.js", "enemies/echo/echo.js", "enemies/automaton/automaton.js", "interact.js", "audio.js", "feel.js", "nav.js", "controls.js", "main.js"]
 
 
 def webp(path, **kw):
@@ -35,6 +35,14 @@ def main():
         assets["cnormal"] = webp(os.path.join(A, "combat_normal.png"), quality=88)
         assets["cspec"] = webp(os.path.join(A, "combat_spec.png"), quality=88)
         assets["cmeta"] = json.load(open(os.path.join(A, "combat_atlas.json")))
+    # el Autómata del bosque (pixel_char/tools/enemy_maps.py)
+    if os.path.exists(os.path.join(A, "enemy_atlas.json")):
+        assets["ecolor"] = webp(os.path.join(A, "enemy_color.png"), quality=84, alpha_quality=92)
+        assets["enormal"] = webp(os.path.join(A, "enemy_normal.png"), quality=75)
+        assets["espec"] = webp(os.path.join(A, "enemy_spec.png"), quality=78)
+        em = json.load(open(os.path.join(A, "enemy_atlas.json")))
+        em["anims"] = em.get("anims")
+        assets["emeta"] = em
     feet = os.path.join(A, "feet.json")
     if os.path.exists(feet):
         F = json.load(open(feet))
