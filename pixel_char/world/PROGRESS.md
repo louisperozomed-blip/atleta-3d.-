@@ -215,3 +215,34 @@ Al escribir las pruebas aparecieron dos fallos reales, corregidos:
 | E2E «seguir al dedo»: con la marcha más lenta, el último punto caía sobre una meseta inalcanzable y A* iba (bien) al punto alcanzable más cercano, a 2.85 u | La prueba compara con el destino que planificó A* al soltar y exige además el punto exacto cuando es alcanzable. |
 
 `tests/stage5.mjs` (Playwright + SwiftShader, 60 Hz deterministas):
+**13/13 OK** (`review/stage5/pruebas/stage5_log.txt`, datos en `stage5_results.json`):
+
+| Prueba | Resultado |
+|---|---|
+| Deslizamiento del pie apoyado, walk, 8 direcciones de pantalla (tramos llanos de 4 u) | media 0.004 px/frame, máx 0.95 px, 0 de 3240 frames > 1 px |
+| Ídem run, 8 direcciones (tramos de 9 u) | 0.00 px en los 111 frames de apoyo |
+| Subir un escalón de 0.5 u (cruzado de frente) | 160 frames con pie apoyado: nunca hundido > 1 px; fuera del cambio de nivel |desfase| ≤ 0.27 px; cambio de nivel 133 ms (impulso: el pie de atrás despega, máx 24 px); parado arriba: 1 px; deslizamiento 0 |
+| Bajar el mismo escalón | nunca hundido; resto ≤ 0.17 px; la bota toca abajo y el cuerpo cae en 67 ms (máx 9 px); parado abajo: 1 px; deslizamiento 0 |
+| Charca (tramo seco → agua → seco) | 118 frames con pie apoyado (68 en el agua): desfase 0.00 px; parado dentro del agua: 1 px; cada una de las 11 pisadas en el agua es de tipo agua y deja su onda |
+| Frenado andando / corriendo | para en el punto exacto (error 0.0000 u), nunca se pasa, deceleración máx 9.1 / 11.4 u/s² (límite 11.4), ajuste final ≤ 0.011 u/s; asentamiento con hundimiento de 2.4 px; el pie no desliza al frenar (0.00 px) |
+
+Las medidas: deslizamiento = movimiento en pantalla de la bota apoyada entre frames seguidos (px del
+buffer de render); desfase andando = línea de apoyo del sprite frente a la altura del suelo bajo la bota
+apoyada; parado = render real (solo el personaje, con y sin él) comparando su píxel más bajo con la
+fila del suelo. La medida por render confirma la geométrica en el escalón (p. ej. 9.7 px geométrico ↔
+8 px en el render).
+
+E2E de la etapa 4 repetido con todo lo nuevo: **31/31 OK** (`review/stage5/pruebas/e2e_log.txt`).
+(Si se lanza a la vez que otra prueba pesada, el doble toque del iPhone puede fallar por tiempos: la CPU
+compartida retrasa el segundo toque; en solitario pasa.)
+
+GIF antes/después del paso 6: `review/stage5/paso6.gif` (subir un escalón, cruzar una charca y frenar
+tras una carrera; «antes» = todos los interruptores apagados). Scripts: `tests/stage5.mjs`,
+`tests/record6.mjs` + `tools/gif_compare.py`, `tests/foot_surface.mjs`, `tests/inertia_check.mjs`,
+`tests/record.mjs` (GIF de los pasos 1–5).
+
+Límites conocidos: la marcha es más lenta (ver paso 1); en un escalón de 0.5 u (30 % de la altura del
+personaje) no hay pose dibujada de subir, así que durante ~0.13 s el pie de atrás despega antes de
+tiempo (se eligió eso frente a que la bota de delante se hundiera en el escalón); la profundidad de cada
+bota se deduce del dibujo (billboard), así que junto al borde lateral de un desnivel se usa la altura
+del centro.

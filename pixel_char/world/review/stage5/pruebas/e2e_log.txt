@@ -1,0 +1,33 @@
+OK   [escritorio] resolución interna = css·dpr/px — 366×233 (dpr 1, px3)
+OK   [escritorio] recorrido → roots — 1 puntos A*, llega en 8.4 s, zonas heart/sendero/roots, anims idle/run/walk, máx 78 draw calls / 139k tri
+OK   [escritorio] recorrido → crystal — 3 puntos A*, llega en 14.0 s, zonas roots/sendero/crystal, anims idle/run/walk, máx 82 draw calls / 134k tri
+OK   [escritorio] recorrido → ponds — 3 puntos A*, llega en 12.4 s, zonas crystal/sendero/ponds, anims idle/run/walk, máx 80 draw calls / 100k tri
+OK   [escritorio] recorrido → ruins — 6 puntos A*, llega en 13.7 s, zonas ponds/sendero/ruins, anims idle/run/walk, máx 69 draw calls / 75k tri
+OK   [escritorio] recorrido → heart — 2 puntos A*, llega en 11.9 s, zonas ruins/sendero/heart, anims idle/run/walk, máx 94 draw calls / 120k tri
+OK   [escritorio] toque cercano → camina y para — idle,walk
+OK   [escritorio] toque lejano (5.2 H) → corre y pasa a caminar — idle → run → walk → idle
+OK   [escritorio] rodea el árbol-corazón (obstáculo r=1.55) — 4 puntos, distancia mínima al centro 2.20
+OK   [escritorio] sube escalones (1.5 → 2.5) con suavidad — altura 1.50 → 2.50, mayor subida entre muestras 0.39
+OK   [escritorio] ondas al pisar charcas — 23 ondas creadas
+OK   [escritorio] doble toque parado → salta en el sitio — desplazamiento 0.000 u
+OK   [escritorio] SALTAR en marcha → salta hacia delante y levanta polvo — avance 3.16 u, polvo 403
+OK   [escritorio] mantener pulsado sigue al dedo y termina en el último punto — final a 0.00 u del destino planificado, 0.00 u del punto soltado (alcanzable)
+OK   [escritorio] girar cámara 90° desplaza la dirección 2 posiciones — 6 → 0
+OK   [escritorio] zoom y tamaño de píxel — zoom 1.60→2.00, ancho interno 366→275
+OK   [escritorio] sin scroll ni zoom del navegador — {"sx":0,"sy":0,"scale":1}
+OK   [escritorio] sin errores JS
+OK   [iphone] resolución interna = css·dpr/px — 390×664 (dpr 3, px3)
+OK   [iphone] toque cercano → camina y para — idle,walk
+OK   [iphone] toque lejano (6.5 H) → corre y pasa a caminar — idle → walk → run → walk → idle
+OK   [iphone] rodea el árbol-corazón (obstáculo r=1.55) — 4 puntos, distancia mínima al centro 2.19
+OK   [iphone] sube escalones (1.5 → 2.5) con suavidad — altura 1.50 → 2.50, mayor subida entre muestras 0.20
+OK   [iphone] ondas al pisar charcas — 15 ondas creadas
+OK   [iphone] doble toque parado → salta en el sitio — desplazamiento 0.000 u
+OK   [iphone] SALTAR en marcha → salta hacia delante y levanta polvo — avance 3.29 u, polvo 127
+OK   [iphone] mantener pulsado sigue al dedo y termina en el último punto — final a 0.00 u del destino planificado, 0.26 u del punto soltado (inalcanzable: más cercano alcanzable)
+OK   [iphone] girar cámara 90° desplaza la dirección 2 posiciones — 5 → 7
+OK   [iphone] zoom y tamaño de píxel — zoom 1.60→2.00, ancho interno 390→292
+OK   [iphone] sin scroll ni zoom del navegador — {"sx":0,"sy":0,"scale":1}
+OK   [iphone] sin errores JS
+
+31/31 comprobaciones OK

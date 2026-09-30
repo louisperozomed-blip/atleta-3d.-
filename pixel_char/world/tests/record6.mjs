@@ -28,6 +28,9 @@ const routes = await page.evaluate(() => {
         const px = x + d[0] * k * 0.1, pz = z + d[1] * k * 0.1;
         ok = W.cellFree(px, pz) && (k === 0 || W.canStep(x + d[0] * (k - 1) * 0.1, z + d[1] * (k - 1) * 0.1, px, pz)) && test(k / n, px, pz, x, z);
         for (const o of W.obstacles) if (ok && Math.hypot(o.x - px, o.z - pz) < clear) ok = false;
+        // nada que tape: ni troncos/copas cerca (clear) ni terreno más alto que el tramo a menos de 2.2 u
+        const top = Math.max(W.heightAt(x, z), W.heightAt(x + d[0] * L, z + d[1] * L));
+        for (let a = 0; a < 12 && ok; a++) { const qx = px + Math.cos(a * 0.52) * 2.2, qz = pz + Math.sin(a * 0.52) * 2.2; if (W.heightAt(qx, qz) > top + 0.01) ok = false; }
       }
       if (ok && W.lineClear({ x, z }, { x: x + d[0] * L, z: z + d[1] * L })) return { x, z, tx: x + d[0] * L, tz: z + d[1] * L };
     }
@@ -37,7 +40,7 @@ const routes = await page.evaluate(() => {
   // escalón que sube, cruzado de frente, en diagonal de pantalla si lo hay
   for (const k of [1, 3, 0, 2, 4, 5, 6, 7]) {
     const d = dirOf(k * Math.PI / 4);
-    const r = route(d, 3.2, 1.5, (u, px, pz, x, z) => {
+    const r = route(d, 3.2, 3.2, (u, px, pz, x, z) => {
       const h = W.heightAt(px, pz), hs = W.heightAt(x, z), he = W.heightAt(x + d[0] * 3.2, z + d[1] * 3.2);
       if (he - hs < 0.2) return false;
       for (const sd of [-0.35, 0.35]) if (W.heightAt(px - d[1] * sd, pz + d[0] * sd) !== h) return false;
@@ -47,12 +50,12 @@ const routes = await page.evaluate(() => {
     });
     if (r) { out["escalón"] = { ...r, gait: "walk" }; break; }
   }
-  for (const k of [0, 1, 2, 3, 4, 5, 6, 7]) {
-    const d = dirOf(k * Math.PI / 4);
-    const r = route(d, 3.6, 1.5, (u, px, pz, x, z) => (u > 0.3 && u < 0.75 ? W.kindAt(px, pz) === W.K.PUDDLE : Math.abs(W.heightAt(px, pz) - W.heightAt(x, z)) < 0.01));
+  for (const k of [0, 1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17]) {
+    const d = dirOf((k % 10) * Math.PI / 4);
+    const r = route(d, 3.6, k >= 10 ? 2.0 : 3.2, (u, px, pz, x, z) => (u > 0.3 && u < 0.75 ? W.kindAt(px, pz) === W.K.PUDDLE : Math.abs(W.heightAt(px, pz) - W.heightAt(x, z)) < 0.01));
     if (r) { out["charca"] = { ...r, gait: "walk" }; break; }
   }
-  { const d = dirOf(0); const r = route(d, 7, 1.5, (u, px, pz, x, z) => W.heightAt(px, pz) === W.heightAt(x, z)); out["frenado"] = { ...r, gait: "run" }; }
+  for (const k of [1, 0, 3, 2]) { const d = dirOf(k * Math.PI / 4); const r = route(d, 7, 4.0, (u, px, pz, x, z) => W.heightAt(px, pz) === W.heightAt(x, z)); if (r) { out["frenado"] = { x: r.x, z: r.z, tx: r.x + (r.tx - r.x) * 0.84, tz: r.z + (r.tz - r.z) * 0.84, gait: "run" }; break; } }   // para antes del arco del final
   return out;
 });
 console.log("recorridos", JSON.stringify(routes));
@@ -81,7 +84,9 @@ async function record(fx, r, tag) {
   return { files, slip: await page.evaluate(() => W.slipStats()) };
 }
 const res = {};
+const prev = process.env.KEEP && fs.existsSync(`${prefix}_frames.json`) ? JSON.parse(fs.readFileSync(`${prefix}_frames.json`)) : {};
 for (const [name, r] of Object.entries(routes)) {
+  if (process.env.ONLY && !process.env.ONLY.split(",").includes(name)) { if (prev[name]) res[name] = prev[name]; continue; }
   if (!r) { console.log("sin tramo para", name); continue; }
   res[name] = { antes: await record(OFF, r, name + "_antes"), despues: await record(ON, r, name + "_despues") };
   const lab = (k) => { const s = res[name][k].slip; return s ? `desliz. ${s.media.toFixed(2)} px/frame` : ""; };
