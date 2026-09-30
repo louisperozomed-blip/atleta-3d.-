@@ -1,0 +1,112 @@
+{
+ "heart": {
+  "calls": 63,
+  "triangles": 132706,
+  "points": 1164
+ },
+ "roots": {
+  "calls": 61,
+  "triangles": 153082,
+  "points": 1164
+ },
+ "crystal": {
+  "calls": 55,
+  "triangles": 106938,
+  "points": 1164
+ },
+ "ponds": {
+  "calls": 62,
+  "triangles": 117872,
+  "points": 1164
+ },
+ "ruins": {
+  "calls": 53,
+  "triangles": 97618,
+  "points": 1164
+ },
+ "_global": {
+  "chunks": 25,
+  "tris": 208818,
+  "meshes": 72,
+  "modules": {
+   "meshes": 18,
+   "instances": 1301,
+   "tris": 67916,
+   "types": {
+    "bone": {
+     "n": 135,
+     "tris": 60
+    },
+    "moss": {
+     "n": 408,
+     "tris": 36
+    },
+    "beaconLed": {
+     "n": 7,
+     "tris": 12
+    },
+    "plate": {
+     "n": 30,
+     "tris": 36
+    },
+    "terminal": {
+     "n": 8,
+     "tris": 60
+    },
+    "beacon": {
+     "n": 8,
+     "tris": 44
+    },
+    "slab": {
+     "n": 18,
+     "tris": 48
+    },
+    "flower": {
+     "n": 124,
+     "tris": 28
+    },
+    "rock": {
+     "n": 58,
+     "tris": 36
+    },
+    "mushroom": {
+     "n": 189,
+     "tris": 112
+    },
+    "speck": {
+     "n": 160,
+     "tris": 8
+    },
+    "log": {
+     "n": 10,
+     "tris": 88
+    },
+    "cross": {
+     "n": 9,
+     "tris": 24
+    },
+    "mound": {
+     "n": 20,
+     "tris": 80
+    },
+    "tomb": {
+     "n": 11,
+     "tris": 68
+    },
+    "fencePost": {
+     "n": 16,
+     "tris": 16
+    },
+    "fenceRail": {
+     "n": 11,
+     "tris": 12
+    },
+    "skull": {
+     "n": 79,
+     "tris": 132
+    }
+   }
+  },
+  "buildMs": 781
+ }
+}
