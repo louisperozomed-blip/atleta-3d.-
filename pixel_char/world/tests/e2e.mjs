@@ -96,14 +96,25 @@ async function suite(browser, label, opts, touch) {
   else check(`[${label}] toque lejano (pantalla pequeña: ${(far.d / H).toFixed(1)} H < 4 H, camina)`, !seq.includes("run") && w.t > 0, seq.join(" → "));
   await page.screenshot({ path: `${out}/${label}_02_tras_toque_lejano.png` });
 
-  // --- 3. detrás de obstáculos: rodea el árbol-corazón por A* y queda tapado por las raíces -----
-  await page.evaluate(() => { W.teleport(0, -4.2); });
+  const W_HAND_H = await page.evaluate(() => W.HAND.h);
+  // --- 3. el titán caído: rodea su columna por A* (entra y sale entre las costillas) y sube a su mano ------
+  await page.evaluate(() => { W.teleport(0.4, -4.4); });
   await sleep(400);
-  const behind = await page.evaluate(() => { const r = W.goTo(0, 4.2); return { reached: r.reached, n: r.path.length, minD: Math.min(...r.path.map((q) => Math.hypot(q.x, q.z))) }; });
-  let minDist = 99, shot = false;
-  w = await waitIdle(page, 30000, 120, (s) => { minDist = Math.min(minDist, Math.hypot(s.x, s.z)); });
-  check(`[${label}] rodea el árbol-corazón (obstáculo r=1.55)`, behind.reached && minDist > 1.5 && w.t > 0, `${behind.n} puntos, distancia mínima al centro ${minDist.toFixed(2)}`);
-  await page.screenshot({ path: `${out}/${label}_03_detras_del_arbol.png` });
+  const behind = await page.evaluate(() => { const r = W.goTo(0.4, 5.2); return { reached: r.reached, exact: r.exact, n: r.path.length }; });
+  let crossedSpine = false, minSpine = 99;
+  w = await waitIdle(page, 40000, 120, (s) => { if (s.x > -3.6 && s.x < 5.9) minSpine = Math.min(minSpine, Math.abs(s.z - 3.3)); if (s.z > 4.2) crossedSpine = true; });
+  let sT = await S(page);
+  check(`[${label}] rodea la columna del titán (no la atraviesa)`, behind.reached && crossedSpine && minSpine > 0.35 && w.t > 0 && Math.hypot(sT.x - 0.4, sT.z - 5.2) < 0.3,
+    `${behind.n} puntos A*, distancia mínima a la columna ${minSpine.toFixed(2)} u, final (${sT.x.toFixed(1)}, ${sT.z.toFixed(1)})`);
+  await page.screenshot({ path: `${out}/${label}_03_titan.png` });
+  await page.evaluate(() => { W.teleport(-1.8, -4.8); });
+  await sleep(300);
+  await page.evaluate(() => W.goTo(-4.0, -3.0));
+  w = await waitIdle(page, 25000, 120);
+  sT = await S(page);
+  check(`[${label}] sube a la mano abierta del titán (plataforma)`, w.t > 0 && Math.abs(sT.y - (W_HAND_H)) < 0.01 && Math.hypot(sT.x + 4, sT.z + 3) < 0.3,
+    `altura ${sT.y.toFixed(2)} (palma ${W_HAND_H}), final (${sT.x.toFixed(1)}, ${sT.z.toFixed(1)})`);
+  await page.screenshot({ path: `${out}/${label}_03b_mano.png` });
 
   // --- 4. escalones: sube a la meseta de cristales por los escalones ----------------------------
   await page.evaluate(() => { W.teleport(13, -15); });
