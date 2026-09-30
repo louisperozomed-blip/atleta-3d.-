@@ -90,7 +90,10 @@
       for (const [dx, dz, c] of NB) {
         const nx = cx + dx, nz = cz + dz;
         if (!passable(cx, cz, nx, nz)) continue;
-        if (dx && dz && (!passable(cx, cz, cx + dx, cz) || !passable(cx, cz, cx, cz + dz))) continue;   // sin cortar esquinas
+        // sin cortar esquinas: las dos celdas ortogonales pasables desde aquí Y hacia el destino (si no, al rozar
+        // la esquina el personaje pisaba una celda desde la que el destino queda 1 u más abajo y se atascaba)
+        if (dx && dz && (!passable(cx, cz, cx + dx, cz) || !passable(cx, cz, cx, cz + dz) ||
+            !passable(cx + dx, cz, nx, nz) || !passable(cx, cz + dz, nx, nz))) continue;
         const j = nx * n + nz, g = gi + c + near[j];
         if (stamp[j] === stampN && g >= gBuf[j]) continue;
         stamp[j] = stampN; gBuf[j] = g; fromBuf[j] = i;

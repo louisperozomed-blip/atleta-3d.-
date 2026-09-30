@@ -154,7 +154,12 @@ async function suite(browser, label, opts, touch) {
     await sleep(500);
     s0 = await S(page);
     p = await scr(page, s0.x + 1.2, s0.z);
-    await tap(page, p[0], p[1], touch); await sleep(60); await tap(page, p[0], p[1], touch);
+    if (touch) {
+      // táctil: los dos toques por CDP (touchscreen.tap espera al render lento y los separaba > 320 ms)
+      const cdp = await page.context().newCDPSession(page);
+      const tp = (type, q) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: q ? [{ x: q[0], y: q[1], id: 1 }] : [] });
+      await tp("touchStart", p); await tp("touchEnd", null); await sleep(60); await tp("touchStart", p); await tp("touchEnd", null);
+    } else { await tap(page, p[0], p[1], touch); await sleep(60); await tap(page, p[0], p[1], touch); }
     jumped = false;
     w = await waitIdle(page, 8000, 60, (s) => { if (s.jump) jumped = true; });
     s1 = await S(page);
