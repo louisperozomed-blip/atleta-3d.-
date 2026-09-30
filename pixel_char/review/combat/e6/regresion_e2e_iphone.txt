@@ -1,0 +1,16 @@
+OK   [iphone] resolución interna = css·dpr/px — 390×664 (dpr 3, px3)
+OK   [iphone] toque cercano → camina y para — idle,walk
+OK   [iphone] toque lejano (6.5 H) → corre y pasa a caminar — idle → walk → run → walk → idle
+OK   [iphone] rodea la columna del titán (no la atraviesa) — 3 puntos A*, distancia mínima a la columna 1.12 u, final (0.4, 5.2)
+OK   [iphone] sube a la mano abierta del titán (plataforma) — altura 1.50 (palma 1.5), final (-4.0, -3.0)
+OK   [iphone] sube escalones (1.5 → 2.5) con suavidad — altura 1.50 → 2.50, mayor subida entre muestras 0.20
+OK   [iphone] ondas al pisar charcas — 15 ondas creadas
+OK   [iphone] doble toque parado → salta en el sitio — desplazamiento 0.000 u, toques separados 139 ms (intento 1)
+OK   [iphone] SALTAR en marcha → salta hacia delante y levanta polvo — avance 2.58 u, polvo 155
+OK   [iphone] mantener pulsado sigue al dedo y termina en el último punto — final a 0.00 u del destino planificado, 0.32 u del punto soltado (inalcanzable: más cercano alcanzable), llega en 16.1 s, 20 fps; destino (8.75, -14.75), final (8.75, -14.75), re-planeos 0
+OK   [iphone] girar cámara 90° desplaza la dirección 2 posiciones — 6 → 0
+OK   [iphone] zoom y tamaño de píxel — zoom 1.60→2.00, ancho interno 390→292
+OK   [iphone] sin scroll ni zoom del navegador — {"sx":0,"sy":0,"scale":1}
+OK   [iphone] sin errores JS
+
+14/14 comprobaciones OK

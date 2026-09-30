@@ -239,6 +239,7 @@
       W.updateAmbient(ambient, dt, t, player, camT.x, camT.z, Math.min(W.viewHalf, 16));
       if (shafts) { shafts.mat.uniforms.uSun.value.copy(W.SUN_DIR); shafts.mat.uniforms.uCamDir.value.copy(W.CU.camDir.value); }
       fx.update(dt);
+      if (W.skipRender) return;                                   // pruebas: simular sin pintar
       // render a baja resolución + post
       renderer.info.reset();
       renderer.setRenderTarget(post.rt); renderer.render(scene, cam);

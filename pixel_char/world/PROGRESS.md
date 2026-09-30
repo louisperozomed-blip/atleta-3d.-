@@ -520,3 +520,48 @@ Comprobado en el navegador: al cargar está dormido a 4.88 u; al acercarse despi
 ataca con aviso antes de cada golpe (warn:attack3 → hit, warn:attack1 → hit, warn:attack2 → hit); tres parries a
 ~110 ms del impacto → postura 48 → 77 → 100 → aturdido; remate de 40; muerto → REAPARECER encendido → vuelve a
 su claro con 120 de vida.
+
+## Etapa 6 — Pruebas, capturas, GIF y publicación
+**Pruebas de combate** (`tests/combat.mjs`, Playwright + Chromium con SwiftShader): simulación determinista a
+paso fijo (1/60 s); `W.skipRender` avanza sin pintar para que las 8 direcciones quepan en minutos (solo se pinta
+en las capturas). El eco se coloca a 1.3 u del jugador cada 45° y se controla a mano salvo en la prueba de IA.
+Resultado: **31/31 OK, sin errores JS** (`review/combat/e6/combat_log.txt`, `results.json`):
+
+| Prueba | Resultado |
+|---|---|
+| combo attack1→2→3, 8 direcciones | 8/8 aciertan 10+12+22; el sprite mira hacia el golpe en las 8 (índices 7,0,1…6) |
+| parry a 120 ms del impacto, 8 dir. | 8/8: sin daño, +38 de postura al eco |
+| guardia 480 ms antes (demasiado pronto), 8 dir. | 8/8 reciben el golpe |
+| guardia 270 ms antes (justo fuera de la ventana), 8 dir. | 8/8 cuentan como bloqueo |
+| spam de parry (5 pulsaciones seguidas) | la ventana baja a 70 ms y el parry falla; 2 s después vuelve a 200 ms y sale |
+| bloqueo mantenido, 8 dir. | 8/8 bloquean 5 golpes gastando stamina y el 6.º rompe la guardia |
+| esquiva lateral 150 ms antes, 8 dir. | 8/8 sin daño (sale del alcance) |
+| esquiva a través del golpe 120 ms antes, 8 dir. | 8/8 «evade»: invulnerable en DASH dentro del alcance |
+| esquiva 10 ms antes (aún sin DASH), 8 dir. | 8/8 reciben el golpe |
+| cancelaciones | attack1→esquiva tras IMPACT sí; antes del IMPACT no; parry→ataque en READY; esquiva→ataque en su último frame; sin combo fuera de la ventana |
+| postura, remate, muerte | 3 parries → aturdido; remate de 40; muertes del eco y del jugador en el último frame de death; REAPARECER devuelve a ambos |
+| IA | dormido lejos, despierta al acercarse, persigue y cada golpe va precedido de su aviso |
+| teclado / ratón | J J J combo, K tocada/mantenida = parry/bloqueo, Espacio esquiva, L salta, A mueve a la izquierda, clic en el eco ataca, GUARDIA tocar/mantener |
+| móvil (toques por CDP) | deslizar esquiva hacia allí en las 8 direcciones de pantalla (coseno ≥ 0.99); tocar al eco ataca y 3 toques = combo |
+
+Fallo encontrado por las pruebas y corregido: la primera versión de la prueba de esquiva esperaba «evade» con una
+esquiva lateral, pero a 150 ms el jugador ya ha salido del alcance y el golpe simplemente no llega («whiff»); se
+separó en dos pruebas (lateral = sin daño; a través del golpe = invulnerabilidad de los frames DASH).
+
+**Capturas** (`review/combat/e6/`): combo (attack1, attack3), parry (destello que ilumina a los dos), bloqueo,
+rotura de guardia, esquiva, aturdido, remate, muerte del eco y del jugador, aviso del eco y la vista de móvil.
+**GIF** (`review/combat/pelea.gif`, `tests/record_combat.mjs`): pelea contra el eco con su IA; un guion hace de
+jugador (parry a los golpes normales, esquiva el attack3, contraataca tras cada parry): aviso → esquiva, aviso →
+parry → contraataque, … → aturdido → remate. Además `review/combat/E1_*` (revisión de las hojas) y `E2_mapas.png`.
+
+**Regresiones** (pruebas anteriores del mundo con el combate dentro): `e2e.mjs` escritorio 19/19 e iPhone 14/14,
+`stage5.mjs` 13/13 (`review/combat/e6/regresion_*.txt`). En una primera pasada el e2e de iPhone dio 12/14:
+se ejecutó a la vez que otra prueba y la compilación de la página, el iPhone emulado (dpr 3, SwiftShader) bajó
+a ~2 frames/s reales y dos paseos no terminaron dentro de su límite de tiempo; ejecutado solo, 14/14. Medido
+aparte: ni la luz del destello ni el segundo personaje cambian la velocidad de ese render.
+
+**Publicado** sobre el mismo enlace (versión 4): https://claude.ai/artifact/ANHrkwwHE8urZjzme74NhG (7.2 MB con los
+atlas de combate en WebP).
+
+Limitaciones: el audio de combate solo se comprueba en que no da errores (aquí no se puede escuchar); el
+rendimiento en un iPhone real no se puede medir desde aquí.

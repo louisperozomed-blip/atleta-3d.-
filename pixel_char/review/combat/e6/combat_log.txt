@@ -1,0 +1,33 @@
+OK    combo attack1→2→3 acierta en las 8 direcciones (10+12+22)  {"ok":8,"golpes":[3,3,3,3,3,3,3,3]}
+OK    el sprite mira hacia el golpe en las 8 direcciones  [7,0,1,2,3,4,5,6]
+OK    parry en ventana (120 ms antes): sin daño y +38 de postura al eco, 8 direcciones  {"ok":8}
+OK    guardia demasiado pronto (480 ms antes): recibe el golpe, 8 direcciones  {"ok":8}
+OK    parry justo fuera de ventana (270 ms antes): cuenta como bloqueo, 8 direcciones  {"ok":8,"detalle":[["parry","hit","block"],["parry","hit","block"],["parry","hit","block"],["parry","hit","block"],["parry","hit","block"],["parry","hit","block"],["parry","hit","block"],["parry","hit","block"]]}
+OK    spam de parry: la ventana se encoge (< 200 ms) y el parry falla  {"ev":["hit"],"win":0.07}
+OK    la penalización se recupera sola: tras 2 s el parry vuelve a salir  {"ev":["parry"],"ventana":0.2}
+OK    bloqueo mantenido: bloquea gastando stamina hasta que la guardia se rompe, 8 direcciones  {"ok":8,"golpesHastaRomper":[6,6,6,6,6,6,6,6]}
+OK    esquiva lateral a tiempo (150 ms antes): sale del alcance, sin daño, 8 direcciones  {"ok":8}
+OK    esquiva a través del golpe (120 ms antes, dentro del alcance): invulnerable en DASH, 8 direcciones  {"ok":8}
+OK    esquiva tarde (10 ms antes, aún sin DASH): recibe el golpe, 8 direcciones  {"ok":8,"detalle":[["whiff","evade","hit"],["whiff","evade","hit"],["whiff","evade","hit"],["whiff","evade","hit"],["whiff","evade","hit"],["whiff","evade","hit"],["whiff","evade","hit"],["whiff","evade","hit"]]}
+OK    cancelación: attack1 → esquiva después del IMPACT  {"afterImpact":"dodge","beforeImpact":"attack1","parryToAttack":"attack1","lateCombo":"attack1","dodgeToAttack":"attack1"}
+OK    sin cancelación antes del IMPACT (el ataque sigue)
+OK    parry → contraataque en READY
+OK    fuera de la ventana de encadenado no hay combo (vuelve a attack1)
+OK    esquiva → ataque en su último frame
+OK    tres parries llenan la postura del eco: aturdido  {"stun":true,"parries":3,"post":100}
+OK    golpe al eco aturdido = remate (daño ×3, mínimo 40)  {"dmg":40}
+OK    muerte del eco: death hasta el último frame y botón REAPARECER encendido  {"alive":false,"act":"death5","btn":true}
+OK    REAPARECER devuelve al eco a su claro con la vida llena  {"alive":true,"hp":120,"home":0,"btn":false}
+OK    muerte del jugador: death y REAPARECER encendido  {"alive":false,"act":"death5","btn":true}
+OK    REAPARECER devuelve la vida al jugador  {"alive":true,"hp":100}
+OK    IA: dormido lejos, despierta al acercarse, persigue y ataca con aviso antes de cada golpe  {"dormant":"dormant","state":"chase","ticks":470,"log":["warn:attack3","hit:attack3","warn:attack1","hit:attack1"],"warned":true}
+OK    teclado: J J J encadena el combo  ["attack1","attack2","attack3"]
+OK    teclado: K tocada = parry, mantenida = bloqueo  ["parry","block"]
+OK    teclado: Espacio esquiva y L salta  ["dodge",true]
+OK    teclado: A mueve a la izquierda de la pantalla  [-53,0]
+OK    ratón: clic sobre el eco = ataque que acierta  ["attack1",1]
+OK    botón GUARDIA: tocar = parry, mantener = bloqueo  ["parry","block"]
+OK    móvil: deslizar esquiva hacia allí en las 8 direcciones  [{"dir":[90,0],"act":"dodge","move":[154,1],"cos":1},{"dir":[0,-90],"act":"dodge","move":[0,-70],"cos":1},{"dir":[-90,0],"act":"dodge","move":[-155,0],"cos":1},{"dir":[0,90],"act":"dodge","move":[0,70],"cos":1},{"dir":[64,64],"act":"dodge","move":[63,64],"cos":1},{"dir":[-64,-64],"act":"dodge","move":[-63,-64],"cos":1},{"dir":[64,-64],"act":"dodge","move":[63,-64],"cos":1},{"dir":[-64,64],"act":"dodge","move":[-63,64],"cos":1}]
+OK    móvil: tocar al eco ataca y los toques seguidos encadenan el combo  {"primero":"attack1","golpes":["attack1","attack2","attack3"]}
+
+31/31 OK , sin errores JS

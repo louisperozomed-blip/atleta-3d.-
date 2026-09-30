@@ -1,0 +1,35 @@
+OK   [escritorio] resolución interna = css·dpr/px — 366×233 (dpr 1, px3)
+OK   [escritorio] recorrido → roots — 1 puntos A*, llega en 24.7 s, zonas heart/sendero/roots, anims idle/walk/run, máx 85 draw calls / 156k tri
+OK   [escritorio] recorrido → crystal — 6 puntos A*, llega en 47.3 s, zonas roots/sendero/crystal, anims idle/run/walk, máx 88 draw calls / 160k tri
+OK   [escritorio] recorrido → ponds — 6 puntos A*, llega en 40.0 s, zonas crystal/sendero/ponds, anims idle/run/walk, máx 87 draw calls / 144k tri
+OK   [escritorio] recorrido → ruins — 6 puntos A*, llega en 50.2 s, zonas ponds/sendero/heart/ruins, anims idle/run/walk, máx 90 draw calls / 148k tri
+OK   [escritorio] recorrido → heart — 4 puntos A*, llega en 38.3 s, zonas ruins/sendero/heart, anims idle/run/walk, máx 99 draw calls / 151k tri
+OK   [escritorio] toque cercano → camina y para — idle,walk
+OK   [escritorio] toque lejano (5.2 H) → corre y pasa a caminar — idle → walk → run → walk → idle
+OK   [escritorio] rodea la columna del titán (no la atraviesa) — 3 puntos A*, distancia mínima a la columna 1.12 u, final (0.4, 5.2)
+OK   [escritorio] sube a la mano abierta del titán (plataforma) — altura 1.50 (palma 1.5), final (-4.0, -3.0)
+OK   [escritorio] sube escalones (1.5 → 2.5) con suavidad — altura 1.50 → 2.50, mayor subida entre muestras 0.20
+OK   [escritorio] ondas al pisar charcas — 20 ondas creadas
+OK   [escritorio] doble toque parado → salta en el sitio — desplazamiento 0.000 u, toques separados 64 ms (intento 1)
+OK   [escritorio] SALTAR en marcha → salta hacia delante y levanta polvo — avance 2.72 u, polvo 424
+OK   [escritorio] mantener pulsado sigue al dedo y termina en el último punto — final a 0.00 u del destino planificado, 0.00 u del punto soltado (alcanzable), llega en 15.1 s, 20 fps; destino (9.99, -14.08), final (9.99, -14.08), re-planeos 0
+OK   [escritorio] girar cámara 90° desplaza la dirección 2 posiciones — 6 → 0
+OK   [escritorio] zoom y tamaño de píxel — zoom 1.60→2.00, ancho interno 366→275
+OK   [escritorio] sin scroll ni zoom del navegador — {"sx":0,"sy":0,"scale":1}
+OK   [escritorio] sin errores JS
+OK   [iphone] resolución interna = css·dpr/px — 390×664 (dpr 3, px3)
+FAIL [iphone] toque cercano → camina y para — idle,walk
+OK   [iphone] toque lejano (6.5 H) → corre y pasa a caminar — idle → walk → run → walk → idle
+FAIL [iphone] rodea la columna del titán (no la atraviesa) — 3 puntos A*, distancia mínima a la columna 1.27 u, final (0.3, 5.2)
+OK   [iphone] sube a la mano abierta del titán (plataforma) — altura 1.50 (palma 1.5), final (-4.0, -3.0)
+OK   [iphone] sube escalones (1.5 → 2.5) con suavidad — altura 1.50 → 2.50, mayor subida entre muestras 0.20
+OK   [iphone] ondas al pisar charcas — 15 ondas creadas
+OK   [iphone] doble toque parado → salta en el sitio — desplazamiento 0.000 u, toques separados 236 ms (intento 2)
+OK   [iphone] SALTAR en marcha → salta hacia delante y levanta polvo — avance 1.88 u, polvo 165
+OK   [iphone] mantener pulsado sigue al dedo y termina en el último punto — final a 0.00 u del destino planificado, 0.31 u del punto soltado (inalcanzable: más cercano alcanzable), llega en 20.9 s, 20 fps; destino (8.75, -14.75), final (8.75, -14.75), re-planeos 0
+OK   [iphone] girar cámara 90° desplaza la dirección 2 posiciones — 6 → 0
+OK   [iphone] zoom y tamaño de píxel — zoom 1.60→2.00, ancho interno 390→292
+OK   [iphone] sin scroll ni zoom del navegador — {"sx":0,"sy":0,"scale":1}
+OK   [iphone] sin errores JS
+
+31/33 comprobaciones OK

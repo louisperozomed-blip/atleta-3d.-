@@ -220,3 +220,6 @@ los pies, direcciones corregidas):
 | dodge | 1-2 | 3-4 DASH (invulnerable) | 5-6 | atacar/esquivar 6 | 400 ms |
 | hit | — | 1 IMPACT | 2-6 | esquivar 5-6, atacar 6 | 480 ms |
 | death | — | 1 HIT | 2-6 (se queda en el último) | — | 1030 ms |
+
+## Etapas 3-6 — Combate en el mundo
+Sistema de combate, controles, el eco y las pruebas están en `world/` (ver `world/PROGRESS.md`, «Combate»).
