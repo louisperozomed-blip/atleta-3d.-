@@ -469,3 +469,30 @@ Comprobado en el navegador por la API (`W.pf.input(...)`, `W.foe.input(...)`): c
 10+12+22, parry a 117 ms del impacto → sin daño y +38 de postura, parry parcial → bloqueo, 7 golpes bloqueados →
 rotura de guardia, esquiva 130 ms antes → «evade», attack1 cancelado con esquiva en FOLLOW THROUGH, eco muerto
 tras 9 golpes (queda en el último frame de death).
+
+## Etapa 4 — Controles táctiles y teclado
+`src/controls.js` (y el botón GUARDIA en `src/buttons.html`):
+
+| Gesto / tecla | Acción |
+|---|---|
+| tocar el suelo | ir ahí (A*; camina cerca, corre lejos). Mantener: seguir al dedo. Doble toque: saltar |
+| tocar al enemigo | atacar hacia él; toques seguidos encadenan attack1 → 2 → 3. Si está a más de 3.2 u, va hacia él y ataca al llegar |
+| deslizar rápido (> 42 px en < 260 ms) | esquivar en esa dirección (se deshace el acortamiento isométrico de la pantalla) |
+| botón GUARDIA | tocar = parry; mantener = bloquear |
+| botón SALTAR | saltar (como antes) |
+| WASD / flechas | mover (relativo a la cámara); con Mayús, correr |
+| J | atacar (hacia el enemigo cercano, o hacia donde se mueve) |
+| K | guardia (tocar = parry, mantener = bloquear) |
+| Espacio | esquivar hacia donde se mueve (sin dirección: hacia atrás) |
+| L | saltar |
+
+Detalles: el toque sobre el enemigo usa el rectángulo de su sprite en pantalla con margen para el dedo y no
+arranca el seguimiento; un deslizamiento rápido no arranca el seguimiento hasta ver si es una esquiva; un toque
+en el suelo en mitad de una acción de combate queda pendiente y se ejecuta al terminarla.
+
+Comprobado en Chromium (escritorio con teclado y ratón; iPhone con toques por CDP): D mueve a la derecha de la
+pantalla, Mayús+W corre (4.6 u/s), J J J → attack1-2-3 aciertan, K tocada → parry, K mantenida → block,
+Espacio → esquiva, L → salto, clic en el eco a 1.6 u → ataque, a 6 u → se acerca (A*) y ataca, GUARDIA tocado
+→ parry y mantenido → block, y deslizar derecha/arriba/izquierda/abajo → esquiva hacia allí (+155, −56, −155,
++70 px en pantalla). Nota de las pruebas: con SwiftShader los eventos táctiles sueltos se procesan con segundos
+de retraso (el gesto parecía durar 3.6 s y arrancaba el seguimiento); los eventos de cada gesto se envían juntos.
