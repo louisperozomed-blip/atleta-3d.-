@@ -158,7 +158,9 @@ async function suite(browser, label, opts, touch) {
   const box = await page.locator("#jump").boundingBox();
   await tap(page, box.x + box.width / 2, box.y + box.height / 2, touch);
   let airMoved = 0, landed = false;
-  for (let k = 0; k < 40; k++) { const s = await S(page); if (s.jump) airMoved = Math.hypot(s.x - s0.x, s.z - s0.z); else if (airMoved > 0) { landed = true; break; } await sleep(50); }
+  // hasta 15 s reales: con SwiftShader la escena va a pocos fps y el tiempo simulado avanza más despacio
+  const tj = Date.now();
+  while (Date.now() - tj < 15000) { const s = await S(page); if (s.jump) airMoved = Math.hypot(s.x - s0.x, s.z - s0.z); else if (airMoved > 0) { landed = true; break; } await sleep(50); }
   const dust = await page.evaluate(() => W.__dust || 0);
   check(`[${label}] SALTAR en marcha → salta hacia delante y levanta polvo`, airMoved > 0.4 && landed && dust > 0, `avance ${airMoved.toFixed(2)} u, polvo ${dust}`);
   await page.screenshot({ path: `${out}/${label}_05_salto.png` });
