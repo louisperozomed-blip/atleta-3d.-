@@ -203,11 +203,11 @@ async function suite(browser, label, opts, touch) {
   // destino que planificó A* al soltar: el último punto si es alcanzable o, si no (p. ej. cae sobre una
   // meseta), el punto alcanzable más cercano
   const goal = await page.evaluate(() => { const p = W.lastPath; return p && p.length ? { ...p[p.length - 1], exact: !!p.exact } : null; });
-  w = await waitIdle(page, 20000);
+  w = await waitIdle(page, 45000);        // con SwiftShader a pocos fps el tiempo simulado va lento
   s1 = w.s;
   const dEnd = Math.hypot(s1.x - endG.x, s1.z - endG.z), dGoal = goal ? Math.hypot(s1.x - goal.x, s1.z - goal.z) : 99;
   check(`[${label}] mantener pulsado sigue al dedo y termina en el último punto`, followSeen && w.t > 0 && dGoal < 0.3 && (goal.exact ? dEnd < 0.8 : true),
-    `final a ${dGoal.toFixed(2)} u del destino planificado, ${dEnd.toFixed(2)} u del punto soltado (${goal && goal.exact ? "alcanzable" : "inalcanzable: más cercano alcanzable"})`);
+    `final a ${dGoal.toFixed(2)} u del destino planificado, ${dEnd.toFixed(2)} u del punto soltado (${goal && goal.exact ? "alcanzable" : "inalcanzable: más cercano alcanzable"}), llega en ${(w.t / 1000).toFixed(1)} s, ${(s1.fps || 0).toFixed(0)} fps; destino (${goal ? goal.x.toFixed(2) + ", " + goal.z.toFixed(2) : "-"}), final (${s1.x.toFixed(2)}, ${s1.z.toFixed(2)}), re-planeos ${await page.evaluate(() => W.player.replans || 0)}`);
 
   // --- 9. botones: girar cámara (índice ±2), zoom, píxel ------------------------------------------------
   const d0 = (await S(page)).dir;
@@ -258,9 +258,9 @@ async function gif(browser) {
 
 const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
 if (process.env.ONLY_GIF) { await gif(browser); await browser.close(); process.exit(0); }
-await suite(browser, "escritorio", { viewport: { width: 1100, height: 700 }, deviceScaleFactor: 1 }, false);
+if (!process.env.ONLY || process.env.ONLY === "escritorio") await suite(browser, "escritorio", { viewport: { width: 1100, height: 700 }, deviceScaleFactor: 1 }, false);
 const ip = devices["iPhone 13"];
-await suite(browser, "iphone", { viewport: ip.viewport, deviceScaleFactor: ip.deviceScaleFactor, isMobile: true, hasTouch: true, userAgent: ip.userAgent }, true);
+if (!process.env.ONLY || process.env.ONLY === "iphone") await suite(browser, "iphone", { viewport: ip.viewport, deviceScaleFactor: ip.deviceScaleFactor, isMobile: true, hasTouch: true, userAgent: ip.userAgent }, true);
 await gif(browser);
 await browser.close();
 fs.writeFileSync(`${out}/results.json`, JSON.stringify(results, null, 1));
