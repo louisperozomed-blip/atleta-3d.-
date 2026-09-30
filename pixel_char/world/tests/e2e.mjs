@@ -161,7 +161,8 @@ async function suite(browser, label, opts, touch) {
       await page.evaluate(() => { W.manual = true; });
       const cdp = await page.context().newCDPSession(page);
       const tp = (type, q) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: q ? [{ x: q[0], y: q[1], id: 1 }] : [] });
-      await tp("touchStart", p); await tp("touchEnd", null); await sleep(60); await tp("touchStart", p); await tp("touchEnd", null);
+      // apoyar y levantar seguidos (si entre ambos pasan > 170 ms el control lo toma por "mantener pulsado")
+      await Promise.all([tp("touchStart", p), tp("touchEnd", null)]); await sleep(60); await Promise.all([tp("touchStart", p), tp("touchEnd", null)]);
       await page.evaluate(() => { W.manual = false; });
     } else { await tap(page, p[0], p[1], touch); await sleep(60); await tap(page, p[0], p[1], touch); }
     jumped = false;
