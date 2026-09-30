@@ -135,3 +135,55 @@ sin normal maps) y GIF: `review/stage4_demo.gif` (carrera NE → salto → aterr
 Publicación: `tools/build_demo.py` genera además una variante sin `<html>/<head>/<body>` para el visor de
 Artifacts (que añade su propio esqueleto); publicada como «Autómata isométrico»:
 https://claude.ai/artifact/D3MKMn1CTffmSTreZWg6oS
+
+---
+
+# Combate — hojas nuevas (ref/sheets_combate)
+
+## Etapa 0 — Hojas y etiquetas
+17 hojas de 1225×1284 (mismo formato: 4 filas de dirección × 6 frames): attack1-3, parry, block, dodge, hit y
+death (`_1` = N, NE, E, SE; `_2` = S, SW, W, NW; ninguna hoja cambia ese orden) más `death_2_alt`.
+Las etiquetas de fase de cada frame están en `ref/sheets_combate/labels.json`:
+
+| anim | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| attack1, attack2 | ANTICIPATION | WIND UP | SWING | IMPACT | FOLLOW THROUGH | RECOVERY |
+| attack3 | ANTICIPATION | LEAP | OVERHEAD | IMPACT | FOLLOW THROUGH | RECOVERY |
+| parry | GUARD UP | DEFLECT | SPARK | PUSH BACK | READY | RECOVERY |
+| block | RAISE | HOLD | HOLD | IMPACT | HOLD | LOWER |
+| dodge | CROUCH | PUSH OFF | DASH | DASH | LANDING | RECOVERY |
+| hit | IMPACT | RECOIL | STAGGER | STAGGER | RECOVER | READY |
+| death | HIT | STAGGER | KNEES | COLLAPSE | DOWN | DOWN |
+
+## Etapa 1 — Revisión y corrección de congruencia
+Herramientas: `tools/combat_extract.py` (recorte) → `combat_color.py` (color) → `combat_normalize.py`
+(escala, pivote y direcciones) → `combat_review_e1.py` (hojas de revisión). Salida: `build/combat/fixed`
+(lienzo 256×288, pivote 128,264: algo mayor que el de idle/walk porque la cuchilla levantada de attack3 llega a
+257 px sobre el suelo).
+
+**Recorte.** El extractor original sirve para attack1/attack2 y death (fondo gris azulado). parry, block, dodge
+y hit (y attack3, algo menos) tienen el fondo turquesa (G-R 12-24, B-G ~7), casi del tono de la tela verde
+(B-G ≤ 1): el fondo se mide en cada hoja y se aceptan también sus tonos más oscuros (color ≈ k·fondo); los
+números de columna se buscan por brillo (en esas hojas no son saturados); se quitan las sombras pintadas del
+suelo (gris cálido en hit/dodge/death, gris azulado en attack2_2), los rótulos de dirección y las manchas
+sueltas; y cuando dos frames están pegados en la hoja (cuchilla de DEFLECT contra las chispas de SPARK en parry
+SE/NW) se corta por la línea media entre columnas y cada píxel se queda con el núcleo más cercano.
+
+**Problemas encontrados** (hojas marcadas en `review/combat/E1_<anim>.png`; lista en `E1_revision.json`):
+
+| | Problema | Arreglo |
+|---|---|---|
+| (a) | attack1 SW: toda la fila de espaldas (mochila) | espejo horizontal de attack1 SE |
+| (a) | attack3 SW f6 (RECOVERY) con la mochila | espejo de attack3 SE f6 |
+| (a)→(b) | attack3 f4 (IMPACT) de frente en N, NE, E, W, NW | provisional: pose FOLLOW THROUGH de la misma fila (dirección correcta, cuchilla abajo) + el estallido de fuego del IMPACT de la fila S. Se pierde el gesto de la cuchilla clavada → **regenerar** |
+| (b) | attack3 f4 en SE y SW mira al frente (S), no en diagonal | se conserva (se lee bien); regenerar si se quiere la diagonal exacta |
+| (a) | parry, block, dodge, hit, death: más rojos, saturados y brillantes, cuchilla roja, reborde rojo encendido alrededor de la silueta | color por zonas (Lab): la familia rojo intenso (tono < 50°, croma > 40: cuchilla, estela, chispas) se lleva por cuantiles de L, croma y tono a la de attack1-3 (naranja cálido con borde brillante); el resto de rojos (reflejos del visor, sombras rojizas) gira hacia el naranja de referencia por tramo de L con menos croma en los oscuros; la crema clara −7° y −10 % de croma; el núcleo rosado de la cuchilla → blanco cálido; el reborde del cuerpo → contorno cálido oscuro como en walk. Crema, verde y negro conservan su sombreado (`review/combat/E1_color.png`) |
+| (a) | block, dodge, hit, death: dibujados más grandes (casco 7-12 % mayor que idle a igual baldosa) | escala = media geométrica de la escala por casco (pieza rígida) y por baldosa: se reducen 3-6 % (`E1_tamano.png`) |
+| (b) | parry, dodge, hit, death: proporciones rechonchas (cabeza grande, cuerpo corto: alto/ancho 13-20 % menor que idle) | no se corrige con código sin deformar el casco; a la escala del juego se nota poco |
+| elección | death_2 frente a death_2_alt | **death_2**: igual que death_1 cae de bruces hacia delante (mochila arriba, cabeza hacia donde miraba). death_2_alt acaba con la cabeza hacia atrás (p. ej. en S mira al frente y termina con la cabeza al fondo) y salta de golpe de COLLAPSE (casco al frente) a DOWN (mochila) — `E1_death.png` |
+
+Direcciones del resto (revisadas fila a fila contra walk: mochila visible en N/NE/NW, visor en S/SE/SW, mochila
+a la izquierda en E y a la derecha en W): correctas en attack2, parry, block, dodge, hit y death.
+
+**Para regenerar:** attack3 IMPACT (frame 4) en N, NE, E, W y NW (y opcionalmente SE/SW en diagonal); si se
+quiere exactitud de proporciones, parry, dodge, hit y death con la proporción cabeza/cuerpo de idle.

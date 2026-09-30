@@ -1,0 +1,535 @@
+{
+ "problemas": [
+  {
+   "anim": "attack1",
+   "dirs": [
+    "SW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "fila SW de espaldas (se ve la mochila)",
+   "arreglo": "espejo horizontal de attack1 SE"
+  },
+  {
+   "anim": "attack3",
+   "dirs": [
+    "N",
+    "NE",
+    "E",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    3
+   ],
+   "tipo": "b",
+   "problema": "IMPACT de frente en filas de espaldas y de lado",
+   "arreglo": "provisional: pose FOLLOW THROUGH de la misma fila + estallido de fuego del IMPACT S; regenerar para tener el golpe con la cuchilla clavada mirando en la dirección de la fila"
+  },
+  {
+   "anim": "attack3",
+   "dirs": [
+    "SE",
+    "SW"
+   ],
+   "frames": [
+    3
+   ],
+   "tipo": "b",
+   "problema": "IMPACT mira al frente (S) en vez de en diagonal",
+   "arreglo": "se conserva (se lee bien desde delante); regenerar si se quiere la diagonal exacta"
+  },
+  {
+   "anim": "attack3",
+   "dirs": [
+    "SW"
+   ],
+   "frames": [
+    5
+   ],
+   "tipo": "a",
+   "problema": "RECOVERY de espaldas (mochila)",
+   "arreglo": "espejo horizontal de attack3 SE RECOVERY"
+  },
+  {
+   "anim": "parry",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "más rojo, saturado y brillante; cuchilla roja; reborde rojo encendido",
+   "arreglo": "color por zonas: rojos -> naranja de referencia, cuchilla -> cuantiles de la de attack1-3, crema -7° y -10 % croma, reborde del cuerpo -> contorno cálido oscuro"
+  },
+  {
+   "anim": "block",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "más rojo, saturado y brillante; cuchilla roja; reborde rojo encendido",
+   "arreglo": "color por zonas: rojos -> naranja de referencia, cuchilla -> cuantiles de la de attack1-3, crema -7° y -10 % croma, reborde del cuerpo -> contorno cálido oscuro"
+  },
+  {
+   "anim": "dodge",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "más rojo, saturado y brillante; cuchilla roja; reborde rojo encendido",
+   "arreglo": "color por zonas: rojos -> naranja de referencia, cuchilla -> cuantiles de la de attack1-3, crema -7° y -10 % croma, reborde del cuerpo -> contorno cálido oscuro"
+  },
+  {
+   "anim": "hit",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "más rojo, saturado y brillante; cuchilla roja; reborde rojo encendido",
+   "arreglo": "color por zonas: rojos -> naranja de referencia, cuchilla -> cuantiles de la de attack1-3, crema -7° y -10 % croma, reborde del cuerpo -> contorno cálido oscuro"
+  },
+  {
+   "anim": "death",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "más rojo, saturado y brillante; cuchilla roja; reborde rojo encendido",
+   "arreglo": "color por zonas: rojos -> naranja de referencia, cuchilla -> cuantiles de la de attack1-3, crema -7° y -10 % croma, reborde del cuerpo -> contorno cálido oscuro"
+  },
+  {
+   "anim": "block",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "personaje dibujado más grande (casco ~10 % mayor que en idle/walk a igual baldosa)",
+   "arreglo": "escala = media geométrica casco/baldosa: se reduce un 4.6 %"
+  },
+  {
+   "anim": "dodge",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "personaje dibujado más grande (casco ~12 % mayor que en idle/walk a igual baldosa)",
+   "arreglo": "escala = media geométrica casco/baldosa: se reduce un 5.9 %"
+  },
+  {
+   "anim": "hit",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "personaje dibujado más grande (casco ~9 % mayor que en idle/walk a igual baldosa)",
+   "arreglo": "escala = media geométrica casco/baldosa: se reduce un 5.0 %"
+  },
+  {
+   "anim": "death",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "personaje dibujado más grande (casco ~7 % mayor que en idle/walk a igual baldosa)",
+   "arreglo": "escala = media geométrica casco/baldosa: se reduce un 3.3 %"
+  },
+  {
+   "anim": "parry",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "b",
+   "problema": "proporciones más rechonchas: cabeza grande y cuerpo corto (alto/ancho de los frames erguidos 13-20 % menor que idle con el casco igualado)",
+   "arreglo": "no se corrige con código sin deformar el casco; aceptable a la escala del juego, regenerar con las proporciones de idle si se quiere exactitud"
+  },
+  {
+   "anim": "dodge",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "b",
+   "problema": "proporciones más rechonchas: cabeza grande y cuerpo corto (alto/ancho de los frames erguidos 13-20 % menor que idle con el casco igualado)",
+   "arreglo": "no se corrige con código sin deformar el casco; aceptable a la escala del juego, regenerar con las proporciones de idle si se quiere exactitud"
+  },
+  {
+   "anim": "hit",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "b",
+   "problema": "proporciones más rechonchas: cabeza grande y cuerpo corto (alto/ancho de los frames erguidos 13-20 % menor que idle con el casco igualado)",
+   "arreglo": "no se corrige con código sin deformar el casco; aceptable a la escala del juego, regenerar con las proporciones de idle si se quiere exactitud"
+  },
+  {
+   "anim": "death",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "b",
+   "problema": "proporciones más rechonchas: cabeza grande y cuerpo corto (alto/ancho de los frames erguidos 13-20 % menor que idle con el casco igualado)",
+   "arreglo": "no se corrige con código sin deformar el casco; aceptable a la escala del juego, regenerar con las proporciones de idle si se quiere exactitud"
+  },
+  {
+   "anim": "parry",
+   "dirs": [
+    "SE",
+    "NW"
+   ],
+   "frames": [
+    1,
+    2
+   ],
+   "tipo": "a",
+   "problema": "en la hoja la cuchilla de DEFLECT toca las chispas de SPARK (frames pegados)",
+   "arreglo": "corte por la línea media entre columnas"
+  },
+  {
+   "anim": "death",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "death_2 frente a death_2_alt",
+   "arreglo": "se usa death_2: cae de bruces hacia delante como death_1; death_2_alt termina con la cabeza hacia atrás y salta de COLLAPSE a DOWN"
+  }
+ ],
+ "regenerar": [
+  {
+   "anim": "attack3",
+   "dirs": [
+    "N",
+    "NE",
+    "E",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    3
+   ],
+   "tipo": "b",
+   "problema": "IMPACT de frente en filas de espaldas y de lado",
+   "arreglo": "provisional: pose FOLLOW THROUGH de la misma fila + estallido de fuego del IMPACT S; regenerar para tener el golpe con la cuchilla clavada mirando en la dirección de la fila"
+  },
+  {
+   "anim": "attack3",
+   "dirs": [
+    "SE",
+    "SW"
+   ],
+   "frames": [
+    3
+   ],
+   "tipo": "b",
+   "problema": "IMPACT mira al frente (S) en vez de en diagonal",
+   "arreglo": "se conserva (se lee bien desde delante); regenerar si se quiere la diagonal exacta"
+  },
+  {
+   "anim": "parry",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "b",
+   "problema": "proporciones más rechonchas: cabeza grande y cuerpo corto (alto/ancho de los frames erguidos 13-20 % menor que idle con el casco igualado)",
+   "arreglo": "no se corrige con código sin deformar el casco; aceptable a la escala del juego, regenerar con las proporciones de idle si se quiere exactitud"
+  },
+  {
+   "anim": "dodge",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "b",
+   "problema": "proporciones más rechonchas: cabeza grande y cuerpo corto (alto/ancho de los frames erguidos 13-20 % menor que idle con el casco igualado)",
+   "arreglo": "no se corrige con código sin deformar el casco; aceptable a la escala del juego, regenerar con las proporciones de idle si se quiere exactitud"
+  },
+  {
+   "anim": "hit",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "b",
+   "problema": "proporciones más rechonchas: cabeza grande y cuerpo corto (alto/ancho de los frames erguidos 13-20 % menor que idle con el casco igualado)",
+   "arreglo": "no se corrige con código sin deformar el casco; aceptable a la escala del juego, regenerar con las proporciones de idle si se quiere exactitud"
+  },
+  {
+   "anim": "death",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "b",
+   "problema": "proporciones más rechonchas: cabeza grande y cuerpo corto (alto/ancho de los frames erguidos 13-20 % menor que idle con el casco igualado)",
+   "arreglo": "no se corrige con código sin deformar el casco; aceptable a la escala del juego, regenerar con las proporciones de idle si se quiere exactitud"
+  }
+ ]
+}
