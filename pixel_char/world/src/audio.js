@@ -75,6 +75,45 @@
       o.connect(og); og.connect(A.master); o.start(t); o.stop(t + 0.08);
     }
   };
+  // Combate: tajos (ruido que barre), golpes (golpe grave + crujido), parry (metal agudo que resuena),
+  // bloqueo (metal sordo), rotura de guardia, esquiva, aturdido (campanilla), remate, muerte
+  function noiseHit(c, t, type, f0, f1, q, g0, dur, detune) {
+    const src = c.createBufferSource(); src.buffer = A.noise; src.playbackRate.value = detune || 1;
+    const f = c.createBiquadFilter(), g = c.createGain();
+    f.type = type; f.Q.value = q; f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(g0, t + Math.min(0.02, dur * 0.3)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(A.master); src.start(t, Math.random() * 0.1, dur + 0.02);
+  }
+  function tone(c, t, type, f0, f1, g0, dur) {
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(g0, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(A.master); o.start(t); o.stop(t + dur + 0.02);
+  }
+  A.combat = function (kind, surface) {
+    A.last = kind; A.combatCount = (A.combatCount || 0) + 1;
+    if (!A.enabled || !W.FX.sound) return;
+    const c = A.ctx;
+    if (!c || c.state !== "running") return;
+    const t = c.currentTime;
+    if (kind === "swing") noiseHit(c, t, "bandpass", 700, 2600, 1.2, 0.22, 0.16);
+    else if (kind === "swingHeavy") { noiseHit(c, t, "bandpass", 400, 1800, 1.0, 0.3, 0.28); tone(c, t, "sine", 120, 60, 0.12, 0.25); }
+    else if (kind === "hit" || kind === "hitHeavy") {
+      const h = kind === "hitHeavy" ? 1.4 : 1;
+      tone(c, t, "sine", 140 * h, 45, 0.45 * h, 0.14 * h);
+      noiseHit(c, t, "lowpass", 2400, 400, 0.8, 0.3 * h, 0.12 * h);
+      if (surface) A.step(surface, 1.1);
+    } else if (kind === "parry") {
+      for (const [fr, g, d] of [[1850, 0.16, 0.5], [2790, 0.1, 0.35], [4100, 0.06, 0.25], [920, 0.1, 0.4]]) tone(c, t, "triangle", fr, fr * 0.985, g, d);
+      noiseHit(c, t, "highpass", 5000, 3000, 0.7, 0.25, 0.06);
+    } else if (kind === "block") { tone(c, t, "triangle", 620, 560, 0.14, 0.18); noiseHit(c, t, "bandpass", 1600, 900, 2, 0.2, 0.08); }
+    else if (kind === "guardBreak") { tone(c, t, "sawtooth", 300, 90, 0.18, 0.3); noiseHit(c, t, "lowpass", 3000, 300, 0.6, 0.35, 0.25); }
+    else if (kind === "dodge") noiseHit(c, t, "bandpass", 1800, 500, 0.9, 0.16, 0.2);
+    else if (kind === "stun") { tone(c, t, "sine", 1320, 1310, 0.08, 0.6); tone(c, t + 0.09, "sine", 1760, 1750, 0.06, 0.55); }
+    else if (kind === "deathblow") { tone(c, t, "sine", 90, 35, 0.6, 0.45); noiseHit(c, t, "lowpass", 3000, 200, 0.7, 0.45, 0.4); tone(c, t, "triangle", 2200, 2100, 0.08, 0.6); }
+    else if (kind === "death") { tone(c, t, "sine", 80, 40, 0.35, 0.35); noiseHit(c, t, "lowpass", 900, 200, 0.6, 0.25, 0.3); }
+    else if (kind === "warn") { tone(c, t, "sine", 980, 1480, 0.05, 0.12); }
+  };
   // Ambiente: viento (ruido filtrado que respira), goteo (gotas al azar en las charcas y bajo las copas),
   // zumbido eléctrico lejano junto a las máquinas (50 Hz + armónicos, con cortes). Volúmenes suavizados.
   let amb = null;

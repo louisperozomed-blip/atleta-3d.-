@@ -422,3 +422,50 @@ Mismo link: https://claude.ai/artifact/ANHrkwwHE8urZjzme74NhG
 Limitaciones: el rendimiento en un iPhone real no se puede medir desde aquí (headless con SwiftShader, sin
 GPU); el presupuesto de geometría y llamadas es parecido al de la versión anterior, que ya funcionaba. El
 audio (viento, goteo, zumbido, pasos) está comprobado solo en que no da errores: no se puede escuchar aquí.
+
+---
+
+# Combate
+
+Hojas nuevas procesadas en `pixel_char/` (ver `pixel_char/PROGRESS.md`, «Combate», etapas 0-2): atlas del mundo
+`assets/combat_{color,normal,spec}.png` (celdas 128×144, `spec`: R especular, G emisión) y `combat_atlas.json`
+con duración de cada frame, frame activo, ventanas de cancelación, siguiente golpe del combo y desplazamiento
+pintado de los pies.
+
+## Etapa 3 — Sistema de combate
+Archivos nuevos: `src/fighter.js` (máquina de estados, común al jugador y al enemigo), `src/combat.js`
+(resolución de golpes, sensación, barras), `src/enemy.js` (el eco; la IA llega en la etapa 5). Cambios en
+`character.js` (segundo atlas, emisión, destello blanco, tinte frío del eco), `player.js` (cada cuerpo usa su
+propio personaje), `main.js` (hitstop, sacudida, luchadores) y `audio.js` (sonidos de combate sintetizados).
+
+- **Estados**: idle, walk, run y jump siguen en `player.js`; las acciones attack1-3, parry, block, dodge, hit,
+  death (y «aturdido») las lleva `fighter.js` con los tiempos del JSON (una sola fuente para animación y
+  lógica). Las transiciones salen de frames que casan con idle (RECOVERY, LOWER, READY) y el giro hacia el
+  objetivo pasa por las direcciones intermedias cada 25 ms.
+- **Combo**: pulsar durante IMPACT..RECOVERY de attack1 encadena attack2 (y attack2 → attack3); el golpe
+  siguiente empieza al entrar en FOLLOW THROUGH. attack3 dura 770 ms (485 los otros), salta hacia delante y
+  tiene más hitstop, sacudida y alcance. **Búfer** de entrada de 180 ms.
+- **Hitbox** en el suelo: arco delante del atacante (±70°, ±85° en attack3; alcance 1.6-1.95 u + radio del
+  objetivo), activo solo en el frame IMPACT; cada golpe alcanza una vez a cada objetivo.
+- **Atracción** suave: al atacar, si hay un enemigo a menos de 3.4 u por delante, gira hacia él y se acerca
+  durante la preparación hasta la distancia de golpe (sin atravesarlo).
+- **Parry** (tocar guardia): ventana de 200 ms desde la pulsación; cada pulsación seguida (< 0.7 s) encoge la
+  ventana 45 ms (hasta 130 ms menos) y la penalización se recupera sola a 120 ms/s. Justo fuera de la ventana
+  (hasta +120 ms) cuenta como bloqueo. Parry logrado: chispas, destello en estrella y luz que ilumina a los dos,
+  sin daño, +38 de postura al atacante (+48 contra attack3) que además retrocede; hitstop 110-130 ms.
+- **Bloqueo** (mantener guardia, del parry pasa a la guardia sostenida a los 170 ms): daño ×0.15, gasta 22 de
+  stamina (36 contra attack3); sin stamina la guardia se rompe (tambaleo largo, medio daño).
+- **Esquiva**: 2.3 u, invulnerable en los frames DASH; cancela un ataque después de su IMPACT. La hoja pinta un
+  paso atrás, así que el personaje mira al lado contrario de hacia donde se aparta; el desplazamiento pintado de
+  los pies se compensa en el sprite (el cuerpo lo mueve el código), igual en el golpe recibido.
+- **Barras**: vida y stamina del jugador (arriba a la izquierda); vida y postura del enemigo sobre su cabeza.
+  Postura llena = aturdido 2.4 s; golpearlo entonces es un remate (daño ×3, mínimo 40).
+- **Sensación**: hitstop 60-120 ms (160 en el remate), sacudida de cámara en la dirección del golpe (ajustada a
+  píxeles), destello blanco en quien recibe, partículas según el terreno (tierra, piedra, agua, hierba, hojas,
+  metal) y ascuas, destello en estrella, sonidos (tajo, tajo pesado, golpe, parry, bloqueo, rotura de guardia,
+  esquiva, aturdido, remate, muerte).
+
+Comprobado en el navegador por la API (`W.pf.input(...)`, `W.foe.input(...)`): combo completo que acierta
+10+12+22, parry a 117 ms del impacto → sin daño y +38 de postura, parry parcial → bloqueo, 7 golpes bloqueados →
+rotura de guardia, esquiva 130 ms antes → «evade», attack1 cancelado con esquiva en FOLLOW THROUGH, eco muerto
+tras 9 golpes (queda en el último frame de death).

@@ -6,7 +6,8 @@ import base64, io, json, os, re, sys
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ORDER = ["core.js", "terrain.js", "props.js", "modules.js", "zones.js", "effects.js", "look.js", "player.js", "walk.js", "feet.js", "character.js", "interact.js", "audio.js", "feel.js", "nav.js", "controls.js", "main.js"]
+ORDER = ["core.js", "terrain.js", "props.js", "modules.js", "zones.js", "effects.js", "look.js", "player.js", "walk.js", "feet.js", "character.js",
+         "fighter.js", "combat.js", "enemy.js", "interact.js", "audio.js", "feel.js", "nav.js", "controls.js", "main.js"]
 
 
 def webp(path, **kw):
@@ -28,6 +29,12 @@ def main():
         "spec": webp(os.path.join(A, "spec.png"), quality=88),
         "meta": json.load(open(os.path.join(A, "atlas.json"))),
     }
+    # hojas de combate (pixel_char/tools/combat_maps.py): color, normal y especular+emisión (R, G)
+    if os.path.exists(os.path.join(A, "combat_atlas.json")):
+        assets["ccolor"] = webp(os.path.join(A, "combat_color.png"), quality=90, alpha_quality=100)
+        assets["cnormal"] = webp(os.path.join(A, "combat_normal.png"), quality=88)
+        assets["cspec"] = webp(os.path.join(A, "combat_spec.png"), quality=88)
+        assets["cmeta"] = json.load(open(os.path.join(A, "combat_atlas.json")))
     feet = os.path.join(A, "feet.json")
     if os.path.exists(feet):
         F = json.load(open(feet))

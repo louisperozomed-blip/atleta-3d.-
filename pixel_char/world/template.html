@@ -50,14 +50,17 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
     t.needsUpdate = true; return t;
   }
-  Promise.all([load(A.color), load(A.normal), load(A.spec)]).then(([c, n, s]) => {
+  const L = [load(A.color), load(A.normal), load(A.spec)];
+  if (A.cmeta) L.push(load(A.ccolor), load(A.cnormal), load(A.cspec));
+  Promise.all(L).then(([c, n, s, cc, cn, cs]) => {
     const T = { color: tex(c), normal: tex(n), spec: tex(s) };
+    const CT = A.cmeta ? { color: tex(cc), normal: tex(cn), spec: tex(cs) } : null;
     document.getElementById("loading").remove();
     if (A.walk) W.WALK_DATA = A.walk;
     if (A.feet) W.FEET = A.feet;
     if (A.palette) W.PALETTE = A.palette;
-    W.start({ tex: T, meta: A.meta });
-  }).catch((e) => { document.getElementById("loading").textContent = "Error: " + e; });
+    W.start({ tex: T, meta: A.meta, ctex: CT, cmeta: A.cmeta });
+  }).catch((e) => { console.error(e && e.stack || e); const l = document.getElementById("loading"); if (l) l.textContent = "Error: " + e; });
 })();
 </script>
 </body>

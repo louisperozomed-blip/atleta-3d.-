@@ -93,8 +93,11 @@
 
     // --- personaje -------------------------------------------------------------------
     const player = (W.player = new W.Player(0, -6.2));
-    const character = (W.character = W.makeCharacter(scene, assets.tex, assets.meta));
+    const character = (W.character = W.makeCharacter(scene, assets.tex, assets.meta, assets.ctex, assets.cmeta));
+    player.ch = character;
+    W.CMETA = assets.cmeta;
     if (W.initFeel) W.initFeel(scene);
+    if (W.initCombat && assets.cmeta) W.initCombat(scene, assets);
 
     // --- cámara isométrica + post-proceso pixel art ----------------------------------
     const cam = (W.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200));
@@ -122,7 +125,7 @@
     resize();
 
     const camT = new THREE.Vector3(player.x, player.y + 1.2, player.z);
-    const tmp = new THREE.Vector3(), rv = new THREE.Vector3(), uv = new THREE.Vector3();
+    const tmp = new THREE.Vector3(), rv = new THREE.Vector3(), uv = new THREE.Vector3(), shk = new THREE.Vector3();
     const lightView = new THREE.Matrix4(), lv = new THREE.Vector3(), camPx = new THREE.Vector2(), _cp = new THREE.Vector3();
 
     // --- selección de un punto del suelo desde la pantalla (marcha sobre el mapa de alturas)
@@ -183,14 +186,19 @@
     W.tick = function (dt, n) { for (let i = 0; i < (n || 1); i++) step(dt); };
     function step(dt) {
       t += dt; W.U.uTime.value = t;
+      // hitstop: el tiempo de juego se congela un instante (la cámara, la luz y las partículas siguen)
+      const gdt = W.combatStep ? W.combatStep(dt) : dt;
       if (W.controlsUpdate) W.controlsUpdate(dt);
-      player.update(dt);
+      if (W.pf) W.pf.update(gdt);
+      player.update(gdt);
       W.U.uPlayer.value.set(player.x, player.y, player.z);
       W.U.uPush.value += ((player.speed > 0.1 ? 1 : 0.3) - W.U.uPush.value) * Math.min(1, dt * 6);
       ui.theta += (ui.thetaT - ui.theta) * (1 - Math.exp(-dt * 7));
       if (Math.abs(ui.thetaT - ui.theta) < 1e-4) ui.theta = ui.thetaT;
-      character.update(dt, player, ui.theta, ui.thetaT);
+      character.update(gdt, player, ui.theta, ui.thetaT);
+      if (W.updateFoes) W.updateFoes(gdt, ui.theta, ui.thetaT);
       if (W.afterCharacter) W.afterCharacter(dt, t);
+      if (W.combatAfter) W.combatAfter(dt);
       const beat = 0;
       if (refl) refl.mat.uniforms.uTheta.value = ui.theta;
       if (W.updateFeel) W.updateFeel(dt, t, camT, cam);
@@ -200,6 +208,9 @@
       tmp.set(player.x + Math.cos(player.heading) * ahead, player.y + 1.0, player.z + Math.sin(player.heading) * ahead);
       camT.lerp(tmp, W.camSnap ? 1 : 1 - Math.exp(-dt * (W.FEEL && W.FEEL.on.cam ? 3 : 4)));
       W.camSnap = false;
+      // sacudida en la dirección del golpe (combat.js); se suma solo a la vista, no al seguimiento
+      if (W.shakeOffset) W.shakeOffset(dt, shk); else shk.set(0, 0, 0);
+      camT.add(shk);
       const EL = W.CAM_EL;
       cam.position.set(Math.sin(ui.theta) * Math.cos(EL), Math.sin(EL), Math.cos(ui.theta) * Math.cos(EL)).multiplyScalar(40).add(camT);
       cam.lookAt(camT); cam.updateMatrixWorld();
@@ -208,6 +219,7 @@
       const tr = camT.dot(rv), tu = camT.dot(uv);
       cam.position.addScaledVector(rv, Math.round(tr / wpp) * wpp - tr).addScaledVector(uv, Math.round(tu / wpp) * wpp - tu);
       camPx.set(Math.round(tr / wpp), Math.round(tu / wpp));     // anclaje de los patrones del post al mundo
+      camT.sub(shk);                                              // la sacudida también va ajustada a píxeles
       // recorte de copas: posición del personaje en píxeles del RT y su profundidad
       cam.updateMatrixWorld(); cam.matrixWorldInverse.copy(cam.matrixWorld).invert();
       _cp.set(player.x, player.y + 0.9, player.z).project(cam);

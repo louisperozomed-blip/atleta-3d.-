@@ -37,13 +37,14 @@
     get walkV() {
       let v = P.walkSpeed;
       // pies anclados: la velocidad de marcha sale de los pies (u/s por dirección)
-      if (W.FX && W.FX.anchor && W.locoParams && W.character) {
-        const lp = W.locoParams("walk", W.character.st.dir);
+      const chr = this.ch || W.character;
+      if (W.FX && W.FX.anchor && W.locoParams && chr) {
+        const lp = W.locoParams("walk", chr.st.dir);
         if (lp) return lp.v * (W.speedMul || 1);
       }
       // variante E: la velocidad se ajusta a la zancada medida de la dirección que se ve
-      if (W.walkMode === "E" && W.WALK_DATA && W.character) {
-        const d = ["S", "SW", "W", "NW", "N", "NE", "E", "SE"][W.character.st.dir];
+      if (W.walkMode === "E" && W.WALK_DATA && chr) {
+        const d = ["S", "SW", "W", "NW", "N", "NE", "E", "SE"][chr.st.dir];
         v = Math.min(1.1, Math.max(0.75, W.WALK_DATA.stride[d] * 1.8));
       }
       return v * W.CHAR_H * (W.speedMul || 1);
@@ -65,7 +66,7 @@
     }
     stop() { this.path = []; }
     doJump() {
-      if (this.jump) return;
+      if (this.jump || (this.fighter && (this.fighter.act || !this.fighter.alive))) return;
       const moving = this.speed > 0.2 * this.walkV;
       this.jump = { t: 0, forward: moving, v: moving ? Math.max(this.speed, this.walkV) : 0, landed: false, h: 0 };
       if (!moving) this.speed = 0;
@@ -162,7 +163,8 @@
       // Al subir o bajar un escalón el cuerpo cambia de nivel cuando el apoyo pasa al pie del otro nivel,
       // con un ajuste corto (~0.1 s) en vez de ir flotando o hundido detrás del centro.
       this.ground = W.heightAt(this.x, this.z);
-      const an = W.FX && W.FX.anchor && !this.jump && W.character && W.character.anchor && W.character.anchor.st.anchor;
+      const chr = this.ch || W.character;
+      const an = W.FX && W.FX.anchor && !this.jump && chr && chr.anchor && chr.anchor.st.anchor;
       let target = this.ground;
       if (an) {
         // solo si el pie está en el nivel de delante o de detrás (cruzando el escalón) o en el mismo: andando junto al
@@ -172,7 +174,7 @@
         if (Math.abs(hf - this.ground) <= W.MAX_STEP + 1e-3 && (hf === this.ground || hf === ha || hf === hb)) target = hf;
         // subiendo: la próxima bota se apoyará en el escalón dentro de < 0.12 s → el cuerpo sube ya (el pie
         // de atrás acompaña: es el impulso) y al apoyarse la bota ya está a la altura del escalón
-        const nx = W.character.anchor.st.next;
+        const nx = chr.anchor.st.next;
         if (nx && nx.t < 0.12 && nx.h > target && nx.h - this.ground <= W.MAX_STEP + 1e-3 && nx.h === ha) target = nx.h;
       }
       // bajando, el ajuste es más rápido (cae al apoyarse, sin quedarse flotando)

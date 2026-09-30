@@ -8,9 +8,18 @@
   const ANIMS = ["idle", "walk", "run", "jump"];
   const NF = 6;
 
-  W.makeCharacter = function (scene, tex, meta) {
+  W.makeCharacter = function (scene, tex, meta, ctex, cmeta, opts) {
+    opts = opts || {};
     const [FW, FH] = meta.frame_size, [PVX, PVY] = meta.pivot, [AW, AH] = meta.atlas_size;
     const COLS = meta.columns, STAND = meta.standing_height_px;
+    // hojas de combate (combat_atlas.json): otro atlas con celdas de 128x144 y pivote (64, 132); misma escala
+    // de dibujo que idle/walk (los frames se normalizaron a la altura de pie de idle)
+    const CANIMS = cmeta ? cmeta.anims : [];
+    const SETS = {
+      base: { tex, FW, FH, PVX, PVY, AW, AH, COLS, emit: 0 },
+      combat: cmeta ? { tex: ctex, FW: cmeta.frame_size[0], FH: cmeta.frame_size[1], PVX: cmeta.pivot[0], PVY: cmeta.pivot[1],
+        AW: cmeta.atlas_size[0], AH: cmeta.atlas_size[1], COLS: cmeta.columns, emit: 1 } : null,
+    };
     const unitsV = W.CHAR_H / STAND;                         // unidades de mundo por texel (vertical del plano)
     const unitsH = unitsV * Math.cos(W.CAM_EL);              // horizontal: el plano vertical se ve acortado por cos(EL)
     const geo = new THREE.PlaneGeometry(1, 1);
@@ -29,6 +38,7 @@
       uBody: { value: new THREE.Vector3(0, 0.76, 0) },                                     // (hundimiento v, v rodilla, inclinación)
       uPal: { value: (W.PALETTE || [[0, 0, 0]]).map((c) => new THREE.Vector3(c[0], c[1], c[2])) },
       uQuant: { value: 0 }, uOutline: { value: 0 },
+      uEmit: { value: 0 }, uFlash: { value: 0 }, uEcho: { value: opts.echo ? 1 : 0 }, uWarn: { value: 0 },
     }]);
     uniforms.uColor.value = tex.color; uniforms.uNormal.value = tex.normal; uniforms.uSpec.value = tex.spec;
     const VS = `
@@ -87,6 +97,7 @@
         return F.zw * wv * wh;
       }
       uniform float uNormalAmt, uGrade, uGain, uVisor, uTime; uniform vec2 uCovC; uniform vec3 uUp, uWarm;
+      uniform float uEmit, uFlash, uEcho, uWarn;
       varying vec2 vUv; varying vec2 vQ; varying vec3 vViewPos;
       void main() {
         // deformación de la túnica (etapa 3): desplaza el muestreo en la franja cintura-bajo
@@ -115,7 +126,16 @@
         }
         vec3 n = normalize(texture2D(uNormal, uv).xyz * 2.0 - 1.0);
         n = normalize(mix(vec3(0.0, 0.0, 1.0), n, uNormalAmt));   // normal en espacio de vista (+y arriba)
-        float sm = texture2D(uSpec, uv).r;
+        vec4 sp4 = texture2D(uSpec, uv);
+        float sm = sp4.r;
+        float em = sp4.g * uEmit;                                  // emisión: cuchilla, estela, chispas (combate)
+        vec3 base = c.rgb;
+        if (uEcho > 0.5) {
+          // eco: los mismos dibujos en tonos fríos (cian y gris); el negro del visor se queda oscuro
+          float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+          vec3 cold = mix(vec3(0.05, 0.08, 0.11), vec3(0.62, 0.86, 0.92), smoothstep(0.02, 0.9, l));
+          c.rgb = mix(cold, cold * vec3(0.8, 0.95, 1.05) + vec3(0.0, 0.05, 0.08), 0.5);
+        }
         vec3 V = vec3(0.0, 0.0, 1.0);                             // cámara ortográfica
         float shin = mix(8.0, 56.0, sm);
         vec3 diff = vec3(0.0), spec = vec3(0.0), rim = vec3(0.0);
@@ -172,7 +192,14 @@
         float mid = smoothstep(0.05, 0.3, lum) * (1.0 - smoothstep(0.55, 0.9, lum));
         col = mix(col, col * vec3(0.86, 1.0, 1.1), 0.35 * mid * uGrade);
         col += vec3(0.018, 0.0, 0.03) * (1.0 - smoothstep(0.0, 0.22, lum)) * uGrade;
+        // emisión propia (brilla en la oscuridad, sin depender de las luces)
+        vec3 emc = uEcho > 0.5 ? vec3(0.45, 0.95, 1.0) : vec3(1.0, 0.55, 0.18);
+        col += (c.rgb * 1.5 + emc * 0.35) * em;
+        // eco: brillo del visor (siempre) y destello de aviso antes de su golpe
+        if (uEcho > 0.5) col += vec3(0.35, 0.95, 1.0) * vis * (0.9 + 0.5 * uWarn) + vec3(0.6, 0.95, 1.0) * uWarn * 0.25 * (0.6 + 0.4 * n.z);
         if (uQuant > 0.0) col = mix(col, quantize(clamp(col, 0.0, 1.0)), uQuant);
+        // destello blanco al recibir un golpe
+        col = mix(col, vec3(1.0, 0.98, 0.94), uFlash * 0.85);
         gl_FragColor = vec4(col, 1.0);
         #include <fog_fragment>
       }`;
@@ -194,7 +221,7 @@
         void main(){ vec4 c = texture2D(uColor, vUv); if (c.a < 0.5) discard;
           vec2 p = floor(gl_FragCoord.xy);
           if (mod(p.x + p.y, 3.0) > 0.5) discard;
-          gl_FragColor = vec4(0.95, 0.62, 0.34, 0.9); }`,
+          gl_FragColor = vec4(${opts.echo ? "0.45, 0.9, 1.0" : "0.95, 0.62, 0.34"}, 0.9); }`,
       depthTest: true, depthWrite: false, depthFunc: THREE.GreaterDepth, transparent: true,
       // un poco hacia la cámara: con un búfer de profundidad de 24 bits la silueta empataba con el propio
       // personaje y lo teñía entero; así solo aparece donde otra cosa está delante de verdad
@@ -251,9 +278,25 @@
     const stickerImg = tex.color.image;
 
     const st = { anim: "idle", dir: 0, dirWanted: 0, lastStep: 0, phase: 0, idleT: 0, time: 0, frame: 0, prevAnim: "idle" };
+    let curSet = "base";
+    function useSet(name) {
+      if (curSet === name || !SETS[name]) return SETS[curSet];
+      curSet = name;
+      const S = SETS[name];
+      uniforms.uColor.value = S.tex.color; uniforms.uNormal.value = S.tex.normal; uniforms.uSpec.value = S.tex.spec;
+      uniforms.uEmit.value = S.emit;
+      uniforms.uAO.value.x = S.PVY / S.FH;
+      return S;
+    }
     const ch = {
-      mesh, mat, uniforms, st, meta, unitsV, unitsH, caster, blob, boots, sticker, ghost, integrated: true,
+      mesh, mat, uniforms, st, meta, cmeta, unitsV, unitsH, caster, blob, boots, sticker, ghost, integrated: true,
+      isCombat(anim) { return CANIMS.indexOf(anim) >= 0; },
       frameRect(anim, dir, f) {
+        if (CANIMS.indexOf(anim) >= 0) {
+          const S = SETS.combat, k = (CANIMS.indexOf(anim) * 8 + dir) * NF + f;
+          const c = k % S.COLS, r = Math.floor(k / S.COLS);
+          return [c * S.FW / S.AW, r * S.FH / S.AH, S.FW / S.AW, S.FH / S.AH];
+        }
         const k = (ANIMS.indexOf(anim) * 8 + dir) * NF + f;
         const c = k % COLS, r = Math.floor(k / COLS);
         return [c * FW / AW, r * FH / AH, FW / AW, FH / AH];
@@ -276,6 +319,28 @@
       update(dt, p, camTheta, camThetaTarget) {
         st.time += dt; st.dt = dt;
         const H = W.CHAR_H, walkV = p.walkV;
+        // --- acciones de combate (fighter.js): la animación y el frame los decide la máquina de estados ---
+        const act = p.fighter && p.fighter.act;
+        if (act) {
+          const th = camThetaTarget;
+          if (st.lastTheta !== undefined && st.lastTheta !== th) {
+            const steps = Math.round((th - st.lastTheta) / (Math.PI / 2));
+            st.dir = ((st.dir + steps * 2) % 8 + 8) % 8;
+          }
+          st.lastTheta = th;
+          st.dirWanted = this.dirFromHeading(p.heading, th);
+          // al girar para golpear, pasa por las intermedias pero más deprisa (25 ms)
+          if (st.dir !== st.dirWanted && st.time - st.lastStep >= 0.025) {
+            const delta = ((st.dirWanted - st.dir) % 8 + 8) % 8;
+            st.dir = (st.dir + (delta <= 4 ? 1 : 7)) % 8; st.lastStep = st.time;
+          }
+          const an = act.name === "stun" ? "hit" : act.name;
+          st.anim = an; st.frame = act.f; st.settle = null; st.wfx = null; st.fi = null; st.idleT = 0;
+          st.lastHeading = p.heading;
+          if (W.debugFrame) { st.dir = W.debugFrame.dir; }
+          this.place(p, camTheta, an, Math.min(5, act.f));
+          return;
+        }
         // --- animación -------------------------------------------------------
         let anim;
         if (p.jump) anim = "jump";
@@ -368,6 +433,8 @@
         g.drawImage(stickerImg, r[0] * AW, r[1] * AH, FW, FH, a[0] * dpr - PVX * s, a[1] * dpr - PVY * s, FW * s, FH * s);
       },
       place(p, camTheta, anim, f) {
+        const S = useSet(CANIMS.indexOf(anim) >= 0 ? "combat" : "base");
+        const FW = S.FW, FH = S.FH, PVX = S.PVX, PVY = S.PVY;
         const r = this.frameRect(anim, st.dir, f);
         uniforms.uRect.value.set(r[0], r[1], r[2], r[3]);
         let lift = 0, hgt = 0;
@@ -393,6 +460,12 @@
         uniforms.uBody.value.z = st.lean;
         uniforms.uBody.value.x = W.wpp ? -dip * W.wpp / unitsH / FH : 0;
         if (anim === "run" && !W.FX.impact) bob = 0.026 * W.CHAR_H * Math.pow(Math.sin(st.phase * 2 * Math.PI), 2);
+        // esquiva y golpe recibido: el desplazamiento pintado de los pies se compensa (el cuerpo lo mueve el
+        // código), así la posición del personaje coincide siempre con sus pies
+        if (cmeta && (anim === "dodge" || anim === "hit")) {
+          const rm = cmeta.root_motion_px[anim + "_" + meta.directions[st.dir]];
+          if (rm) sway -= (rm[f] - rm[0]) * unitsH;
+        }
         if (anim === "walk" && st.wfx) { bob = W.FX.impact ? 0 : st.wfx.bob * W.CHAR_H; sway = st.wfx.sway * W.CHAR_H; wsx = st.wfx.sx; wsy = st.wfx.sy;
           uniforms.uWarp.value.set(st.wfx.warpX, st.wfx.warpY, 0.5, 0.86); }
         else uniforms.uWarp.value.set(0, 0, 0.5, 0.86);
