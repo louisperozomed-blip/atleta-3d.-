@@ -223,3 +223,63 @@ los pies, direcciones corregidas):
 
 ## Etapas 3-6 — Combate en el mundo
 Sistema de combate, controles, el eco y las pruebas están en `world/` (ver `world/PROGRESS.md`, «Combate»).
+
+---
+
+# Enemigo: el Autómata del bosque (ref/sheets_enemigo)
+
+## Etapa 0 — Hojas y etiquetas
+20 hojas de 1536×1024 (idle, walk, run, attack1, attack2, parry, hit, block, dodge, death; `_1` = N, NE, E, SE y
+`_2` = S, SW, W, NW; ninguna cambia ese orden). Sin líneas separadoras y con el título centrado (idle, walk, run,
+attack, parry, hit_1) o arriba a la izquierda (hit_2, block, dodge, death): `tools/enemy_grid.py` saca la
+cuadrícula del propio texto (columnas = los 6 números de la cabecera; filas = los 4 rótulos de la izquierda).
+Etiquetas de fase y cuadrícula de cada hoja en `ref/sheets_enemigo/labels.json`:
+
+| anim | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| idle | REST | RISE | PEAK | FALL | SETTLE | REST |
+| walk | RIGHT CONTACT | DOWN | PASSING | LEFT CONTACT | DOWN | PASSING |
+| run | RIGHT CONTACT | PUSH OFF | FLIGHT | LEFT CONTACT | PUSH OFF | FLIGHT |
+| attack1, attack2 | ANTICIPATION | WIND UP | SWING | IMPACT | FOLLOW THROUGH | RECOVERY |
+| parry | GUARD UP | DEFLECT | SPARK | PUSH BACK | READY | RECOVERY |
+| hit | IMPACT | RECOIL | STAGGER | STAGGER | RECOVER | READY |
+| block | RAISE | HOLD | HOLD | IMPACT | HOLD | LOWER |
+| dodge | CROUCH | PUSH OFF | DASH | DASH | LANDING | RECOVERY |
+| death | HIT | STAGGER | KNEES | COLLAPSE | DOWN | DOWN |
+
+## Etapa 1 — Revisión y corrección de congruencia
+`tools/enemy_extract.py` (recorte) → `enemy_color.py` (color) → `enemy_normalize.py` (pivote y direcciones) →
+`enemy_review_e1.py` (hojas `review/enemy/E1_*`).
+
+**Recorte**: fondo liso por hoja; baldosa y sombra = grises neutros lisos; el cuerpo de cada celda es la parte
+gruesa y texturada con el centro dentro de la celda (estelas y garras finas no unen figuras vecinas); fuera
+manchas sueltas de la fila de arriba y los bordes de la baldosa pegados a los pies; borde con `extract.matte`.
+
+**Dirección** (medida con la posición del ojo cian respecto al cuerpo, frame a frame, y revisada a ojo):
+
+| | Problema | Arreglo |
+|---|---|---|
+| (a) | idle E mira a la izquierda | espejo de idle W |
+| (a) | idle SE está dibujada como un SW (ojo a la izquierda) y el frame 3 sale de perfil | espejo de idle SW (fila entera: arregla también el frame 3) |
+| (a) | hit_1 NE, E, SE: las poses giran y dejan ver el ojo; no coinciden con su dirección | espejos de hit_2 NW, W y SW |
+| (a)+(b) | hit_1 N: RECOVER y READY de frente | provisional: STAGGER sostenido y READY = idle N; **regenerar hit N** |
+| (a) | attack2 SW: frames 3-5 de espaldas | espejo de attack2_1 SE (fila entera) |
+| (a) | attack1 SW (frames 2-5) y W (2-6) miran al frente | espejos de attack1_1 SE y E |
+| (a) | parry SW mira al frente (S) | espejo de parry_1 SE |
+| (a) | block SW es igual que S; block W está dibujada como un SW | espejos de block_1 SE y E |
+| se deja | idle N/NE frame 3 gira la cabeza (gesto de mirar alrededor); walk NE frames 3 y 6 enseñan un poco el ojo | leve |
+
+**Color** (referencia idle/walk/run; la misma corrección para los 24 frames de cada hoja): attack y parry tenían
+croma 35-39 (referencia 28) y el musgo amarillento, así que parecía que había menos (21-34 % de los píxeles de
+color frente a 41 %); hit_2, block, dodge y death más grises (y death oscuro, L 53-56 frente a 70). Tono por
+cuantiles (el musgo vuelve a verde: 41-42 % en todas), croma por familia (metal oxidado / musgo), luz al 75 %;
+el ojo cian no se toca. Después: croma 27.5-29, L 66-71, musgo 41-42 % en las 20 hojas (`E1_color.png`,
+`build/enemy/color_report.json`).
+
+**Tamaño**: el grosor de piernas y pies mide lo mismo en píxeles en todas las hojas (14-15 px, ±7 %): mismo
+tamaño de dibujo, escala única. La baldosa no sirve de regla: en block, dodge y death está dibujada un 10 % mayor
+y escalar por ella encogería al autómata. La altura solo cambia con la pose (`E1_tamano.png`).
+
+**Para regenerar (b)**: hit N (frames 5-6 de frente); hit_1 entera si se quiere su animación propia en NE/E/SE (se
+usan espejos de hit_2; además tiene otro estilo, piezas más claras y redondas); opcional: el ojo es más pequeño
+en hit_2, block, dodge y death (diferencia de diseño, apenas se nota a la escala del juego).

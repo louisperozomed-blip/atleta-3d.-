@@ -1,0 +1,512 @@
+{
+ "problemas": [
+  {
+   "anim": "idle",
+   "dirs": [
+    "E"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "fila E mirando a la izquierda (en walk y run el E mira a la derecha)",
+   "arreglo": "espejo horizontal de idle W"
+  },
+  {
+   "anim": "idle",
+   "dirs": [
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "fila SE dibujada como un SW (ojo a la izquierda) y frame 3 de perfil",
+   "arreglo": "espejo horizontal de idle SW"
+  },
+  {
+   "anim": "hit",
+   "dirs": [
+    "NE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "hit_1 NE: las poses giran y dejan ver el ojo; espejo de hit_2 NW",
+   "arreglo": "espejo horizontal de hit NW"
+  },
+  {
+   "anim": "hit",
+   "dirs": [
+    "E"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "hit_1 E: frames 2, 5 y 6 de frente; espejo de hit_2 W",
+   "arreglo": "espejo horizontal de hit W"
+  },
+  {
+   "anim": "hit",
+   "dirs": [
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "hit_1 SE: no coincide con su dirección; espejo de hit_2 SW",
+   "arreglo": "espejo horizontal de hit SW"
+  },
+  {
+   "anim": "attack2",
+   "dirs": [
+    "SW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "frames 3-5 de espaldas; espejo de attack2_1 SE (fila entera, para que sea coherente)",
+   "arreglo": "espejo horizontal de attack2 SE"
+  },
+  {
+   "anim": "attack1",
+   "dirs": [
+    "SW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "frames 2-5 miran al frente (S) en vez de SW; espejo de attack1_1 SE",
+   "arreglo": "espejo horizontal de attack1 SE"
+  },
+  {
+   "anim": "attack1",
+   "dirs": [
+    "W"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "frames 2-6 miran al frente-izquierda en vez de W; espejo de attack1_1 E",
+   "arreglo": "espejo horizontal de attack1 E"
+  },
+  {
+   "anim": "parry",
+   "dirs": [
+    "SW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "la fila mira al frente (S); espejo de parry_1 SE",
+   "arreglo": "espejo horizontal de parry SE"
+  },
+  {
+   "anim": "block",
+   "dirs": [
+    "SW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "igual que la fila S (de frente); espejo de block_1 SE",
+   "arreglo": "espejo horizontal de block SE"
+  },
+  {
+   "anim": "block",
+   "dirs": [
+    "W"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "dibujada como un SW; espejo de block_1 E",
+   "arreglo": "espejo horizontal de block E"
+  },
+  {
+   "anim": "hit",
+   "dirs": [
+    "N"
+   ],
+   "frames": [
+    4,
+    5
+   ],
+   "tipo": "b",
+   "problema": "hit_1 N: RECOVER y READY de frente (se ve el ojo)",
+   "arreglo": "provisional: STAGGER sostenido y READY = idle N reposo; regenerar la fila N de hit"
+  },
+  {
+   "anim": "hit",
+   "dirs": [
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "b",
+   "problema": "hit_1 entera no coincide con sus direcciones y tiene otro estilo (piezas más claras y redondas)",
+   "arreglo": "corregido con espejos de hit_2; regenerar hit_1 si se quiere la animación propia de esas direcciones"
+  },
+  {
+   "anim": "attack1",
+   "dirs": [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "más naranja y saturado (croma 35-39 frente a 28), musgo amarillento (tono 82-84°): parece menos musgo",
+   "arreglo": "color por zonas: tono por cuantiles (el musgo vuelve a verde), croma por familia, luz al 75 %"
+  },
+  {
+   "anim": "attack2",
+   "dirs": [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "más naranja y saturado (croma 35-39 frente a 28), musgo amarillento (tono 82-84°): parece menos musgo",
+   "arreglo": "color por zonas: tono por cuantiles (el musgo vuelve a verde), croma por familia, luz al 75 %"
+  },
+  {
+   "anim": "parry",
+   "dirs": [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "más naranja y saturado (croma 35-39 frente a 28), musgo amarillento (tono 82-84°): parece menos musgo",
+   "arreglo": "color por zonas: tono por cuantiles (el musgo vuelve a verde), croma por familia, luz al 75 %"
+  },
+  {
+   "anim": "hit",
+   "dirs": [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "más pálido y gris (croma 22-25; death además oscuro, L 53-56 frente a 70)",
+   "arreglo": "color por zonas hacia idle/walk/run"
+  },
+  {
+   "anim": "block",
+   "dirs": [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "más pálido y gris (croma 22-25; death además oscuro, L 53-56 frente a 70)",
+   "arreglo": "color por zonas hacia idle/walk/run"
+  },
+  {
+   "anim": "dodge",
+   "dirs": [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "más pálido y gris (croma 22-25; death además oscuro, L 53-56 frente a 70)",
+   "arreglo": "color por zonas hacia idle/walk/run"
+  },
+  {
+   "anim": "death",
+   "dirs": [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "más pálido y gris (croma 22-25; death además oscuro, L 53-56 frente a 70)",
+   "arreglo": "color por zonas hacia idle/walk/run"
+  },
+  {
+   "anim": "block",
+   "dirs": [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "b",
+   "problema": "hit_2, block, dodge y death tienen el ojo más pequeño (0.068 frente a 0.099 del ancho de baldosa)",
+   "arreglo": "diferencia de diseño; a la escala del juego apenas se nota. Regenerar si se quiere exacto"
+  },
+  {
+   "anim": "walk",
+   "dirs": [
+    "NE"
+   ],
+   "frames": [
+    2,
+    5
+   ],
+   "tipo": "b",
+   "problema": "walk NE frames 3 y 6: la cabeza gira y deja ver el ojo en una vista de espaldas",
+   "arreglo": "leve; se deja"
+  },
+  {
+   "anim": "idle",
+   "dirs": [
+    "N",
+    "NE"
+   ],
+   "frames": [
+    2
+   ],
+   "tipo": "a",
+   "problema": "idle N/NE frame 3 (PEAK): gira la cabeza y enseña el ojo",
+   "arreglo": "es un gesto de mirar alrededor coherente con la pose; se deja"
+  }
+ ],
+ "regenerar": [
+  {
+   "anim": "hit",
+   "dirs": [
+    "N"
+   ],
+   "frames": [
+    4,
+    5
+   ],
+   "tipo": "b",
+   "problema": "hit_1 N: RECOVER y READY de frente (se ve el ojo)",
+   "arreglo": "provisional: STAGGER sostenido y READY = idle N reposo; regenerar la fila N de hit"
+  },
+  {
+   "anim": "hit",
+   "dirs": [
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "b",
+   "problema": "hit_1 entera no coincide con sus direcciones y tiene otro estilo (piezas más claras y redondas)",
+   "arreglo": "corregido con espejos de hit_2; regenerar hit_1 si se quiere la animación propia de esas direcciones"
+  },
+  {
+   "anim": "block",
+   "dirs": [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "b",
+   "problema": "hit_2, block, dodge y death tienen el ojo más pequeño (0.068 frente a 0.099 del ancho de baldosa)",
+   "arreglo": "diferencia de diseño; a la escala del juego apenas se nota. Regenerar si se quiere exacto"
+  },
+  {
+   "anim": "walk",
+   "dirs": [
+    "NE"
+   ],
+   "frames": [
+    2,
+    5
+   ],
+   "tipo": "b",
+   "problema": "walk NE frames 3 y 6: la cabeza gira y deja ver el ojo en una vista de espaldas",
+   "arreglo": "leve; se deja"
+  }
+ ]
+}
