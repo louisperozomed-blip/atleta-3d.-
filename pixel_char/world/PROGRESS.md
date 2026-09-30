@@ -638,3 +638,53 @@ sin errores JS: el eco guardado se comporta exactamente como antes.
   de las ruinas (claros con 1.6 u de suelo libre y llano). Cada uno patrulla su zona. **Reaparecer**: el botón
   REAPARECER se enciende al morir alguno (o el jugador) y el panel ⚙ tiene «reaparecer enemigos».
 Captura: `review/enemy/E4_zonas.png` (raíces: tras un tronco se le ve el ojo y la silueta; ruinas).
+
+## Etapa 5 — Pruebas y publicación
+**Ajuste** encontrado por las pruebas: el autómata recuperaba stamina tan rápido como el jugador (34/s) y su
+guardia no se rompía nunca bajo presión. Ahora `Fighter` admite `staminaRegen` propio y el autómata recupera
+12/s: bloquear golpe tras golpe le vacía la stamina (≈ 9 golpes seguidos) y se le rompe la guardia.
+
+**Batería del autómata** `tests/enemy.mjs` (Playwright + Chromium/SwiftShader, simulación determinista 1/60 s):
+**21/21 OK, sin errores JS** (`review/enemy/e5/results.json`, capturas `00_tamano` … `07_panel_eco`).
+| prueba | resultado |
+|---|---|
+| por defecto el Autómata, en 3 zonas, patrullando | titán a 11 u del inicio, raíces, ruinas |
+| altura = 1.4 × el personaje | 1.40 |
+| persecución: run + A* hasta distancia de golpe y ataca | run → walk → attack1, 2.2 s desde 7.2 u |
+| cada ataque avisa antes (log, ojo ×3.4, preparación larga) | attack1 0.72 s, attack2 0.87 s |
+| parry del jugador a 100 ms del impacto, 8 direcciones | sin daño, +40 (attack1) / +50 (attack2) de postura |
+| el autómata mira al jugador al atacar, 8 direcciones | las 8 filas del atlas |
+| guardia demasiado pronto (550 ms) → recibe el golpe, 8 direcciones | hit ×8 |
+| los golpes del jugador le alcanzan desde las 8 direcciones | hit ×8 |
+| su bloqueo | foeBlock → block |
+| su bloqueo gasta stamina hasta romperse la guardia | guardbreak al 9.º golpe |
+| su parry quita postura al jugador | parry, postura del jugador +38 |
+| su parry sale más si se repite el mismo ataque | parries con 4-5 repeticiones (al 30 %) |
+| aturdido por postura en 2-3 parries | 3 parries → aturdido 3.2 s |
+| remate | 40 de daño |
+| muerte: death hasta el final, REAPARECER encendido | death f6 |
+| se desvanece con esporas | 0.65 → 0, 29 ráfagas de esporas, oculto |
+| REAPARECER | vuelve con 260 |
+| pisadas pesadas | 16 pisadas en 3 s de carrera |
+| panel ⚙ → Eco (prueba) | 1 eco, etiqueta ECO, tinte frío |
+| el eco sigue igual (su ataque se desvía con parry) | parry |
+| y volver al autómata | 3 autómatas |
+
+**Regresión**: `HASH=#enemy=echo node tests/combat.mjs` (la batería del combate contra el eco) 31/31 OK.
+`e2e.mjs`, `stage5.mjs` y `record_combat.mjs` aceptan también `HASH` (el recorrido del mundo se prueba con
+`#enemy=none` para que los autómatas de las raíces y las ruinas no se metan en el camino).
+El recorrido del mundo (`stage5.mjs`, `e2e.mjs` con `#enemy=none`): ver abajo.
+
+**Revisión** en `review/enemy/`:
+- `E5_pelea.gif` — pelea completa (`tests/record_automaton.mjs`, IA real con parry 15 % y bloqueo 25 %, vida recortada a 120 para que quepa): se
+  acerca corriendo, prepara con el ojo parpadeando, el jugador desvía, contraataca, aturdido, remate, muerte en el
+  suelo y se desvanece con esporas.
+- `E5_8direcciones.png` — el autómata en el mundo en el frame IMPACT de attack1 y attack2 hacia el jugador en los
+  8 ángulos (`tests/enemy_stills.mjs`).
+- `E5_estados.png` — aviso, bloqueo, parry, esquiva, aturdido, muerte y desvanecerse.
+- `e5/` — capturas de la batería.
+
+**Cómo volver a usar el eco** (recordatorio): ⚙ → «Enemigo: Eco (prueba)», o `#enemy=echo` en la dirección, o
+`W.setEnemyType("echo")` en la consola. El código del eco está intacto en `src/enemies/echo/echo.js`.
+
+Publicado en el mismo enlace (versión 6): https://claude.ai/artifact/ANHrkwwHE8urZjzme74NhG

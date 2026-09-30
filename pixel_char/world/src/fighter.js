@@ -55,6 +55,7 @@
       this.name = o.name || this.team;
       this.hpMax = o.hp || 100; this.hp = this.hpMax;
       this.stMax = o.stamina || 100; this.st = this.stMax; this.stT = 0;
+      this.stRegen = o.staminaRegen || C.staminaRegen;   // stamina/s (el autómata, pesado, se recupera despacio)
       this.postMax = o.posture || 100; this.post = 0; this.postT = 0;
       this.act = null;
       this.buf = null;                              // entrada en el búfer {type, t, data}
@@ -218,7 +219,7 @@
       this.pen = Math.max(0, this.pen - C.parryPenDecay * dt);
       // stamina: se recupera tras un momento sin gastarla (más despacio con la guardia alta)
       this.stT += dt;
-      if (this.stT > C.staminaDelay) this.st = Math.min(this.stMax, this.st + C.staminaRegen * dt * (this.act && this.act.name === "block" ? C.blockRegenK : 1));
+      if (this.stT > C.staminaDelay) this.st = Math.min(this.stMax, this.st + this.stRegen * dt * (this.act && this.act.name === "block" ? C.blockRegenK : 1));
       // postura: baja sola si pasa un rato sin recibir
       this.postT += dt;
       if (this.postT > C.postureDelay && !this.stunned) this.post = Math.max(0, this.post - C.postureDecay * dt * (0.6 + 0.4 * this.hp / this.hpMax));

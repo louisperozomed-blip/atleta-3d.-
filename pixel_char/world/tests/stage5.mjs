@@ -15,7 +15,7 @@ await page.route("**/three.min.js", (r) => r.fulfill({ body: fs.readFileSync(pro
 await page.route("https://fonts.googleapis.com/**", (r) => r.fulfill({ body: "", contentType: "text/css" }));
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
-await page.goto("file://" + path.resolve(process.argv[2]));
+await page.goto("file://" + path.resolve(process.argv[2]) + (process.env.HASH || ""));
 await page.waitForFunction(() => window.W && W.ready, null, { timeout: 90000 });
 
 // utilidades dentro de la página

@@ -1,0 +1,289 @@
+{
+ "results": [
+  {
+   "name": "por defecto el Autómata, en 3 zonas (titán, raíces, ruinas), patrullando",
+   "ok": true,
+   "info": {
+    "type": "automaton",
+    "zones": [
+     "heart",
+     "roots",
+     "ruins"
+    ],
+    "labels": [
+     "AUTÓMATA",
+     "AUTÓMATA",
+     "AUTÓMATA"
+    ],
+    "d0": 11,
+    "ratio": 1.4,
+    "states": [
+     "patrol",
+     "patrol",
+     "patrol"
+    ]
+   }
+  },
+  {
+   "name": "altura del autómata = 1.4 × la del personaje (de pie, en el mundo)",
+   "ok": true,
+   "info": {
+    "ratio": 1.4
+   }
+  },
+  {
+   "name": "persecución: al ver al jugador se acerca corriendo por A* y ataca",
+   "ok": true,
+   "info": {
+    "d0": 7.2,
+    "dmin": 2.5,
+    "anims": [
+     "run",
+     "walk",
+     "attack1"
+    ],
+    "states": [
+     "chase",
+     "chase"
+    ],
+    "t": 2.2,
+    "attacked": true
+   }
+  },
+  {
+   "name": "cada ataque va precedido de aviso (log + ojo que parpadea > 3× su brillo) y preparación larga (≥ 0.6 s)",
+   "ok": true,
+   "info": {
+    "attack1": {
+     "warnFirst": true,
+     "prepS": 0.72,
+     "eyeMax": 3.4,
+     "hit": true
+    },
+    "attack2": {
+     "warnFirst": true,
+     "prepS": 0.87,
+     "eyeMax": 3.4,
+     "hit": true
+    }
+   }
+  },
+  {
+   "name": "parry del jugador a 100 ms del impacto: sin daño y +40/+50 de postura, 8 direcciones",
+   "ok": true,
+   "info": [
+    [
+     "parry",
+     40
+    ],
+    [
+     "parry",
+     50
+    ],
+    [
+     "parry",
+     40
+    ],
+    [
+     "parry",
+     50
+    ],
+    [
+     "parry",
+     40
+    ],
+    [
+     "parry",
+     50
+    ],
+    [
+     "parry",
+     40
+    ],
+    [
+     "parry",
+     50
+    ]
+   ]
+  },
+  {
+   "name": "el autómata mira al jugador al atacar en las 8 direcciones",
+   "ok": true,
+   "info": [
+    7,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
+  },
+  {
+   "name": "guardia demasiado pronto contra el autómata (550 ms antes): recibe el golpe, 8 direcciones",
+   "ok": true,
+   "info": [
+    "hit",
+    "hit",
+    "hit",
+    "hit",
+    "hit",
+    "hit",
+    "hit",
+    "hit"
+   ]
+  },
+  {
+   "name": "los golpes del jugador alcanzan al autómata desde las 8 direcciones",
+   "ok": true,
+   "info": [
+    "hit",
+    "hit",
+    "hit",
+    "hit",
+    "hit",
+    "hit",
+    "hit",
+    "hit"
+   ]
+  },
+  {
+   "name": "su bloqueo: bloquea el golpe del jugador",
+   "ok": true,
+   "info": [
+    "foeBlock",
+    "block"
+   ]
+  },
+  {
+   "name": "su bloqueo gasta su stamina hasta que se le rompe la guardia",
+   "ok": true,
+   "info": {
+    "seq": "foeBlock,block,foeBlock,block,foeBlock,block,foeBlock,block,foeBlock,block,foeBlock,block,foeBlock,block,foeBlock,block,foeBlock,guardbreak",
+    "st": 0
+   }
+  },
+  {
+   "name": "su parry: desvía el golpe y el jugador pierde postura",
+   "ok": true,
+   "info": {
+    "ev": [
+     "foeParryTry",
+     "parry"
+    ],
+    "postura": 38
+   }
+  },
+  {
+   "name": "su parry sale más cuanto más se repite el mismo ataque",
+   "ok": true,
+   "info": {
+    "repeticiones_en_sus_parries": [
+     4,
+     4,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5
+    ]
+   }
+  },
+  {
+   "name": "sus ataques desviados le llenan la postura: aturdido en 2-3 parries",
+   "ok": true,
+   "info": {
+    "stunned": true,
+    "parries": 3,
+    "post": 100,
+    "dur": 3.2,
+    "deathblow": 40
+   }
+  },
+  {
+   "name": "remate al autómata aturdido (daño ×3, mínimo 40)",
+   "ok": true,
+   "info": {
+    "dmg": 40
+   }
+  },
+  {
+   "name": "muerte: death hasta el último frame y REAPARECER encendido",
+   "ok": true,
+   "info": {
+    "alive": false,
+    "act": "death5",
+    "btn": true,
+    "fadeMid": 0.65,
+    "fadeEnd": 0,
+    "hidden": true,
+    "spores": 29
+   }
+  },
+  {
+   "name": "a los pocos segundos se desvanece con esporas que se levantan",
+   "ok": true,
+   "info": {
+    "fade": [
+     0.65,
+     0
+    ],
+    "esporas": 29
+   }
+  },
+  {
+   "name": "REAPARECER lo devuelve a su sitio con toda la vida",
+   "ok": true,
+   "info": {
+    "alive": true,
+    "hp": 260,
+    "hidden": false,
+    "fade": 1
+   }
+  },
+  {
+   "name": "pisadas pesadas: cada paso del autómata levanta polvo y esporas (y hace temblar la cámara cerca)",
+   "ok": true,
+   "info": {
+    "steps": 16
+   }
+  },
+  {
+   "name": "panel de pruebas: cambiar al eco",
+   "ok": true,
+   "info": {
+    "type": "echo",
+    "n": 1,
+    "label": "ECO",
+    "fighters": 2,
+    "echoTint": 1
+   }
+  },
+  {
+   "name": "el eco sigue funcionando igual (su ataque se desvía con parry)",
+   "ok": true,
+   "info": [
+    "parry"
+   ]
+  },
+  {
+   "name": "y volver al autómata",
+   "ok": true,
+   "info": {
+    "type": "automaton",
+    "n": 3,
+    "fighters": 4
+   }
+  }
+ ],
+ "errors": []
+}

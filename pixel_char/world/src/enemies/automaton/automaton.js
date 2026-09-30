@@ -24,7 +24,7 @@
   const DIRS = ["S", "SW", "W", "NW", "N", "NE", "E", "SE"];
   const CFG = (W.AUTOMATON = {
     height: 1.4,                 // × altura del personaje
-    hp: 260, stamina: 120, posture: 100,
+    hp: 260, stamina: 120, staminaRegen: 12, posture: 100,   // stamina: su guardia se agota si se le presiona
     prepK: 1.9,                  // preparación de los ataques (× más lenta)
     see: 8, leash: 15, patrolR: 3.2,
     attacks: {
@@ -47,7 +47,7 @@
       { feet: meta.feet, height: CFG.height * W.CHAR_H, emit: 1, emitCol: [0.35, 0.95, 1.0], locoFps: 11 });
     body.ch = ch;
     const f = W.addFighter(new W.Fighter(body, {
-      team: "foe", name: "autómata", hp: CFG.hp, stamina: CFG.stamina, posture: CFG.posture, meta,
+      team: "foe", name: "autómata", hp: CFG.hp, stamina: CFG.stamina, staminaRegen: CFG.staminaRegen, posture: CFG.posture, meta,
       prepK: CFG.prepK, stunTime: 3.2, stunRate: 2.2, dodgeDist: 2.6, kbK: 0.45, dodgeInv: [1, 3],
       attackWant: { attack1: 1.55, attack2: 1.75 },
     }), ch);

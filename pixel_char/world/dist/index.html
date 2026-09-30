@@ -3582,6 +3582,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       this.name = o.name || this.team;
       this.hpMax = o.hp || 100; this.hp = this.hpMax;
       this.stMax = o.stamina || 100; this.st = this.stMax; this.stT = 0;
+      this.stRegen = o.staminaRegen || C.staminaRegen;   // stamina/s (el autómata, pesado, se recupera despacio)
       this.postMax = o.posture || 100; this.post = 0; this.postT = 0;
       this.act = null;
       this.buf = null;                              // entrada en el búfer {type, t, data}
@@ -3745,7 +3746,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       this.pen = Math.max(0, this.pen - C.parryPenDecay * dt);
       // stamina: se recupera tras un momento sin gastarla (más despacio con la guardia alta)
       this.stT += dt;
-      if (this.stT > C.staminaDelay) this.st = Math.min(this.stMax, this.st + C.staminaRegen * dt * (this.act && this.act.name === "block" ? C.blockRegenK : 1));
+      if (this.stT > C.staminaDelay) this.st = Math.min(this.stMax, this.st + this.stRegen * dt * (this.act && this.act.name === "block" ? C.blockRegenK : 1));
       // postura: baja sola si pasa un rato sin recibir
       this.postT += dt;
       if (this.postT > C.postureDelay && !this.stunned) this.post = Math.max(0, this.post - C.postureDecay * dt * (0.6 + 0.4 * this.hp / this.hpMax));
@@ -4485,7 +4486,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
   const DIRS = ["S", "SW", "W", "NW", "N", "NE", "E", "SE"];
   const CFG = (W.AUTOMATON = {
     height: 1.4,                 // × altura del personaje
-    hp: 260, stamina: 120, posture: 100,
+    hp: 260, stamina: 120, staminaRegen: 12, posture: 100,   // stamina: su guardia se agota si se le presiona
     prepK: 1.9,                  // preparación de los ataques (× más lenta)
     see: 8, leash: 15, patrolR: 3.2,
     attacks: {
@@ -4508,7 +4509,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       { feet: meta.feet, height: CFG.height * W.CHAR_H, emit: 1, emitCol: [0.35, 0.95, 1.0], locoFps: 11 });
     body.ch = ch;
     const f = W.addFighter(new W.Fighter(body, {
-      team: "foe", name: "autómata", hp: CFG.hp, stamina: CFG.stamina, posture: CFG.posture, meta,
+      team: "foe", name: "autómata", hp: CFG.hp, stamina: CFG.stamina, staminaRegen: CFG.staminaRegen, posture: CFG.posture, meta,
       prepK: CFG.prepK, stunTime: 3.2, stunRate: 2.2, dodgeDist: 2.6, kbK: 0.45, dodgeInv: [1, 3],
       attackWant: { attack1: 1.55, attack2: 1.75 },
     }), ch);

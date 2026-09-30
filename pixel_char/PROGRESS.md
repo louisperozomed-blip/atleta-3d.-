@@ -310,3 +310,9 @@ direcciones corregidas):
 | hit / death | — | 1 | 2-6 | 590 / 1500 ms |
 
 Revisión: `review/enemy/E2_mapas.png` (de noche solo brilla el ojo; las placas reflejan la luz, el musgo no).
+
+## Etapas 3-5 — El autómata en el mundo
+Comportamiento, ambiente, pruebas y publicación: ver `world/PROGRESS.md`, «Enemigo definitivo: el Autómata del
+bosque». Revisión final en `review/enemy/` (`E5_pelea.gif`, `E5_8direcciones.png`, `E5_estados.png`, `e5/`).
+Pendiente de regenerar (lista (b) de `review/enemy/E1_revision.json`): la fila N de hit (RECOVER/READY de
+frente), hit_1 NE/E/SE propias y el ojo algo más pequeño en hit_2/block/dodge/death.

@@ -19,7 +19,7 @@ async function open(browser, opts) {
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
   await page.route("**/three.min.js", (r) => r.fulfill({ body: fs.readFileSync(process.env.THREE_LOCAL), contentType: "application/javascript" }));
   await page.route("https://fonts.googleapis.com/**", (r) => r.fulfill({ body: "", contentType: "text/css" }));
-  await page.goto("file://" + html);
+  await page.goto("file://" + html + (process.env.HASH || ""));
   await page.waitForFunction(() => window.W && W.ready, null, { timeout: 90000 });
   await sleep(500);
   return { ctx, page, errors };
