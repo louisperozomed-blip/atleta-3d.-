@@ -1,0 +1,1355 @@
+{
+ "source": "Etiquetas leídas de cada hoja (título, número y fase bajo cada número, rótulo de dirección de cada fila). Ninguna hoja cambia el orden de filas por defecto. Cuadrícula detectada por tools/enemy_grid.py (columnas = los 6 números de la cabecera; filas = los 4 rótulos de la izquierda).",
+ "format": {
+  "size": [
+   1536,
+   1024
+  ],
+  "rows": 4,
+  "frames_per_row": 6
+ },
+ "animations": {
+  "idle": [
+   "REST",
+   "RISE",
+   "PEAK",
+   "FALL",
+   "SETTLE",
+   "REST"
+  ],
+  "walk": [
+   "RIGHT CONTACT",
+   "DOWN",
+   "PASSING",
+   "LEFT CONTACT",
+   "DOWN",
+   "PASSING"
+  ],
+  "run": [
+   "RIGHT CONTACT",
+   "PUSH OFF",
+   "FLIGHT",
+   "LEFT CONTACT",
+   "PUSH OFF",
+   "FLIGHT"
+  ],
+  "attack1": [
+   "ANTICIPATION",
+   "WIND UP",
+   "SWING",
+   "IMPACT",
+   "FOLLOW THROUGH",
+   "RECOVERY"
+  ],
+  "attack2": [
+   "ANTICIPATION",
+   "WIND UP",
+   "SWING",
+   "IMPACT",
+   "FOLLOW THROUGH",
+   "RECOVERY"
+  ],
+  "parry": [
+   "GUARD UP",
+   "DEFLECT",
+   "SPARK",
+   "PUSH BACK",
+   "READY",
+   "RECOVERY"
+  ],
+  "hit": [
+   "IMPACT",
+   "RECOIL",
+   "STAGGER",
+   "STAGGER",
+   "RECOVER",
+   "READY"
+  ],
+  "block": [
+   "RAISE",
+   "HOLD",
+   "HOLD",
+   "IMPACT",
+   "HOLD",
+   "LOWER"
+  ],
+  "dodge": [
+   "CROUCH",
+   "PUSH OFF",
+   "DASH",
+   "DASH",
+   "LANDING",
+   "RECOVERY"
+  ],
+  "death": [
+   "HIT",
+   "STAGGER",
+   "KNEES",
+   "COLLAPSE",
+   "DOWN",
+   "DOWN"
+  ]
+ },
+ "sheets": {
+  "idle_1": {
+   "anim": "idle",
+   "title": "IDLE",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "REST",
+     "RISE",
+     "PEAK",
+     "FALL",
+     "SETTLE",
+     "REST"
+    ],
+    "NE": [
+     "REST",
+     "RISE",
+     "PEAK",
+     "FALL",
+     "SETTLE",
+     "REST"
+    ],
+    "E": [
+     "REST",
+     "RISE",
+     "PEAK",
+     "FALL",
+     "SETTLE",
+     "REST"
+    ],
+    "SE": [
+     "REST",
+     "RISE",
+     "PEAK",
+     "FALL",
+     "SETTLE",
+     "REST"
+    ]
+   },
+   "grid": {
+    "cols": [
+     165,
+     363,
+     573,
+     799,
+     1026,
+     1251,
+     1473
+    ],
+    "rows": [
+     96,
+     314,
+     538,
+     762,
+     1024
+    ]
+   },
+   "title_pos": "centrado"
+  },
+  "idle_2": {
+   "anim": "idle",
+   "title": "IDLE",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "REST",
+     "RISE",
+     "PEAK",
+     "FALL",
+     "SETTLE",
+     "REST"
+    ],
+    "SW": [
+     "REST",
+     "RISE",
+     "PEAK",
+     "FALL",
+     "SETTLE",
+     "REST"
+    ],
+    "W": [
+     "REST",
+     "RISE",
+     "PEAK",
+     "FALL",
+     "SETTLE",
+     "REST"
+    ],
+    "NW": [
+     "REST",
+     "RISE",
+     "PEAK",
+     "FALL",
+     "SETTLE",
+     "REST"
+    ]
+   },
+   "grid": {
+    "cols": [
+     162,
+     369,
+     582,
+     803,
+     1028,
+     1253,
+     1474
+    ],
+    "rows": [
+     89,
+     322,
+     544,
+     763,
+     1024
+    ]
+   },
+   "title_pos": "centrado"
+  },
+  "walk_1": {
+   "anim": "walk",
+   "title": "WALK",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "RIGHT CONTACT",
+     "DOWN",
+     "PASSING",
+     "LEFT CONTACT",
+     "DOWN",
+     "PASSING"
+    ],
+    "NE": [
+     "RIGHT CONTACT",
+     "DOWN",
+     "PASSING",
+     "LEFT CONTACT",
+     "DOWN",
+     "PASSING"
+    ],
+    "E": [
+     "RIGHT CONTACT",
+     "DOWN",
+     "PASSING",
+     "LEFT CONTACT",
+     "DOWN",
+     "PASSING"
+    ],
+    "SE": [
+     "RIGHT CONTACT",
+     "DOWN",
+     "PASSING",
+     "LEFT CONTACT",
+     "DOWN",
+     "PASSING"
+    ]
+   },
+   "grid": {
+    "cols": [
+     169,
+     369,
+     581,
+     806,
+     1029,
+     1250,
+     1474
+    ],
+    "rows": [
+     90,
+     314,
+     538,
+     758,
+     1024
+    ]
+   },
+   "title_pos": "centrado"
+  },
+  "walk_2": {
+   "anim": "walk",
+   "title": "WALK",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "RIGHT CONTACT",
+     "DOWN",
+     "PASSING",
+     "LEFT CONTACT",
+     "DOWN",
+     "PASSING"
+    ],
+    "SW": [
+     "RIGHT CONTACT",
+     "DOWN",
+     "PASSING",
+     "LEFT CONTACT",
+     "DOWN",
+     "PASSING"
+    ],
+    "W": [
+     "RIGHT CONTACT",
+     "DOWN",
+     "PASSING",
+     "LEFT CONTACT",
+     "DOWN",
+     "PASSING"
+    ],
+    "NW": [
+     "RIGHT CONTACT",
+     "DOWN",
+     "PASSING",
+     "LEFT CONTACT",
+     "DOWN",
+     "PASSING"
+    ]
+   },
+   "grid": {
+    "cols": [
+     163,
+     369,
+     584,
+     808,
+     1028,
+     1249,
+     1473
+    ],
+    "rows": [
+     91,
+     316,
+     538,
+     763,
+     1024
+    ]
+   },
+   "title_pos": "centrado"
+  },
+  "run_1": {
+   "anim": "run",
+   "title": "RUN",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "RIGHT CONTACT",
+     "PUSH OFF",
+     "FLIGHT",
+     "LEFT CONTACT",
+     "PUSH OFF",
+     "FLIGHT"
+    ],
+    "NE": [
+     "RIGHT CONTACT",
+     "PUSH OFF",
+     "FLIGHT",
+     "LEFT CONTACT",
+     "PUSH OFF",
+     "FLIGHT"
+    ],
+    "E": [
+     "RIGHT CONTACT",
+     "PUSH OFF",
+     "FLIGHT",
+     "LEFT CONTACT",
+     "PUSH OFF",
+     "FLIGHT"
+    ],
+    "SE": [
+     "RIGHT CONTACT",
+     "PUSH OFF",
+     "FLIGHT",
+     "LEFT CONTACT",
+     "PUSH OFF",
+     "FLIGHT"
+    ]
+   },
+   "grid": {
+    "cols": [
+     168,
+     371,
+     587,
+     811,
+     1031,
+     1251,
+     1470
+    ],
+    "rows": [
+     89,
+     313,
+     543,
+     762,
+     1024
+    ]
+   },
+   "title_pos": "centrado"
+  },
+  "run_2": {
+   "anim": "run",
+   "title": "RUN",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "RIGHT CONTACT",
+     "PUSH OFF",
+     "FLIGHT",
+     "LEFT CONTACT",
+     "PUSH OFF",
+     "FLIGHT"
+    ],
+    "SW": [
+     "RIGHT CONTACT",
+     "PUSH OFF",
+     "FLIGHT",
+     "LEFT CONTACT",
+     "PUSH OFF",
+     "FLIGHT"
+    ],
+    "W": [
+     "RIGHT CONTACT",
+     "PUSH OFF",
+     "FLIGHT",
+     "LEFT CONTACT",
+     "PUSH OFF",
+     "FLIGHT"
+    ],
+    "NW": [
+     "RIGHT CONTACT",
+     "PUSH OFF",
+     "FLIGHT",
+     "LEFT CONTACT",
+     "PUSH OFF",
+     "FLIGHT"
+    ]
+   },
+   "grid": {
+    "cols": [
+     163,
+     371,
+     588,
+     811,
+     1031,
+     1252,
+     1473
+    ],
+    "rows": [
+     89,
+     316,
+     538,
+     762,
+     1024
+    ]
+   },
+   "title_pos": "centrado"
+  },
+  "attack1_1": {
+   "anim": "attack1",
+   "title": "ATTACK 1",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "NE": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "E": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "SE": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ]
+   },
+   "grid": {
+    "cols": [
+     165,
+     370,
+     588,
+     817,
+     1038,
+     1255,
+     1476
+    ],
+    "rows": [
+     90,
+     313,
+     537,
+     755,
+     1024
+    ]
+   },
+   "title_pos": "centrado"
+  },
+  "attack1_2": {
+   "anim": "attack1",
+   "title": "ATTACK 1",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "SW": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "W": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "NW": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ]
+   },
+   "grid": {
+    "cols": [
+     164,
+     372,
+     591,
+     818,
+     1038,
+     1255,
+     1474
+    ],
+    "rows": [
+     89,
+     316,
+     538,
+     759,
+     1024
+    ]
+   },
+   "title_pos": "centrado"
+  },
+  "attack2_1": {
+   "anim": "attack2",
+   "title": "ATTACK 2",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "NE": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "E": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "SE": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ]
+   },
+   "grid": {
+    "cols": [
+     165,
+     371,
+     589,
+     817,
+     1038,
+     1255,
+     1475
+    ],
+    "rows": [
+     90,
+     313,
+     537,
+     753,
+     1024
+    ]
+   },
+   "title_pos": "centrado"
+  },
+  "attack2_2": {
+   "anim": "attack2",
+   "title": "ATTACK 2",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "SW": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "W": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ],
+    "NW": [
+     "ANTICIPATION",
+     "WIND UP",
+     "SWING",
+     "IMPACT",
+     "FOLLOW THROUGH",
+     "RECOVERY"
+    ]
+   },
+   "grid": {
+    "cols": [
+     165,
+     371,
+     589,
+     817,
+     1038,
+     1255,
+     1475
+    ],
+    "rows": [
+     90,
+     305,
+     531,
+     756,
+     1024
+    ]
+   },
+   "title_pos": "centrado"
+  },
+  "parry_1": {
+   "anim": "parry",
+   "title": "PARRY",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "GUARD UP",
+     "DEFLECT",
+     "SPARK",
+     "PUSH BACK",
+     "READY",
+     "RECOVERY"
+    ],
+    "NE": [
+     "GUARD UP",
+     "DEFLECT",
+     "SPARK",
+     "PUSH BACK",
+     "READY",
+     "RECOVERY"
+    ],
+    "E": [
+     "GUARD UP",
+     "DEFLECT",
+     "SPARK",
+     "PUSH BACK",
+     "READY",
+     "RECOVERY"
+    ],
+    "SE": [
+     "GUARD UP",
+     "DEFLECT",
+     "SPARK",
+     "PUSH BACK",
+     "READY",
+     "RECOVERY"
+    ]
+   },
+   "grid": {
+    "cols": [
+     164,
+     370,
+     588,
+     816,
+     1037,
+     1254,
+     1474
+    ],
+    "rows": [
+     89,
+     313,
+     537,
+     755,
+     1024
+    ]
+   },
+   "title_pos": "centrado"
+  },
+  "parry_2": {
+   "anim": "parry",
+   "title": "PARRY",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "GUARD UP",
+     "DEFLECT",
+     "SPARK",
+     "PUSH BACK",
+     "READY",
+     "RECOVERY"
+    ],
+    "SW": [
+     "GUARD UP",
+     "DEFLECT",
+     "SPARK",
+     "PUSH BACK",
+     "READY",
+     "RECOVERY"
+    ],
+    "W": [
+     "GUARD UP",
+     "DEFLECT",
+     "SPARK",
+     "PUSH BACK",
+     "READY",
+     "RECOVERY"
+    ],
+    "NW": [
+     "GUARD UP",
+     "DEFLECT",
+     "SPARK",
+     "PUSH BACK",
+     "READY",
+     "RECOVERY"
+    ]
+   },
+   "grid": {
+    "cols": [
+     165,
+     371,
+     588,
+     816,
+     1037,
+     1254,
+     1474
+    ],
+    "rows": [
+     90,
+     316,
+     538,
+     756,
+     1024
+    ]
+   },
+   "title_pos": "centrado"
+  },
+  "hit_1": {
+   "anim": "hit",
+   "title": "HIT",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "IMPACT",
+     "RECOIL",
+     "STAGGER",
+     "STAGGER",
+     "RECOVER",
+     "READY"
+    ],
+    "NE": [
+     "IMPACT",
+     "RECOIL",
+     "STAGGER",
+     "STAGGER",
+     "RECOVER",
+     "READY"
+    ],
+    "E": [
+     "IMPACT",
+     "RECOIL",
+     "STAGGER",
+     "STAGGER",
+     "RECOVER",
+     "READY"
+    ],
+    "SE": [
+     "IMPACT",
+     "RECOIL",
+     "STAGGER",
+     "STAGGER",
+     "RECOVER",
+     "READY"
+    ]
+   },
+   "grid": {
+    "cols": [
+     154,
+     367,
+     588,
+     814,
+     1035,
+     1257,
+     1478
+    ],
+    "rows": [
+     90,
+     298,
+     519,
+     739,
+     1024
+    ]
+   },
+   "title_pos": "centrado"
+  },
+  "hit_2": {
+   "anim": "hit",
+   "title": "HIT",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "IMPACT",
+     "RECOIL",
+     "STAGGER",
+     "STAGGER",
+     "RECOVER",
+     "READY"
+    ],
+    "SW": [
+     "IMPACT",
+     "RECOIL",
+     "STAGGER",
+     "STAGGER",
+     "RECOVER",
+     "READY"
+    ],
+    "W": [
+     "IMPACT",
+     "RECOIL",
+     "STAGGER",
+     "STAGGER",
+     "RECOVER",
+     "READY"
+    ],
+    "NW": [
+     "IMPACT",
+     "RECOIL",
+     "STAGGER",
+     "STAGGER",
+     "RECOVER",
+     "READY"
+    ]
+   },
+   "grid": {
+    "cols": [
+     195,
+     419,
+     644,
+     869,
+     1094,
+     1316,
+     1535
+    ],
+    "rows": [
+     64,
+     304,
+     525,
+     750,
+     1024
+    ]
+   },
+   "title_pos": "izquierda"
+  },
+  "block_1": {
+   "anim": "block",
+   "title": "BLOCK",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "RAISE",
+     "HOLD",
+     "HOLD",
+     "IMPACT",
+     "HOLD",
+     "LOWER"
+    ],
+    "NE": [
+     "RAISE",
+     "HOLD",
+     "HOLD",
+     "IMPACT",
+     "HOLD",
+     "LOWER"
+    ],
+    "E": [
+     "RAISE",
+     "HOLD",
+     "HOLD",
+     "IMPACT",
+     "HOLD",
+     "LOWER"
+    ],
+    "SE": [
+     "RAISE",
+     "HOLD",
+     "HOLD",
+     "IMPACT",
+     "HOLD",
+     "LOWER"
+    ]
+   },
+   "grid": {
+    "cols": [
+     210,
+     425,
+     648,
+     881,
+     1105,
+     1326,
+     1536
+    ],
+    "rows": [
+     89,
+     307,
+     525,
+     745,
+     1024
+    ]
+   },
+   "title_pos": "izquierda"
+  },
+  "block_2": {
+   "anim": "block",
+   "title": "BLOCK",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "RAISE",
+     "HOLD",
+     "HOLD",
+     "IMPACT",
+     "HOLD",
+     "LOWER"
+    ],
+    "SW": [
+     "RAISE",
+     "HOLD",
+     "HOLD",
+     "IMPACT",
+     "HOLD",
+     "LOWER"
+    ],
+    "W": [
+     "RAISE",
+     "HOLD",
+     "HOLD",
+     "IMPACT",
+     "HOLD",
+     "LOWER"
+    ],
+    "NW": [
+     "RAISE",
+     "HOLD",
+     "HOLD",
+     "IMPACT",
+     "HOLD",
+     "LOWER"
+    ]
+   },
+   "grid": {
+    "cols": [
+     194,
+     417,
+     641,
+     870,
+     1096,
+     1317,
+     1536
+    ],
+    "rows": [
+     64,
+     299,
+     518,
+     741,
+     1024
+    ]
+   },
+   "title_pos": "izquierda"
+  },
+  "dodge_1": {
+   "anim": "dodge",
+   "title": "DODGE",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "CROUCH",
+     "PUSH OFF",
+     "DASH",
+     "DASH",
+     "LANDING",
+     "RECOVERY"
+    ],
+    "NE": [
+     "CROUCH",
+     "PUSH OFF",
+     "DASH",
+     "DASH",
+     "LANDING",
+     "RECOVERY"
+    ],
+    "E": [
+     "CROUCH",
+     "PUSH OFF",
+     "DASH",
+     "DASH",
+     "LANDING",
+     "RECOVERY"
+    ],
+    "SE": [
+     "CROUCH",
+     "PUSH OFF",
+     "DASH",
+     "DASH",
+     "LANDING",
+     "RECOVERY"
+    ]
+   },
+   "grid": {
+    "cols": [
+     204,
+     419,
+     636,
+     864,
+     1093,
+     1315,
+     1536
+    ],
+    "rows": [
+     63,
+     297,
+     503,
+     707,
+     1024
+    ]
+   },
+   "title_pos": "izquierda"
+  },
+  "dodge_2": {
+   "anim": "dodge",
+   "title": "DODGE",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "CROUCH",
+     "PUSH OFF",
+     "DASH",
+     "DASH",
+     "LANDING",
+     "RECOVERY"
+    ],
+    "SW": [
+     "CROUCH",
+     "PUSH OFF",
+     "DASH",
+     "DASH",
+     "LANDING",
+     "RECOVERY"
+    ],
+    "W": [
+     "CROUCH",
+     "PUSH OFF",
+     "DASH",
+     "DASH",
+     "LANDING",
+     "RECOVERY"
+    ],
+    "NW": [
+     "CROUCH",
+     "PUSH OFF",
+     "DASH",
+     "DASH",
+     "LANDING",
+     "RECOVERY"
+    ]
+   },
+   "grid": {
+    "cols": [
+     203,
+     419,
+     636,
+     863,
+     1092,
+     1315,
+     1536
+    ],
+    "rows": [
+     63,
+     296,
+     502,
+     707,
+     1024
+    ]
+   },
+   "title_pos": "izquierda"
+  },
+  "death_1": {
+   "anim": "death",
+   "title": "DEATH",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ],
+    "NE": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ],
+    "E": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ],
+    "SE": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ]
+   },
+   "grid": {
+    "cols": [
+     202,
+     419,
+     636,
+     863,
+     1093,
+     1315,
+     1536
+    ],
+    "rows": [
+     64,
+     297,
+     503,
+     707,
+     1024
+    ]
+   },
+   "title_pos": "izquierda"
+  },
+  "death_2": {
+   "anim": "death",
+   "title": "DEATH",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ],
+    "SW": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ],
+    "W": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ],
+    "NW": [
+     "HIT",
+     "STAGGER",
+     "KNEES",
+     "COLLAPSE",
+     "DOWN",
+     "DOWN"
+    ]
+   },
+   "grid": {
+    "cols": [
+     202,
+     419,
+     636,
+     863,
+     1093,
+     1315,
+     1536
+    ],
+    "rows": [
+     64,
+     295,
+     501,
+     710,
+     1024
+    ]
+   },
+   "title_pos": "izquierda"
+  }
+ }
+}
