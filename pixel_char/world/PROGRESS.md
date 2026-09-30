@@ -673,7 +673,8 @@ guardia no se rompía nunca bajo presión. Ahora `Fighter` admite `staminaRegen`
 **Regresión**: `HASH=#enemy=echo node tests/combat.mjs` (la batería del combate contra el eco) 31/31 OK.
 `e2e.mjs`, `stage5.mjs` y `record_combat.mjs` aceptan también `HASH` (el recorrido del mundo se prueba con
 `#enemy=none` para que los autómatas de las raíces y las ruinas no se metan en el camino).
-El recorrido del mundo (`stage5.mjs`, `e2e.mjs` con `#enemy=none`): ver abajo.
+El recorrido del mundo con `#enemy=none`: `stage5.mjs` 13/13 OK (pies, escalones, charcas, frenado) y `e2e.mjs`
+33/33 OK (escritorio e iPhone), sin errores JS.
 
 **Revisión** en `review/enemy/`:
 - `E5_pelea.gif` — pelea completa (`tests/record_automaton.mjs`, IA real con parry 15 % y bloqueo 25 %, vida recortada a 120 para que quepa): se
