@@ -117,7 +117,7 @@
     const r = (W.PLAYER_PARAMS ? W.PLAYER_PARAMS.radius : 0.28), nx = -(b.z - a.z) / (d || 1), nz = (b.x - a.x) / (d || 1);
     // el borde del cuerpo en la dirección de avance: la misma comprobación que hace player.tryMove
     // (si no, el camino suavizado cortaba esquinas de baldosas con 1 u de desnivel y se atascaba)
-    const hx = Math.sign(b.x - a.x) * r, hz = Math.sign(b.z - a.z) * r;
+    const hx = (b.x - a.x) / (d || 1) * r, hz = (b.z - a.z) / (d || 1) * r;
     // y en una franja estrecha a ambos lados de la línea: si pasa justo por la esquina de 4 baldosas, el
     // personaje real (que gira con suavidad) se desvía unos cm y puede pisar la del desnivel
     const band = [-0.12, 0, 0.12];

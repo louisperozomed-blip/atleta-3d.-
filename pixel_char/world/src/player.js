@@ -74,7 +74,10 @@
     tryMove(dx, dz) {
       const r = P.radius;
       const ok = (x, z) => {
-        const hx = Math.sign(x - this.x) * r, hz = Math.sign(z - this.z) * r;
+        // sonda del borde del cuerpo a lo largo de la dirección real del movimiento (antes, con el signo de
+        // cada componente, un residuo de 1e-17 en x lanzaba la sonda hacia un acantilado al andar en z)
+        const mx = x - this.x, mz = z - this.z, ml = Math.hypot(mx, mz) || 1;
+        const hx = mx / ml * r, hz = mz / ml * r;
         return W.canStep(this.x, this.z, x + hx, z + hz) && W.canStep(this.x, this.z, x, z);
       };
       let nx = this.x + dx, nz = this.z + dz;
