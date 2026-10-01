@@ -1332,3 +1332,36 @@ partir de 0,4 s (a 0,35 s aún no), nivel 2 (×1,5 daño, más postura), suelta 
 vulnerable al cargar, costes de stamina y lentitud sin stamina, J en teclado, tocar el suelo mueve. Regresión:
 duelo 22/22, parry 50/50, parry2_ui 10/10 (su «golpe retrasado» es ahora el fuerte con carga), autómata 21/21,
 combate con el eco 31/31. Capturas: `review/combate_completo/E3_*.png`.
+
+## Etapa 4 — Combos y ritmo (`src/moves.js`, tabla `W.MOVES.STEPS`)
+**Combos en datos** (cada paso: hoja, stamina, daño y postura respecto al golpe, velocidad, recuperación, pulso y si
+cierra el combo; para añadir uno basta una línea):
+
+| secuencia | nombre | hoja | lo que lo hace distinto |
+|---|---|---|---|
+| L·L·L | Combo básico | attack1 → attack2 → attack3 | el de siempre |
+| L·H | **Quiebraguardia** | heavy (con carga) | si te lo bloquea, le **vacía el 65 % de su stamina** (un fuerte normal, 30 %); postura ×1,25 |
+| L·L·H | **Remate giratorio** | **spin** | golpe en **360°** que alcanza a varios, postura ×1,7, **recuperación ×1,8 más larga** (castigable) |
+| H·L | **Corte de salida** | attack2 ×1,35 | golpe rápido tras un fuerte (daño ×0,9) |
+| H·H | **Golpe cargado doble** | heavy (con carga) | **postura ×2,2**, daño ×1,2, todo ×0,8 más lento |
+
+- Cada golpe sigue la secuencia si la pulsación llega mientras dura el anterior o hasta 0,35 s después de su
+  recuperación; al completar un combo sale su nombre sobre el personaje.
+- **Búfer**: las pulsaciones durante un golpe del combo van a **su cola (hasta 2)**, no al búfer de una plaza:
+  tres toques seguidos durante el primer golpe dan L → LL → LLL (antes el tercero se perdía).
+- **Ritmo**: cada golpe tiene un **pulso** (ligero 1: 160 ms tras su impacto; ligero 2: 170 ms; fuerte: 240 ms) con
+  ±50 ms de margen (~100 ms). Pulsar el siguiente golpe en el pulso = **EN RITMO**: +20 % de daño y postura, sonido
+  propio (dos notas ascendentes) y «EN RITMO» sobre el personaje. Fuera del pulso el combo sigue sin bonus. Se mide
+  con la marca de tiempo del evento y la calibración de latencia (la pulsación de un fuerte cuenta desde que bajó el
+  dedo, no desde que se convirtió en fuerte).
+- Arreglos por el camino: la duración de la pulsación ya no se para con el hitstop (un fuerte justo tras un golpe
+  salía como ligero); la postura de un golpe no hereda su multiplicador de daño (cada uno trae el suyo: si no, el
+  ritmo daba +44 % de postura en vez de +20 %); heavy y spin ya no se marcan como «no encadenables» (eso era para las
+  hojas del duelo).
+
+**Pruebas** (`tests/cc_e4.mjs`): **11/11**, sin errores JS — los 5 combos con su hoja y su nombre; Quiebraguardia
+contra guardia (vacía ≥ 60 % frente al 30 % del fuerte); el remate giratorio alcanza a dos enemigos (delante y
+detrás) y su recuperación dura 800 ms frente a 295 del ligero; el doble cargado da 50,8 de postura frente a 23,1;
+búfer de 3 toques; ritmo (en el pulso: ×1,20 daño y postura; 120 ms tarde o 100 ms pronto: sin bonus); **cada combo
+en las 8 direcciones** (todos los golpes aciertan y cada dirección pinta su fila: 8 distintas). Regresión: E3 15/15,
+combate con el eco 31/31, duelo 22/22, parry2_ui 10/10. Capturas: `review/combate_completo/E4_*.png`.

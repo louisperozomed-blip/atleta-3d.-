@@ -133,6 +133,7 @@
       tone(c, t, "triangle", 2200, 2100, 0.08, 0.6); tone(c, t + 0.08, "sine", 1760, 1755, 0.05, 0.9);
     }
     else if (kind === "death") { tone(c, t, "sine", 80, 40, 0.35, 0.35); noiseHit(c, t, "lowpass", 900, 200, 0.6, 0.25, 0.3); }
+    else if (kind === "rhythm") { tone(c, t, "triangle", 1568, 1568, 0.07, 0.12); tone(c, t + 0.05, "triangle", 2093, 2093, 0.06, 0.16); tone(c, t, "sine", 523, 520, 0.05, 0.1); }   // en ritmo
     else if (kind === "charge2") { tone(c, t, "sawtooth", 220, 440, 0.08, 0.22); tone(c, t + 0.02, "triangle", 1320, 1980, 0.06, 0.3); noiseHit(c, t, "highpass", 3000, 6000, 0.6, 0.08, 0.2); }
     else if (kind === "chargeStart") { tone(c, t, "sine", 110, 180, 0.07, 0.4); noiseHit(c, t, "bandpass", 400, 1200, 3, 0.05, 0.35); }
     else if (kind === "target") { tone(c, t, "triangle", 880, 1320, 0.06, 0.07); tone(c, t + 0.04, "sine", 1760, 1760, 0.03, 0.09); }   // objetivo fijado

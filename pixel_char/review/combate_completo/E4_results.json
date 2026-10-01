@@ -1,0 +1,598 @@
+{
+ "results": [
+  {
+   "name": "L·L·L = combo básico (attack1 → attack2 → attack3)",
+   "ok": true,
+   "info": {
+    "presses": [
+     0.327,
+     0.577,
+     0.577
+    ],
+    "moves": [
+     "L:attack1",
+     "LL:attack2:fuera",
+     "LLL:attack3"
+    ],
+    "hits": [
+     {
+      "who": "attack1",
+      "anim": "attack1",
+      "dmg": 10
+     },
+     {
+      "who": "attack2",
+      "anim": "attack2",
+      "dmg": 12
+     },
+     {
+      "who": "attack3",
+      "anim": "attack3",
+      "dmg": 22
+     }
+    ],
+    "names": [
+     "ligero",
+     "ligero 2",
+     "Combo básico"
+    ]
+   }
+  },
+  {
+   "name": "L·H = Quiebraguardia (fuerte tras un ligero)",
+   "ok": true,
+   "info": {
+    "presses": [
+     1.961,
+     2.211
+    ],
+    "moves": [
+     "L:attack1",
+     "LH:heavy:fuera"
+    ],
+    "hits": [
+     {
+      "who": "attack1",
+      "anim": "attack1",
+      "dmg": 10
+     },
+     {
+      "who": "heavy",
+      "anim": "heavy",
+      "dmg": 22
+     }
+    ],
+    "names": [
+     "ligero",
+     "Quiebraguardia"
+    ]
+   }
+  },
+  {
+   "name": "L·L·H = Remate giratorio (hoja spin)",
+   "ok": true,
+   "info": {
+    "presses": [
+     3.261,
+     3.511,
+     3.511
+    ],
+    "moves": [
+     "L:attack1",
+     "LL:attack2:fuera",
+     "LLH:spin:fuera"
+    ],
+    "hits": [
+     {
+      "who": "attack1",
+      "anim": "attack1",
+      "dmg": 10
+     },
+     {
+      "who": "attack2",
+      "anim": "attack2",
+      "dmg": 12
+     },
+     {
+      "who": "spin",
+      "anim": "spin",
+      "dmg": 15
+     }
+    ],
+    "names": [
+     "ligero",
+     "ligero 2",
+     "Remate giratorio"
+    ]
+   }
+  },
+  {
+   "name": "H·L = Corte de salida (golpe rápido tras un fuerte)",
+   "ok": true,
+   "info": {
+    "presses": [
+     5.061,
+     5.611
+    ],
+    "moves": [
+     "H:heavy",
+     "HL:attack2:fuera"
+    ],
+    "hits": [
+     {
+      "who": "heavy",
+      "anim": "heavy",
+      "dmg": 22
+     },
+     {
+      "who": "attack2",
+      "anim": "attack2",
+      "dmg": 10.8
+     }
+    ],
+    "names": [
+     "fuerte",
+     "Corte de salida"
+    ]
+   }
+  },
+  {
+   "name": "H·H = Golpe cargado doble",
+   "ok": true,
+   "info": {
+    "presses": [
+     6.344,
+     6.894
+    ],
+    "moves": [
+     "H:heavy",
+     "HH:heavy:fuera"
+    ],
+    "hits": [
+     {
+      "who": "heavy",
+      "anim": "heavy",
+      "dmg": 22
+     },
+     {
+      "who": "heavy",
+      "anim": "heavy",
+      "dmg": 26.4
+     }
+    ],
+    "names": [
+     "fuerte",
+     "Golpe cargado doble"
+    ]
+   }
+  },
+  {
+   "name": "Quiebraguardia: si el enemigo lo bloquea le vacía mucha stamina (≥ 60 % de la suya, el doble que un fuerte)",
+   "ok": true,
+   "info": {
+    "stamina0": 120,
+    "bloqueos": [
+     "attack1:98",
+     "heavy:20"
+    ],
+    "gb": 0,
+    "vaciado": 78
+   }
+  },
+  {
+   "name": "Remate giratorio: golpe en 360° que alcanza a varios y recuperación larga (castigable)",
+   "ok": true,
+   "info": {
+    "golpeados": 2,
+    "rec_ms": 800,
+    "rec_ligero_ms": 295
+   }
+  },
+  {
+   "name": "Golpe cargado doble: el segundo fuerte da una postura enorme",
+   "ok": true,
+   "info": {
+    "H": [
+     23.1
+    ],
+    "HH": [
+     23.1,
+     50.8
+    ]
+   }
+  },
+  {
+   "name": "búfer de entrada: tres toques seguidos (los 3 durante el primer golpe) no se pierden: L, LL, LLL",
+   "ok": true,
+   "info": [
+    "L",
+    "LL",
+    "LLL"
+   ]
+  },
+  {
+   "name": "ritmo: pulsar en el pulso = EN RITMO (+20 % daño y postura); fuera del pulso el combo sigue sin bonus",
+   "ok": true,
+   "info": {
+    "ritmo": {
+     "moves": [
+      "L:attack1",
+      "LL:attack2:ok"
+     ],
+     "dmg": [
+      10,
+      14.4
+     ],
+     "pg": [
+      7,
+      10.1
+     ],
+     "err": [
+      null,
+      0
+     ]
+    },
+    "tarde": {
+     "moves": [
+      "L:attack1",
+      "LL:attack2:fuera"
+     ],
+     "dmg": [
+      10,
+      12
+     ],
+     "pg": [
+      7,
+      8.4
+     ],
+     "err": [
+      null,
+      120
+     ]
+    },
+    "pronto": {
+     "moves": [
+      "L:attack1",
+      "LL:attack2:fuera"
+     ],
+     "dmg": [
+      10,
+      12
+     ],
+     "pg": [
+      7,
+      8.4
+     ],
+     "err": [
+      null,
+      -100
+     ]
+    }
+   }
+  },
+  {
+   "name": "cada combo en las 8 direcciones: todos los golpes aciertan y cada dirección usa su fila de la hoja (8 distintas)",
+   "ok": true,
+   "info": [
+    {
+     "seq": "LLL",
+     "aciertan": true,
+     "filas": 8
+    },
+    {
+     "seq": "LH",
+     "aciertan": true,
+     "filas": 8
+    },
+    {
+     "seq": "LLH",
+     "aciertan": true,
+     "filas": 8
+    },
+    {
+     "seq": "HL",
+     "aciertan": true,
+     "filas": 8
+    },
+    {
+     "seq": "HH",
+     "aciertan": true,
+     "filas": 8
+    }
+   ]
+  }
+ ],
+ "errors": [],
+ "D8": {
+  "LLL": [
+   {
+    "ang": 0,
+    "hits": 3,
+    "dirs": [
+     7
+    ]
+   },
+   {
+    "ang": 45,
+    "hits": 3,
+    "dirs": [
+     0
+    ]
+   },
+   {
+    "ang": 90,
+    "hits": 3,
+    "dirs": [
+     1
+    ]
+   },
+   {
+    "ang": 135,
+    "hits": 3,
+    "dirs": [
+     2
+    ]
+   },
+   {
+    "ang": 180,
+    "hits": 3,
+    "dirs": [
+     3
+    ]
+   },
+   {
+    "ang": 225,
+    "hits": 3,
+    "dirs": [
+     4
+    ]
+   },
+   {
+    "ang": 270,
+    "hits": 3,
+    "dirs": [
+     5
+    ]
+   },
+   {
+    "ang": 315,
+    "hits": 3,
+    "dirs": [
+     6
+    ]
+   }
+  ],
+  "LH": [
+   {
+    "ang": 0,
+    "hits": 2,
+    "dirs": [
+     7
+    ]
+   },
+   {
+    "ang": 45,
+    "hits": 2,
+    "dirs": [
+     0
+    ]
+   },
+   {
+    "ang": 90,
+    "hits": 2,
+    "dirs": [
+     1
+    ]
+   },
+   {
+    "ang": 135,
+    "hits": 2,
+    "dirs": [
+     2
+    ]
+   },
+   {
+    "ang": 180,
+    "hits": 2,
+    "dirs": [
+     3
+    ]
+   },
+   {
+    "ang": 225,
+    "hits": 2,
+    "dirs": [
+     4
+    ]
+   },
+   {
+    "ang": 270,
+    "hits": 2,
+    "dirs": [
+     5
+    ]
+   },
+   {
+    "ang": 315,
+    "hits": 2,
+    "dirs": [
+     6
+    ]
+   }
+  ],
+  "LLH": [
+   {
+    "ang": 0,
+    "hits": 3,
+    "dirs": [
+     7
+    ]
+   },
+   {
+    "ang": 45,
+    "hits": 3,
+    "dirs": [
+     0
+    ]
+   },
+   {
+    "ang": 90,
+    "hits": 3,
+    "dirs": [
+     1
+    ]
+   },
+   {
+    "ang": 135,
+    "hits": 3,
+    "dirs": [
+     2
+    ]
+   },
+   {
+    "ang": 180,
+    "hits": 3,
+    "dirs": [
+     3
+    ]
+   },
+   {
+    "ang": 225,
+    "hits": 3,
+    "dirs": [
+     4
+    ]
+   },
+   {
+    "ang": 270,
+    "hits": 3,
+    "dirs": [
+     5
+    ]
+   },
+   {
+    "ang": 315,
+    "hits": 3,
+    "dirs": [
+     6
+    ]
+   }
+  ],
+  "HL": [
+   {
+    "ang": 0,
+    "hits": 2,
+    "dirs": [
+     7
+    ]
+   },
+   {
+    "ang": 45,
+    "hits": 2,
+    "dirs": [
+     0
+    ]
+   },
+   {
+    "ang": 90,
+    "hits": 2,
+    "dirs": [
+     1
+    ]
+   },
+   {
+    "ang": 135,
+    "hits": 2,
+    "dirs": [
+     2
+    ]
+   },
+   {
+    "ang": 180,
+    "hits": 2,
+    "dirs": [
+     3
+    ]
+   },
+   {
+    "ang": 225,
+    "hits": 2,
+    "dirs": [
+     4
+    ]
+   },
+   {
+    "ang": 270,
+    "hits": 2,
+    "dirs": [
+     5
+    ]
+   },
+   {
+    "ang": 315,
+    "hits": 2,
+    "dirs": [
+     6
+    ]
+   }
+  ],
+  "HH": [
+   {
+    "ang": 0,
+    "hits": 2,
+    "dirs": [
+     7
+    ]
+   },
+   {
+    "ang": 45,
+    "hits": 2,
+    "dirs": [
+     0
+    ]
+   },
+   {
+    "ang": 90,
+    "hits": 2,
+    "dirs": [
+     1
+    ]
+   },
+   {
+    "ang": 135,
+    "hits": 2,
+    "dirs": [
+     2
+    ]
+   },
+   {
+    "ang": 180,
+    "hits": 2,
+    "dirs": [
+     3
+    ]
+   },
+   {
+    "ang": 225,
+    "hits": 2,
+    "dirs": [
+     4
+    ]
+   },
+   {
+    "ang": 270,
+    "hits": 2,
+    "dirs": [
+     5
+    ]
+   },
+   {
+    "ang": 315,
+    "hits": 2,
+    "dirs": [
+     6
+    ]
+   }
+  ]
+ }
+}

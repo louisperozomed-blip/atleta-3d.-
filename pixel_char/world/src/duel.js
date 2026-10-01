@@ -53,10 +53,12 @@
   W.duelSheet = function (f, name) {
     if (!(name in D.sheets)) return null;
     const M = f.M();
-    if (D.sheets[name] !== "sustituto" && M.animations[name]) return { sheet: name, speed: 1, fb: false, noChain: true };
+    // (heavy y spin se encadenan en los combos; las del duelo no)
+    const nc = name !== "heavy" && name !== "spin";
+    if (D.sheets[name] !== "sustituto" && M.animations[name]) return { sheet: name, speed: 1, fb: false, noChain: nc };
     let F = D.fallback[name];
     if (F.foe && f.team !== "player") F = F.foe;              // sustituto propio del enemigo (no tiene attack3)
-    return { sheet: F.sheet, speed: F.speed || 1, fb: true, trail: F.trail, bounce: !!F.bounce, fx: !!F.fx, glow: !!F.glow, spin360: !!F.spin360, noChain: true };
+    return { sheet: F.sheet, speed: F.speed || 1, fb: true, trail: F.trail, bounce: !!F.bounce, fx: !!F.fx, glow: !!F.glow, spin360: !!F.spin360, noChain: nc };
   };
   W.duelUsesSheet = function (f, name) { const R = W.duelSheet(f, name); return !!R && !R.fb; };
 

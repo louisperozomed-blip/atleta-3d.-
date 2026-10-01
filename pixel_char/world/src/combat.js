@@ -323,7 +323,7 @@
       }
       if (def === "block") {
         breakStreak(att); t.lastDefT = W.ct;
-        const L = LEVEL.block, cost = heavy ? L.stHeavy : L.st;
+        const L = LEVEL.block, cost = a.guardDrain ? a.guardDrain * t.stMax : heavy ? L.stHeavy : L.st;   // quiebraguardia: le vacía la stamina
         t.st -= cost; t.stT = 0;
         if (AT.breaker) t.st = 0;                               // golpe que rompe la guardia (Duelo 3)
         if (t.st <= 0) {
@@ -362,7 +362,8 @@
         if (W.sfx) W.sfx.combat("armor");
       }
       if (AT.throw) log({ ev: "grab", who: t.name, from: att.name, anim: a.name, move: a.move });
-      const pg = dm * 0.7 * (counter ? W.COMBAT.counterPost : 1) * (exposed ? 1.5 : 1) * (AT.postK || 1) * (a.postK || 1);
+      // (la postura no hereda el multiplicador de daño del golpe: el ritmo y los combos traen el suyo, a.postK)
+      const pg = dm / (a.dmgK || 1) * 0.7 * (counter ? W.COMBAT.counterPost : 1) * (exposed ? 1.5 : 1) * (AT.postK || 1) * (a.postK || 1);
       if (!deathblow && t.alive) t.addPosture(pg);
       // tras el remate su postura queda como al acabar el aturdido (antes se quedaba llena y cualquier desvío
       // posterior lo volvía a aturdir al instante)
@@ -375,7 +376,7 @@
       stop(deathblow ? STOP.deathblow : AT.stop * (a.stopK || 1));
       W.shakeCam(dx, dz, deathblow ? 0.14 : heavy ? 0.11 : 0.06, heavy || deathblow ? 0.32 : 0.22);
       if (W.sfx) W.sfx.combat(deathblow ? "deathblow" : heavy ? "hitHeavy" : "hit", kind);
-      log({ ev: deathblow ? "deathblow" : "hit", who: t.name, from: att.name, anim: a.name, dmg: Math.round(dm), hp: Math.round(t.hp), res, surface: kind, exp: exposed, pg: +pg.toFixed(1) });
+      log({ ev: deathblow ? "deathblow" : "hit", who: t.name, from: att.name, anim: a.name, dmg: +dm.toFixed(1), hp: Math.round(t.hp), res, surface: kind, exp: exposed, pg: +pg.toFixed(1) });
     }
     if (!any) log({ ev: "whiff", who: att.name, anim: a.name });
   }

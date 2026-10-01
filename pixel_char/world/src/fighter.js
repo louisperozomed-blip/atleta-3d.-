@@ -158,7 +158,13 @@
       if (type === "chargeRelease") { this.chargeRel = true; return true; }
       if (type === "attack" && data && data.kind === "H") this.chargeRel = false;
       if (type === "attack" && data && data.hold) this.atkHeld = true;
-      this.buf = { type, t: this.time, data, pt: type === "attack" ? W.pressTime(data && data.ts, this.team === "player") : undefined };
+      this.buf = { type, t: this.time, data, pt: type === "attack" ? (data && data.pt != null ? data.pt : W.pressTime(data && data.ts, this.team === "player")) : undefined };
+      // L/H durante un golpe propio (combos, moves.js): a la cola del golpe (hasta 2 pulsaciones), no al búfer de una
+      // plaza; así un toque rápido no se pierde aunque llegue antes de la ventana de encadenado
+      const ca = this.act;
+      if (type === "attack" && data && data.kind && ca && isAtk(ca) && ca.comboSeq != null && !ca.charging && !ca.noChain && !(ca.step && ca.step.end) && !this.body.jump) {
+        const b = this.buf; this.buf = null; this.doAction("attack", b.data, b.pt); return true;
+      }
       this.tryBuffered();
       return true;
     }
@@ -217,7 +223,9 @@
         const a = this.act;
         if (data && data.kind && W.movesNext) {
           // L/H: la tabla de combos decide el golpe; pulsado antes de la recuperación queda en cola
-          const mv = W.movesNext(this, data.kind, t0);
+          if (a && isAtk(a) && a.chain) { if (!a.chain2) a.chain2 = { data, pt: t0 }; return; }   // 2.ª en la cola
+          // pulsado durante un golpe del combo (aunque sea antes de su ventana): sigue la secuencia
+          const mv = W.movesNext(this, data.kind, t0, !!(a && isAtk(a) && a.comboSeq != null));
           if (a && isAtk(a) && a.f < HF(a) + 1) { a.chain = true; a.chainName = mv.step.anim; a.chainData = data; a.chainMv = mv; a.chainPt = t0; return; }
           this.act = null; this.startAttack(mv.step.anim, data, mv, t0); return;
         }
@@ -249,11 +257,11 @@
       a.slow = this.prepK;
       // hoja propia o sustituto (W.DUEL): riposte → attack1 ×1.4, deathblow → attack3, counter → attack1 rápido
       const R = W.duelSheet ? W.duelSheet(this, name) : null;
-      if (R) { a.sheet = R.sheet; a.speed = R.speed; a.fb = R.fb; if (R.trail) a.trail = R.trail; if (R.fb || R.noChain) a.noChain = true; a.slow = 1; }
+      if (R) { a.sheet = R.sheet; a.speed = R.speed; a.fb = R.fb; if (R.trail) a.trail = R.trail; if (R.noChain) a.noChain = true; a.slow = 1; }
       a.hf = hitFrame(this.M(), an(a));
       if (tired) { a.slow = (a.slow || 1) * W.MOVES.tiredSlow; a.tired = true; }
       if (mv && W.movesStarted) {
-        W.movesStarted(this, a, mv.seq, mv.step);
+        W.movesStarted(this, a, mv.seq, mv.step, mv.rhythm);
         if (mv.step.charge) {
           // FUERTE: carga mientras se mantiene (frames de carga de su hoja en bucle; el sustituto, su frame de carga)
           const A = this.M().animations[an(a)] || {};
@@ -423,12 +431,13 @@
           // suelta: RELEASE → IMPACT → RECOVERY; el nivel 2 cuesta más stamina y pega más
           this.chargeRel = false; a.charging = false; a.held = +held.toFixed(3);
           if (a.level === 2) { const ex = W.movesCost(a.step, 2) - W.movesCost(a.step, 1); if (this.st < ex) { a.slow = (a.slow || 1) * M.tiredSlow; a.tired = true; } this.st = Math.max(0, this.st - ex); this.stT = 0;
-            a.dmgK = M.level2.dmg; a.postK = M.level2.post; a.stopK = M.level2.stop; }
+            a.dmgK = (a.dmgK || 1) * M.level2.dmg; a.postK = (a.postK || 1) * M.level2.post; a.stopK = M.level2.stop; }
           a.tt = c[HF(a) - 1];
           if (W.onChargeRelease) W.onChargeRelease(this, a);
         }
       } else {
         if (a.slow && a.slow !== 1 && isAtk(a) && a.f < HF(a)) sp /= a.slow;
+        if (a.recK && isAtk(a) && a.f > HF(a)) sp *= a.recK;          // recuperación larga (remate giratorio)
         let nt = (a.tt || 0) + dt * sp;
         // RETRASO: mientras se mantenga el ataque, la preparación se queda al final de la carga (frame 1)
         if (a.holdable && isAtk(a) && a.f < HF(a)) {
@@ -465,11 +474,18 @@
         if (isAtk(a) && a.f >= HF(a) && a.fPrev < HF(a) && a.impactT == null) {
           const c = cumOf(this.M(), an(a));
           a.impactT = W.ct - Math.max(0, over != null ? over : (a.tt - c[HF(a)]) / Math.max(1e-6, sp));
+          if (a.comboSeq != null && W.movesImpact) W.movesImpact(this, a);
         }
         if (W.onCombatFrame) W.onCombatFrame(this, a);
       }
       // combo: pulsación dentro de la ventana de encadenado
-      if (isAtk(a) && a.chain && a.f >= HF(a) + 1) { a.chain = false; const nx = a.chainName || this.M().animations[an(a)].next; const mv = a.chainMv, pt = a.chainPt; this.act = null; this.startAttack(nx, a.chainData, mv, pt != null ? Math.max(pt, W.ct - 0.05) : null); return; }
+      if (isAtk(a) && a.chain && a.f >= HF(a) + 1) {
+        a.chain = false; const nx = a.chainName || this.M().animations[an(a)].next; const mv = a.chainMv, pt = a.chainPt, q2 = a.chain2;
+        this.act = null; this.startAttack(nx, a.chainData, mv, pt != null ? Math.max(pt, W.ct - 0.05) : null);
+        // la 2.ª pulsación de la cola pasa a ser la siguiente del golpe que empieza
+        if (q2 && this.act && W.movesNext) { const mv2 = W.movesNext(this, q2.data.kind, q2.pt, true); Object.assign(this.act, { chain: true, chainName: mv2.step.anim, chainData: q2.data, chainMv: mv2, chainPt: q2.pt }); }
+        return;
+      }
       this.motion(a, dt);
     }
     // desplazamientos del cuerpo durante las acciones (estocada, esquiva, retroceso)

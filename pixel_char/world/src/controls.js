@@ -80,11 +80,11 @@
     }
     return best;
   };
-  function attackFoe(f, ts) {
+  function attackFoe(f, ts, pt) {
     const p = W.player, pf = W.pf;
     const d = Math.hypot(f.body.x - p.x, f.body.z - p.z), dir = Math.atan2(f.body.z - p.z, f.body.x - p.x);
     // ts: instante del toque (para el ritmo del riposte cuenta cuándo bajó el dedo, no cuándo se levantó)
-    if (d <= 3.2 || pf.act) { pf.input("attack", { dir, ts, kind: "L" }); pendingAttack = null; return "attack"; }
+    if (d <= 3.2 || pf.act) { pf.input("attack", { dir, ts, pt, kind: "L" }); pendingAttack = null; return "attack"; }
     // lejos: va hacia él y ataca al llegar
     const path = W.findPath(p.x, p.z, f.body.x - Math.cos(dir) * 1.1, f.body.z - Math.sin(dir) * 1.1, undefined, { jump: true });
     if (path.length) { p.setPath(path, { noDelay: true }); pendingAttack = { f, t: 0 }; }
@@ -246,34 +246,37 @@
   };
 
   // ---- pulsación de ataque (toque sobre el objetivo, J o el botón ATACAR): L o H según cuánto se mantiene ----------
-  // se mide en tiempo de juego (W.ct): las pruebas a paso fijo y el juego real ven lo mismo
+  // se mide en tiempo de paso (incluido el hitstop: si no, un fuerte justo tras un golpe tardaba más en salir); las
+  // pruebas a paso fijo y el juego real ven lo mismo
   let atk = null;
   W.attackPress = function (src, ts, foe, dir) {
     if (atk) return;
-    atk = { src, ts, foe: foe || null, dir: dir == null ? null : dir, ct0: W.ct, charging: false };
+    // pt: instante de la pulsación en el reloj de combate (marca del evento + calibración): para el ritmo
+    atk = { src, ts, pt: W.pressTime(ts, true), foe: foe || null, dir: dir == null ? null : dir, ct0: W.ct, held: 0, charging: false };
   };
   W.attackRelease = function (src) {
     if (!atk || atk.src !== src) return null;
     const A = atk; atk = null;
     if (A.charging) { W.pf.input("chargeRelease"); return "heavy"; }
-    if (A.foe && A.foe.alive) return attackFoe(A.foe, A.ts);
-    W.pf.input("attack", { dir: A.dir != null ? A.dir : W.player.heading, ts: A.ts, kind: "L" });
+    if (A.foe && A.foe.alive) return attackFoe(A.foe, A.ts, A.pt);
+    W.pf.input("attack", { dir: A.dir != null ? A.dir : W.player.heading, ts: A.ts, pt: A.pt, kind: "L" });
     return "attack";
   };
-  W.attackHold = () => (atk ? { src: atk.src, held: W.ct - atk.ct0, charging: atk.charging } : null);
-  function attackHoldStep() {
-    if (!atk || atk.charging) return;
-    if (W.ct - atk.ct0 < W.MOVES.holdH) return;
+  W.attackHold = () => (atk ? { src: atk.src, held: atk.held, charging: atk.charging } : null);
+  function attackHoldStep(dt) {
+    if (!atk) return;
+    atk.held += dt;
+    if (atk.charging || atk.held < W.MOVES.holdH) return;
     const f = atk.foe, p = W.player;
     if (f && (!f.alive || (Math.hypot(f.body.x - p.x, f.body.z - p.z) > 3.4 && !W.pf.act))) return;   // lejos: al soltar irá a por él
     const dir = f ? Math.atan2(f.body.z - p.z, f.body.x - p.x) : atk.dir != null ? atk.dir : p.heading;
     atk.charging = true;
-    W.pf.input("attack", { dir, ts: atk.ts, kind: "H", pressCt: atk.ct0 });
+    W.pf.input("attack", { dir, ts: atk.ts, pt: atk.pt, kind: "H", pressCt: W.ct - atk.held });
   }
 
   let kbMoving = false;
   W.controlsUpdate = function (dt) {
-    attackHoldStep();
+    attackHoldStep(dt);
     if (following) followTick(dt);
     const p = W.player, pf = W.pf;
     // teclado: un punto de destino siempre un poco por delante en la dirección pulsada
