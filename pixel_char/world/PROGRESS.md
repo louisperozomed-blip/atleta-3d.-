@@ -970,3 +970,41 @@ código siguen disponibles y configurables en `W.DUEL.sheets`, ver Etapa 1).
 
 **Revisión** en `review/duel3/` (`tools/duel3_review_e0.py`): `E0_<anim>.png` antes | después con los problemas
 marcados, `E0_tamano.png` (junto a idle y attack1), `E0_emision.png` y `E0_revision.json`.
+
+## Etapa 1 — Recompensa del parry perfecto (`src/duel.js`, enganches en `fighter.js`, `combat.js`, `character.js`)
+**Hojas o sustitutos** (`W.DUEL.sheets`): cada animación nueva usa su hoja si está en el atlas (`"auto"`) o su
+sustituto (`"sustituto"`, también automático si la hoja falta):
+
+| animación | sustituto |
+|---|---|
+| riposte | attack1 ×1,4 con estela naranja (brasas a lo largo del tajo) |
+| deathblow | attack3 con brasas en la cuchilla, destello y estallido |
+| deflected | frames de hit (IMPACT, RECOIL, STAGGER…) a la velocidad que dé 0,7 s, con retroceso y el cuerpo rebotando por código (inclinación amortiguada) |
+| counter | attack1 ×1,35 (etapa 2) |
+
+La acción guarda su nombre lógico (`act.name = "riposte"`) y la hoja que la pinta (`act.sheet`); los tiempos
+salen de la hoja que se pinta (`fighter.js: an(a)`), y `W.isAtk(a)` reconoce los golpes nuevos.
+
+**Desequilibrado**: tu parry perfecto deja al enemigo en DEFLECTED ~0,7 s (CLASH, RECOIL, OFF BALANCE ×2,
+REGAIN, READY), con el pecho expuesto: no se defiende, tus golpes le quitan +50 % de postura y su cadena se corta.
+
+**Riposte** (ventana de 0,7 s tras el perfecto; la barra CONTRA la muestra):
+- atacar en la ventana lanza el riposte (rápido: golpe a los 135 ms); se encadena hasta 3 veces pulsando de
+  nuevo, y cada golpe lo vuelve a desequilibrar (vuelve a OFF BALANCE y la ventana se alarga 0,45 s);
+- golpes 1-2-3: daño 8-10-13, postura 10-14-20, hitstop 70-90-130 ms y sacudida 0,05-0,075-0,11 crecientes,
+  chispas cada vez más doradas y un tajo más agudo cada vez. No se pueden defender;
+- un riposte completo tras un parry perfecto deja su postura en ~3/4: no es un premio automático;
+- **ritmo del 3.º**: tras el impacto del 2.º se cierra un anillo dorado tenue sobre ti; el momento ideal es a los
+  170 ms del impacto y el margen ±80 ms (la pulsación se mide con la marca de tiempo del evento, también la del
+  ataque, y la calibración de latencia). Pronto, tarde o machacando antes del 2.º impacto, el anillo se pone
+  rojo, él se recupera y desvía tu 3.er golpe (tú retrocedes y pierdes un poco de postura);
+- **parry normal**: ventana de 0,32 s y un solo golpe.
+
+**Deathblow**: si su postura se rompe durante el riposte, el golpe siguiente es el remate (transición directa):
+hoja deathblow (o attack3 con efectos), 100 de daño, la cámara se acerca un 16 % y vuelve, destello de pantalla
+y de luz, chispas doradas y golpe grave. Fuera del riposte, el enemigo aturdido se sigue rematando como antes (golpe ×3).
+
+**Pruebas** (`tests/duel3.mjs`, etapa 1): 7/7 — hojas y sustitutos, desequilibrado de 0,7 s (con y sin hoja,
+rebote por código), riposte de 3 golpes con todo creciente, 3.er golpe pronto/tarde/machacando desviado y dentro
+de ±80 ms aceptado, parry normal de 1 golpe, sustituto del riposte que también encadena 3, y deathblow directo
+(con hoja y con attack3) con zoom y destello.

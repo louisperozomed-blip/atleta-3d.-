@@ -155,19 +155,20 @@ if (STAGES.includes(1)) {
   // ventana de contraataque
   const ct = await page.evaluate(() => {
     const r = {}, e = E(), D = W.ENEMY_DIFF, k = [D.parry, D.block]; D.parry = 1; D.block = 1;
-    for (const [k2, wait] of [["dentro", 0.1], ["fuera", 0.45]]) {
+    // (Duelo 3: tras el perfecto, la ventana de contraataque es la del RIPOSTE, 0,7 s, y su golpe no se defiende)
+    for (const [k2, wait] of [["dentro", 0.1], ["fuera", 0.85]]) {
       pair(0.6, 2.0); e.ai.enabled = true; e.ai.cool = 99; e.ai.state = "chase";
-      foeAttack("attack1", pressAt(0.04)); const open = +(W.pf.counterT - W.ct).toFixed(3), c0 = W.ct - (0.35 - open);
+      foeAttack("attack1", pressAt(0.04)); const open = +(W.duelRipUntil(W.pf) - W.ct).toFixed(3), c0 = W.ct - (0.7 - open);
       let n = 0; while (W.ct - c0 < wait && n < 200) { T(); n++; }        // tiempo de juego (el hitstop no cuenta)
       const hp0 = e.hp;
       W.pf.input("attack", { dir: 0.6 + Math.PI }); T(40);
-      r[k2] = { ventana: open, ev: evs().filter((x) => x !== "parry").slice(0, 3), dmg: Math.round(hp0 - e.hp) };
+      r[k2] = { ventana: open, ev: evs().filter((x) => x !== "parry").slice(0, 6), dmg: Math.round(hp0 - e.hp) };
     }
     D.parry = k[0]; D.block = k[1]; return r;
   });
-  check("ventana de contraataque ~350 ms tras un PERFECTO: el golpe que empiezas en ella hace daño extra (×1.6) y no se puede defender",
-    Math.abs(ct.dentro.ventana - 0.35) < 0.02 && ct.dentro.ev.includes("counter") && ct.dentro.dmg >= 16, ct.dentro);
-  check("pasada la ventana, el golpe es normal (y el enemigo puede defenderse)", !ct.fuera.ev.includes("counter") && ct.fuera.dmg < 16, ct.fuera);
+  check("ventana de contraataque tras un PERFECTO (Duelo 3: el riposte, ~0,7 s): el golpe que empiezas en ella sale como riposte y no se puede defender",
+    ct.dentro.ventana > 0.55 && ct.dentro.ventana <= 0.7 && ct.dentro.ev.includes("riposte") && ct.dentro.dmg >= 8, ct.dentro);
+  check("pasada la ventana, el golpe es normal (y el enemigo puede defenderse)", !ct.fuera.ev.includes("riposte") && !ct.fuera.ev.includes("counter") && ct.fuera.dmg < 16, ct.fuera);
 
   // spam y parry parcial se mantienen
   const sp = await page.evaluate(() => { pair(0.6, 2.0); const p = W.pf; let n = 0;
@@ -609,7 +610,7 @@ if (STAGES.includes(5)) {
     r.cerca = { enemigo: vis("duelE"), tu: vis("duelP"), anchoE: w("#duelE .pb i"), anchoP: w("#duelP .pb i") };
     const e = E(); W.teleport(e.home.x + 20, e.home.z); T(3); r.lejos = { enemigo: vis("duelE"), tu: vis("duelP") };
     pair(0.6, 2.0); foeAttack("attack1", pressAt(0.04)); r.contra = { visible: document.querySelector("#duelP .cw").classList.contains("on"), ancho: w("#duelP .cw i") };
-    let n = 0; while (W.ct < W.pf.counterT + 0.02 && n < 60) { T(); n++; } T(1); r.contra_despues = document.querySelector("#duelP .cw").classList.contains("on");
+    let n = 0; while (W.ct < Math.max(W.pf.counterT, W.duelRipUntil(W.pf)) + 0.02 && n < 90) { T(); n++; } T(1); r.contra_despues = document.querySelector("#duelP .cw").classList.contains("on");
     return r;
   });
   check("barras de postura de ambos siempre visibles en combate (y ocultas lejos), con la ventana de contraataque bajo la tuya",

@@ -26,6 +26,9 @@
     attack1: { dmg: 10, reach: 1.6, arc: 70, stop: 0.075, kb: 0.35, post: 38 },
     attack2: { dmg: 12, reach: 1.65, arc: 70, stop: 0.085, kb: 0.35, post: 38 },
     attack3: { dmg: 22, reach: 1.95, arc: 85, stop: 0.12, kb: 0.6, heavy: true, post: 48 },
+    // Duelo 3 (duel.js decide daño, postura y sensación de cada golpe; aquí, el alcance)
+    riposte: { dmg: 8, reach: 1.95, arc: 80, stop: 0.07, kb: 0.2, post: 22 },
+    deathblow: { dmg: 100, reach: 2.2, arc: 120, stop: 0.18, kb: 0.6, heavy: true, post: 0 },
   };
   const STOP = { attack1: 0.075, attack2: 0.085, attack3: 0.12, parry: 0.11, parryHeavy: 0.13, perfect: 0.16, perfectHeavy: 0.18, block: 0.06, deathblow: 0.16 };
   // recompensas por nivel (postura al atacante: × su "post"; coste de postura para quien defiende)
@@ -196,8 +199,9 @@
       if (q.f.alive && q.f.act === q.a) resolve(q.f, q.a);
     }
   }
+  W.combatAttacks = PLAYER_ATTACKS;
   W.onCombatFrame = function (f, a) {
-    if (a.name.startsWith("attack") && a.f >= 3 && !a.hitDone) {
+    if (W.isAtk(a) && a.f >= 3 && !a.hitDone) {
       a.hitDone = true;
       // con calibración positiva (tus pulsaciones llegan tarde) el golpe que te lanzan se resuelve esos ms después
       // del impacto, para que una pulsación "tarde" llegue a contar
@@ -205,7 +209,7 @@
       if (cal > 0 && f.team !== "player") { a.resolveAt = (a.impactT != null ? a.impactT : W.ct) + cal; pendingHits.push({ f, a }); }
       else resolve(f, a);
     }
-    if (a.name.startsWith("attack") && a.f === 2 && W.sfx) W.sfx.combat(a.name === "attack3" ? "swingHeavy" : "swing");
+    if (W.isAtk(a) && a.f === 2 && W.sfx) W.sfx.combat(a.name === "attack3" || a.name === "deathblow" ? "swingHeavy" : "swing");
     if (a.name === "attack3" && a.f === 3) {
       // el golpe contra el suelo levanta tierra aunque no alcance a nadie
       const b = f.body, x = b.x + Math.cos(b.heading) * 0.9, z = b.z + Math.sin(b.heading) * 0.9;
@@ -231,6 +235,8 @@
       if (!inArc && !(AT.perilous === "mikiri" && t.act && t.act.name === "dodge" && d <= AT.reach + 1.5)) continue;
       any = true;
       const dir = Math.atan2(dz, dx);
+      // Duelo 3: riposte (con su ritmo) y remate los resuelve duel.js
+      if (W.duelResolve && W.duelResolve(att, a, t, AT, { dir, dx, dz, cx: (b.x + t.body.x) / 2, cz: (b.z + t.body.z) / 2, cy: Math.max(b.y, t.body.y) + 1.05 })) continue;
       let def = t.defense(a.impactT);
       if (a.counter && def !== "evade") def = "open";        // el contraataque no se puede defender
       if (def === "partial") def = "block";                     // parry parcial = bloqueo
@@ -282,15 +288,18 @@
         if (W.sfx) W.sfx.combat(perfect ? "parryPerfect" : "parry");
         const gain = (W.parryPostGain ? W.parryPostGain(att, t, AT, def) : (AT.post || (heavy ? 48 : 38)) * L.atkPost);
         const broke = att.addPosture(gain);
-        if (!broke) att.start("hit", { kb: 0.3, kdir: dir + Math.PI, moved: 0, speed: 1.35, recoil: true });
+        // Duelo 3: tras tu parry perfecto queda DESEQUILIBRADO (~0,7 s) y se abre la ventana de riposte (duel.js)
+        const handled = !broke && W.duelOnParry ? W.duelOnParry(t, att, perfect, dir) : false;
+        if (!broke && !handled) att.start("hit", { kb: 0.3, kdir: dir + Math.PI, moved: 0, speed: 1.35, recoil: true });
         // quien desvía: un parry nunca le rompe la postura
         const cost = heavy ? L.defPostHeavy : L.defPost;
         if (cost) t.addPosture(cost, { noBreak: true });
-        if (perfect) t.counterT = W.ct + W.COMBAT.counterWin;
+        if (perfect && !t.rip) t.counterT = W.ct + W.COMBAT.counterWin;
         t.parries = (t.parries || 0) + 1; t.lastDefT = W.ct;
         if (att.ai && att.ai.onDeflected) att.ai.onDeflected(perfect ? "perfect" : "normal");
         log({ ev: "parry", level: perfect ? "perfect" : "normal", early: Math.round(t.lastEarly * 1000), who: t.name, from: att.name, anim: a.name,
           win: +t.parryWindow().toFixed(3), gain: Math.round(gain), cost, post: Math.round(att.post), broke });
+        if (W.duelFlushLog) W.duelFlushLog();
         continue;
       }
       if (def === "block") {
@@ -358,6 +367,8 @@
     if (kind === "side") return ang > 0.8 && ang < 2.35 ? "side" : null;
     return "dodge";
   }
+  // efectos para duel.js
+  W.combatFx = { star, stop: (v) => stop(v), flash: flashLight, burst: groundBurst, log, GOLD, SPARK, EMBER, STOP };
   W.onStun = function (f) {
     if (W.sfx) W.sfx.combat("stun");
     flashLight(f.body.x, f.body.y + 1.3, f.body.z, 0xfff0c0, 3);
@@ -413,7 +424,8 @@
     hud.poP.style.width = (100 * p.post / p.postMax).toFixed(1) + "%";
     hud.box.classList.toggle("low", p.hp < p.hpMax * 0.3);
     // ventana de contraataque (tras un parry perfecto): barra dorada que se vacía
-    const cw = Math.max(0, p.counterT - W.ct) / W.COMBAT.counterWin, con = cw > 0;
+    const ru = W.duelRipUntil ? W.duelRipUntil(p) : 0;     // ventana de riposte (duel.js), con su propia duración
+    const cw = ru > W.ct ? (ru - W.ct) / W.duelRipSpan(p) : Math.max(0, p.counterT - W.ct) / W.COMBAT.counterWin, con = cw > 0;
     if (hud.ctW._on !== con) { hud.ctW._on = con; hud.ctW.classList.toggle("on", con); }
     if (con) hud.ctP.style.width = (100 * cw).toFixed(1) + "%";
     // barras del enemigo más cercano (vivo o recién caído, sin desvanecer)
@@ -473,6 +485,7 @@
     }
     for (const f of fighters) if (f.ch) f.ch.uniforms.uFlash.value = f.flash;
     updateHud();
+    if (W.duelAfter) W.duelAfter(dt);                 // riposte, ritmo, rebote, cámara del remate (duel.js)
     if (W.practiceAfter) W.practiceAfter(dt);         // barras de postura centrales, entrenamiento (practice.js)
   };
 })();

@@ -52,10 +52,11 @@
     }
     return best;
   };
-  function attackFoe(f) {
+  function attackFoe(f, ts) {
     const p = W.player, pf = W.pf;
     const d = Math.hypot(f.body.x - p.x, f.body.z - p.z), dir = Math.atan2(f.body.z - p.z, f.body.x - p.x);
-    if (d <= 3.2 || pf.act) { pf.input("attack", { dir }); pendingAttack = null; return "attack"; }
+    // ts: instante del toque (para el ritmo del riposte cuenta cuándo bajó el dedo, no cuándo se levantó)
+    if (d <= 3.2 || pf.act) { pf.input("attack", { dir, ts }); pendingAttack = null; return "attack"; }
     // lejos: va hacia él y ataca al llegar
     const path = W.findPath(p.x, p.z, f.body.x - Math.cos(dir) * 1.1, f.body.z - Math.sin(dir) * 1.1);
     if (path.length) { p.setPath(path, { noDelay: true }); pendingAttack = { f, t: 0 }; }
@@ -124,7 +125,7 @@
           if (!ptr.down || !ptr.foe || Math.hypot(ptr.x - ptr.x0, ptr.y - ptr.y0) > 14) return;
           const f = ptr.foe, d = Math.hypot(f.body.x - W.player.x, f.body.z - W.player.z);
           if (d > 3.2 && !W.pf.act) return;
-          ptr.atkHold = true; W.pf.input("attack", { dir: Math.atan2(f.body.z - W.player.z, f.body.x - W.player.x), hold: true });
+          ptr.atkHold = true; W.pf.input("attack", { dir: Math.atan2(f.body.z - W.player.z, f.body.x - W.player.x), hold: true, ts: ptr.t0 });
         }, 150);
       }
     });
@@ -152,7 +153,7 @@
       }
       if (ptr.foe && !following) {
         if (e.type === "pointercancel") return;
-        W.lastFoeTap = attackFoe(ptr.foe);
+        W.lastFoeTap = attackFoe(ptr.foe, ptr.t0);
         lastTap = null;
         return;
       }
@@ -201,7 +202,7 @@
       if (e.code === "KeyJ") {
         e.preventDefault();
         const f = W.nearestFoe ? W.nearestFoe(W.pf, 3.4, 2.0) : null;
-        W.pf.input("attack", f ? { dir: Math.atan2(f.body.z - W.player.z, f.body.x - W.player.x), hold: true } : { dir: kbDir(), hold: true });
+        W.pf.input("attack", f ? { dir: Math.atan2(f.body.z - W.player.z, f.body.x - W.player.x), hold: true, ts: e.timeStamp } : { dir: kbDir(), hold: true, ts: e.timeStamp });
       } else if (e.code === "KeyK") { e.preventDefault(); W.pf.input("guardDown", { ts: e.timeStamp }); }
       else if (e.code === "Space") {
         e.preventDefault();

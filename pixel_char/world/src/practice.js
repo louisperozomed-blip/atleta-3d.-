@@ -125,7 +125,8 @@
     if (hud.dn.textContent !== nm) hud.dn.textContent = nm;
     setBar(hud.eb, hud.ei, e.post / e.postMax);
     setBar(hud.pb, hud.pi, p.post / p.postMax);
-    const cw = Math.max(0, Math.max(p.counterT, p.airCounterT || 0) - W.ct) / W.COMBAT.counterWin, con = cw > 0;
+    const ru = W.duelRipUntil ? W.duelRipUntil(p) : 0;     // ventana de riposte (duel.js)
+    const cw = ru > W.ct ? (ru - W.ct) / W.duelRipSpan(p) : Math.max(0, Math.max(p.counterT, p.airCounterT || 0) - W.ct) / W.COMBAT.counterWin, con = cw > 0;
     if (hud.cw._on !== con) { hud.cw._on = con; hud.cw.classList.toggle("on", con); }
     if (con) hud.ci.style.width = (100 * Math.min(1, cw)).toFixed(1) + "%";
   };

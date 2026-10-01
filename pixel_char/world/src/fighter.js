@@ -74,6 +74,11 @@
   W.combatFrameAt = frameAt;
   W.combatDur = function (an, M) { return cumOf(M || meta(), an)[6]; };
   const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+  // hoja que pinta la acción (Duelo 3: riposte, deathblow, deflected y counter usan su hoja si existe; si no, un
+  // sustituto configurable en W.DUEL, p. ej. attack1 acelerado) y ¿es un golpe? (attack1-3 y los del duelo)
+  const an = (a) => a.sheet || a.name;
+  const isAtk = (a) => !!a && (!!a.atk || a.name.startsWith("attack"));
+  W.isAtk = isAtk; W.actSheet = an;
 
   class Fighter {
     constructor(body, o) {
@@ -108,10 +113,10 @@
     // segundos que faltan para el impacto del ataque en curso (null si no está preparando un ataque)
     toImpact() {
       const a = this.act;
-      if (!a || !a.name.startsWith("attack") || a.f >= 3) return null;
+      if (!a || !isAtk(a) || a.f >= 3) return null;
       const P = a.plan;
       if (P && !P.done) return (P.wind + P.hold + P.rel - P.t) / (a.speed || 1);
-      const c = cumOf(this.M(), a.name);
+      const c = cumOf(this.M(), an(a));
       return (c[3] - (a.tt || 0)) * (a.slow || 1) / (a.speed || 1);
     }
     // ---- entradas ------------------------------------------------------------------------
@@ -122,7 +127,7 @@
         // FINTA: guardia durante la preparación de tu ataque = lo cancelas (gasta stamina) y la pulsación sigue
         // como guardia
         const fa = this.act;
-        if (fa && fa.name.startsWith("attack") && fa.f < 3 && !fa.plan && this.st >= C.feintCost * 0.5) {
+        if (fa && isAtk(fa) && fa.f < 3 && !fa.plan && !fa.noFeint && this.st >= C.feintCost * 0.5) {
           this.st = Math.max(0, this.st - C.feintCost); this.stT = 0; this.act = null; this.atkHeld = false;
           if (W.combatLog) W.combatLog.push({ ev: "feint", who: this.name, anim: fa.name, t: W.U ? +W.U.uTime.value.toFixed(3) : 0 });
           if (W.onFeint) W.onFeint(this, fa);
@@ -141,7 +146,7 @@
       if (type === "guardUp") { this.guardHeld = false; return true; }
       if (type === "attackUp") { this.atkHeld = false; return true; }          // suelta el golpe retenido
       if (type === "attack" && data && data.hold) this.atkHeld = true;
-      this.buf = { type, t: this.time, data };
+      this.buf = { type, t: this.time, data, pt: type === "attack" ? W.pressTime(data && data.ts, this.team === "player") : undefined };
       this.tryBuffered();
       return true;
     }
@@ -161,19 +166,24 @@
         if (type === "dodge") return this.st >= C.dodgeCost * 0.5;
         return true;
       }
-      if (a.name === "death" || a.name === "stun") return false;
-      const cm = this.M().animations[a.name] || {};
+      if (a.name === "death" || a.name === "stun" || a.name === "deflected") return false;
+      const cm = this.M().animations[an(a)] || {};
       const cancel = cm.cancel || {};
       const f = a.f;
-      if (a.name.startsWith("attack")) {
-        if (type === "attack") return !!cm.next && f >= 3;            // ventana de encadenado: IMPACT..RECOVERY
+      if (isAtk(a)) {
+        if (type === "attack") {
+          // riposte encadenado y remate: los decide duel.js (null = regla normal)
+          const r = W.duelCan ? W.duelCan(this, a) : null;
+          if (r != null) return r;
+          return !!cm.next && !a.noChain && f >= 3;                   // ventana de encadenado: IMPACT..RECOVERY
+        }
         if (type === "dodge") return (cancel.dodge || []).indexOf(f) >= 0 && this.st >= C.dodgeCost * 0.5;
         if (type === "parry") return f >= 4;
         return false;
       }
       if (a.name === "block") return type === "dodge" ? this.st >= C.dodgeCost * 0.5 : type === "attack" || type === "parry";
       // tras un parry perfecto se puede contraatacar al instante (ventana de contraataque)
-      if (a.name === "parry") return type === "attack" && this.counterT > W.ct ? true : (type === "attack" || type === "dodge") ? f >= 4 : type === "parry" && f >= 3;
+      if (a.name === "parry") return type === "attack" && (this.counterT > W.ct || (this.rip && W.ct <= this.rip.until)) ? true : (type === "attack" || type === "dodge") ? f >= 4 : type === "parry" && f >= 3;
       if (a.name === "dodge") return f >= 5;
       if (a.name === "hit") return a.gb ? false : (type === "dodge" || type === "parry") ? f >= 4 : f >= 5;
       return false;
@@ -186,11 +196,15 @@
         return;
       }
       if (type === "attack") {
+        // Duelo 3: riposte tras un parry (y su ritmo), remate al enemigo aturdido (duel.js)
+        const dn = W.duelAttack ? W.duelAttack(this, data, t0) : null;
+        if (dn === "queued" || dn === "none") return;
+        if (dn) { this.act = null; this.startAttack(dn, data); return; }
         const a = this.act;
-        const next = a && a.name.startsWith("attack") ? this.M().animations[a.name].next : null;
+        const next = a && isAtk(a) && !a.noChain ? (this.M().animations[an(a)] || {}).next : null;
         // pulsado en IMPACT: queda marcado y el golpe siguiente empieza al entrar en FOLLOW THROUGH
         if (next && a.f < 4) { a.chain = true; a.chainData = data; return; }
-        this.startAttack(next || "attack1", data);
+        this.startAttack(next && next.startsWith("attack") ? next : "attack1", data);
       } else if (type === "parry") { this.guardT = t0 != null ? t0 : W.ct; this.start("parry", { pressT: this.guardT }); }
       else if (type === "dodge") this.startDodge(data);
       else if (type === "jump") this.body.doJump();
@@ -204,10 +218,13 @@
       return this.act;
     }
     startAttack(name, data) {
-      const k = name === "attack3" ? 2 : name === "attack2" ? 1 : 0;
-      this.st = Math.max(0, this.st - C.attackCost[k]); this.stT = 0;
-      const a = this.start(name, { chain: false });
+      const k = name === "attack3" || name === "deathblow" ? 2 : name === "attack2" ? 1 : 0;
+      this.st = Math.max(0, this.st - C.attackCost[k] * (name === "riposte" ? 0.5 : 1)); this.stT = 0;
+      const a = this.start(name, { chain: false, atk: true });
       a.slow = this.prepK;
+      // hoja propia o sustituto (W.DUEL): riposte → attack1 ×1.4, deathblow → attack3, counter → attack1 rápido
+      const R = W.duelSheet ? W.duelSheet(this, name) : null;
+      if (R) { a.sheet = R.sheet; a.speed = R.speed; a.fb = R.fb; if (R.trail) a.trail = R.trail; if (R.fb || R.noChain) a.noChain = true; a.slow = 1; }
       if (data) {
         if (data.plan) { a.plan = Object.assign({ t: 0, hold: 0 }, data.plan); a.slow = 1; }
         if (data.move) a.move = data.move;
@@ -217,7 +234,7 @@
         if (data.track) a.track = true;                // persigue al objetivo hasta el impacto (agarre, barrido)
         if (data.hold) a.holdable = true;              // retraso: se queda en la carga mientras se mantenga
       }
-      if (this.counterT && W.ct <= this.counterT) { a.counter = true; this.counterT = 0; }   // contraataque
+      if (this.counterT && W.ct <= this.counterT && name !== "riposte" && name !== "deathblow") { a.counter = true; this.counterT = 0; }   // contraataque
       // atracción suave hacia el enemigo más cercano (delante, a menos de 3.4 u): gira hacia él y se acerca
       // durante la preparación hasta quedar a distancia de golpe
       const tgt = W.nearestFoe ? W.nearestFoe(this, (data && data.seek) || 3.4, 2.0) : null;
@@ -232,6 +249,7 @@
         a.target = tgt;
       } else a.lunge = name === "attack3" ? 0.9 : name === "attack2" ? 0.35 : 0.25;   // estocada al aire
       a.moved = 0;
+      if (W.duelStarted) W.duelStarted(this, a);     // riposte n.º, remate (duel.js)
     }
     startDodge(data) {
       const b = this.body;
@@ -321,9 +339,9 @@
       // preparación más lenta (enemigo): los frames anteriores al activo avanzan más despacio
       let sp = a.speed, over = null;
       const P = a.plan;
-      if (P && !P.done && a.name.startsWith("attack")) {
+      if (P && !P.done && isAtk(a)) {
         // plan del golpe: CARGA (0-1) → RETENCIÓN (1 fijo) → SUELTA (2) → impacto
-        const c = cumOf(this.M(), a.name), t1 = P.wind, t2 = t1 + P.hold, t3 = t2 + P.rel;
+        const c = cumOf(this.M(), an(a)), t1 = P.wind, t2 = t1 + P.hold, t3 = t2 + P.rel;
         if (P.feintNow) a.tt = c[2] - 1e-4;                       // finta: congelado al final de la carga
         else if (P.feint && P.t + dt * a.speed >= t1) { P.t = t1; a.tt = c[2] - 1e-4; P.feintNow = true; if (this.onPhase) this.onPhase(a, "feint"); }
         else {
@@ -336,16 +354,16 @@
           else { a.tt = c[3] + (P.t - t3); P.done = true; over = (P.t - t3) / (a.speed || 1); }
         }
       } else {
-        if (a.slow && a.slow !== 1 && a.name.startsWith("attack") && a.f < 3) sp /= a.slow;
+        if (a.slow && a.slow !== 1 && isAtk(a) && a.f < 3) sp /= a.slow;
         let nt = (a.tt || 0) + dt * sp;
         // RETRASO: mientras se mantenga el ataque, la preparación se queda al final de la carga (frame 1)
-        if (a.holdable && a.name.startsWith("attack") && a.f < 3) {
-          const c2 = cumOf(this.M(), a.name)[2];
+        if (a.holdable && isAtk(a) && a.f < 3) {
+          const c2 = cumOf(this.M(), an(a))[2];
           if (this.atkHeld && nt >= c2 && (a.heldT || 0) < C.holdMax) { nt = c2 - 1e-4; a.heldT = (a.heldT || 0) + dt; if (a.heldT >= C.holdMax) this.atkHeld = false; }
         }
         a.tt = nt;
       }
-      const f = frameAt(a.name, a.tt, this.M());
+      const f = frameAt(an(a), a.tt, this.M());
       if (a.name === "block") {
         // bucle de la guardia (HOLD 1-2) mientras se mantiene; 3 = recibe un golpe; 5 = baja
         if (a.react != null) { a.react -= dt; a.f = 3; if (a.react <= 0) a.react = null; }
@@ -360,7 +378,7 @@
         this.act.tt = 0.07;
         return;
       }
-      if (f >= 6) {
+      if (f >= 6 || (a.flinchEnd != null && f >= a.flinchEnd)) {
         if (a.name === "death") { a.f = 5; return; }
         this.act = null;
         return;
@@ -369,20 +387,20 @@
       if (a.f !== a.fPrev) {
         // instante exacto del impacto: lo que el frame se pasó en este paso no cuenta (20 fps en móvil = hasta
         // 50 ms de error si se midiera con el frame)
-        if (a.name.startsWith("attack") && a.f >= 3 && a.fPrev < 3 && a.impactT == null) {
-          const c = cumOf(this.M(), a.name);
+        if (isAtk(a) && a.f >= 3 && a.fPrev < 3 && a.impactT == null) {
+          const c = cumOf(this.M(), an(a));
           a.impactT = W.ct - Math.max(0, over != null ? over : (a.tt - c[3]) / Math.max(1e-6, sp));
         }
         if (W.onCombatFrame) W.onCombatFrame(this, a);
       }
       // combo: pulsación dentro de la ventana de encadenado
-      if (a.name.startsWith("attack") && a.chain && a.f >= 4) { a.chain = false; this.startAttack(this.M().animations[a.name].next, a.chainData); return; }
+      if (isAtk(a) && a.chain && a.f >= 4) { a.chain = false; const nx = a.chainName || this.M().animations[an(a)].next; this.act = null; this.startAttack(nx, a.chainData); return; }
       this.motion(a, dt);
     }
     // desplazamientos del cuerpo durante las acciones (estocada, esquiva, retroceso)
     motion(a, dt) {
       const b = this.body;
-      if (a.name.startsWith("attack")) {
+      if (isAtk(a)) {
         if (a.track && a.target && a.target.alive && a.f < 3) {
           const tb = a.target.body, d = Math.hypot(tb.x - b.x, tb.z - b.z);
           a.aim = Math.atan2(tb.z - b.z, tb.x - b.x);
@@ -393,7 +411,7 @@
           b.heading += d * Math.min(1, dt * 22);
         }
         // la estocada ocurre durante la preparación y el impacto (frames 1-3)
-        const c = cumOf(this.M(), a.name);
+        const c = cumOf(this.M(), an(a));
         const t0 = a.lungeFrom === "release" ? c[2] : c[1], t1 = c[4];
         const u = Math.min(1, Math.max(0, (a.tt - t0) / (t1 - t0)));
         const want = a.lunge * (1 - Math.pow(1 - u, 2));
@@ -414,7 +432,7 @@
         const want = this.dodgeDist * (1 - Math.pow(1 - u, 2.2));
         const step = want - a.moved;
         if (step > 0) { b.tryMove(Math.cos(a.dir) * step, Math.sin(a.dir) * step); a.moved += step; }
-      } else if (a.name === "hit" || a.name === "death") {
+      } else if (a.name === "hit" || a.name === "death" || a.name === "deflected") {
         const T = 0.28, u = Math.min(1, a.tt / T);
         const want = (a.kb || 0) * (1 - Math.pow(1 - u, 2));
         const step = want - a.moved;
@@ -423,7 +441,7 @@
     }
     respawn(x, z) {
       this.hp = this.hpMax; this.st = this.stMax; this.post = 0; this.act = null; this.buf = null; this.flash = 0;
-      this.guardHeld = false; this.pen = 0; this.counterT = 0; this.airCounterT = 0; this._defl = null;
+      this.guardHeld = false; this.pen = 0; this.counterT = 0; this.airCounterT = 0; this._defl = null; this.rip = null;
       if (x != null) { const b = this.body; b.x = x; b.z = z; b.y = b.ground = W.heightAt(x, z); b.path = []; b.speed = 0; }
     }
   }

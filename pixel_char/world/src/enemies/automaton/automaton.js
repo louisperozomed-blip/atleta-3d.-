@@ -267,7 +267,8 @@
         if (!f.alive || f.stunned || !W.pf.alive) return this.endChain(false);
         if (a && a.name === "hit") { if (!a.recoil) return this.endChain(false); C.readyT = this.t; return; }   // desviado: retrocede y sigue
         if (a && a.name === "dodge") return;
-        if (a && a.name.startsWith("attack")) {
+        if (a && a.name === "deflected") return this.endChain(false);   // tu parry perfecto le corta la cadena
+        if (a && W.isAtk(a)) {
           const st = C.steps[C.i], P = a.plan;
           // finta: al terminar la carga, corta y cambia de golpe
           if (st.feint && !C.feinted && P && P.feintNow) {
@@ -367,13 +368,13 @@
         if (!f.alive || this.vent > 0 || this.exposed > W.ct || f.stunned) return false;
         // pesado: se repone del golpe recibido enseguida (desde su 2.º frame) para defender el siguiente
         return !a || a.name === "block" || a.name === "parry" || (a.name === "hit" && !a.gb && !a.exposed && a.f >= 1) ||
-          (a.name.startsWith("attack") && a.f >= 5 && !this.chain);
+          (W.isAtk(a) && a.f >= 5 && !this.chain);
       },
       defendStep() {
         const c = this.commit, now = W.ct;
         if (!c) return;
         if (now > c.at + 0.3) { this.commit = null; return; }
-        if (!this.freeToDefend()) { if (!f.act || !f.act.name.startsWith("attack")) return; this.commit = null; return; }
+        if (!this.freeToDefend()) { if (!f.act || !W.isAtk(f.act)) return; this.commit = null; return; }
         const b = f.body, pl = W.pf;
         // te ve tambaleándote (le has dado a su guardia o te ha desviado): no va a llegar ese golpe
         if (!c.stanceOn && now >= c.stance && pl.act && (pl.act.name === "hit" || pl.act.name === "death")) { this.commit = null; return; }
@@ -456,7 +457,7 @@
   }
   function onFrame(f, a) {
     if (a.name === "hit" && a.f === 0 && f.ai) f.ai.lastHits.push(f.ai.t);
-    if (a.name.startsWith("attack") && a.f === 2 && W.sfx) W.sfx.combat(a.name === "attack2" || (a.level || 0) >= 2 ? "swingHeavy" : "swing");
+    if (W.isAtk(a) && a.f === 2 && W.sfx) W.sfx.combat(a.name === "attack2" || (a.level || 0) >= 2 ? "swingHeavy" : "swing");
     if (a.name.startsWith("attack") && a.f === 3 && a.move === "sweep" && W.fx) {
       // barrido bajo: tierra a ras de suelo a lo largo del arco
       const b = f.body;
@@ -483,13 +484,13 @@
     const a = f.act, tt = ai ? ai.t : 0;
     let red = false;
     f.relFlash = Math.max(0, (f.relFlash || 0) - dt / 0.18);
-    if (a && a.name.startsWith("attack") && a.f < 3) {
+    if (a && W.isAtk(a) && a.f < 3) {
       const P = a.plan;
       red = (a.level || 0) >= 3;
       if (!P || P.t < P.wind) k = 1.6 + 1.8 * (0.5 + 0.5 * Math.sign(Math.sin(tt * 2 * Math.PI * (red ? 9 : 7))));   // CARGA: parpadea
       else if (P.t < P.wind + P.hold) k = 3.4;                                                                      // RETENCIÓN: fijo
       else k = 3.0 + 3.0 * f.relFlash;                                                                             // SUELTA: destello
-    } else if (a && a.name.startsWith("attack") && (a.level || 0) >= 3) red = true;
+    } else if (a && W.isAtk(a) && (a.level || 0) >= 3) red = true;
     if (a && a.name === "stun") k = 0.5 + 0.4 * Math.sin(tt * 10);
     if (f.eyeBlink > 0) { f.eyeBlink -= dt; k = 0.25; }                                                           // finta: se apaga un instante
     // resoplando tras la cadena (ventana de castigo): ojo apagado y vapor

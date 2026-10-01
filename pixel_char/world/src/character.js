@@ -346,7 +346,8 @@
             const delta = ((st.dirWanted - st.dir) % 8 + 8) % 8;
             st.dir = (st.dir + (delta <= 4 ? 1 : 7)) % 8; st.lastStep = st.time;
           }
-          let an = act.name === "stun" ? "hit" : act.name, fr = Math.max(0, Math.min(5, act.f | 0));
+          // act.sheet: hoja que la pinta (Duelo 3: la propia o el sustituto de W.DUEL)
+          let an = act.name === "stun" ? "hit" : (act.sheet || act.name), fr = Math.max(0, Math.min(5, act.f | 0));
           // pose compuesta (golpes peligrosos del autómata: frames de otras hojas)
           if (act.show && act.show[fr]) { an = act.show[fr][0]; fr = act.show[fr][1]; }
           st.anim = an; st.frame = fr; st.settle = null; st.wfx = null; st.fi = null; st.idleT = 0;
@@ -471,7 +472,9 @@
           lean = 0.045 * xp * Math.min(1, p.speed / Math.max(p.runV, 1e-3));
         }
         st.lean = (st.lean || 0) + (lean - (st.lean || 0)) * Math.min(1, (st.dt || 0) * 8);
-        uniforms.uBody.value.z = st.lean;
+        // rebote por código (Duelo 3: desequilibrado sin hoja propia, el cuerpo se echa atrás y vuelve)
+        const fa = p.fighter && p.fighter.act;
+        uniforms.uBody.value.z = st.lean + (fa && fa.bounceLean ? fa.bounceLean : 0);
         uniforms.uBody.value.x = W.wpp ? -dip * W.wpp / unitsH / FH : 0;
         if (anim === "run" && !W.FX.impact) bob = 0.026 * W.CHAR_H * Math.pow(Math.sin(st.phase * 2 * Math.PI), 2);
         // esquiva y golpe recibido: el desplazamiento pintado de los pies se compensa (el cuerpo lo mueve el

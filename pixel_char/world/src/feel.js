@@ -208,8 +208,9 @@
     }
     // --- cámara: más cerca en reposo, más lejos al correr -------------------------------------------------
     if (st.anim === "idle" && !p.path.length) F.idleT += dt; else F.idleT = 0;
-    const zt = !F.on.cam ? 1 : st.anim === "run" ? 0.9 : F.idleT > 0.8 ? 1.09 : 1;
-    const zk = F.zoomK + (zt - F.zoomK) * (1 - Math.exp(-dt * (zt < F.zoomK ? 1.6 : 0.7)));
+    const dz = W.duelZoom ? W.duelZoom() : 0;             // remate: la cámara se acerca un poco (duel.js)
+    const zt = (!F.on.cam ? 1 : st.anim === "run" ? 0.9 : F.idleT > 0.8 ? 1.09 : 1) * (1 + dz);
+    const zk = dz > 0 ? F.zoomK + (zt - F.zoomK) * Math.min(1, dt * 12) : F.zoomK + (zt - F.zoomK) * (1 - Math.exp(-dt * (zt < F.zoomK ? 1.6 : 0.7)));
     if (Math.abs(zk - F.zoomK) > 1e-5) { F.zoomK = zk; if (W.setProj) W.setProj(); }
     // --- primer plano con paralaje --------------------------------------------------------------------------
     if (fg) {
