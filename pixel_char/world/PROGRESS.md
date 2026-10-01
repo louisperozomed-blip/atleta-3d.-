@@ -856,3 +856,12 @@ afectan las mecánicas del jugador, no su IA.
   no de dados); eco 31/31.
 - Capturas: `review/parry2/E4_guardia_leida.png` (guardia leída, ojo ámbar) y `E4_panel.png` (panel con la lectura
   y la adaptativa).
+- **Pruebas** `tests/parry2.mjs` (STAGES=5): 3/3 OK, sin errores JS. Comprueban:
+  - que el entrenamiento repite «cuatro» tres veces sin defenderse y nadie muere;
+  - los textos del indicador: «PERFECTO · 45 ms antes», «PARRY · 130 ms antes», «PRONTO · 450 ms antes», «TARDE · 14 ms» y «BARRIDO → salta»;
+  - las barras visibles cerca y ocultas lejos, con anchos 40/25 %, y la ventana de contraataque que se enciende y se apaga.
+
+  Etapas 1-5 seguidas en una misma página: **48/48**.
+- **Regresión**: autómata 21/21, eco 31/31.
+- Capturas: `review/parry2/E5_entrenamiento.png` y `E5_barras_contra.png` (barras centrales y ventana de contraataque
+  dorada).

@@ -1,0 +1,693 @@
+{
+ "results": [
+  {
+   "name": "niveles: ≤70 ms = PERFECTO, resto de la ventana (≤200 ms) = NORMAL, fuera de ventana = BLOQUEO, ataque 1 y 2",
+   "ok": true,
+   "info": {
+    "attack1@30": "perfect:30",
+    "attack1@65": "perfect:65",
+    "attack1@100": "normal:100",
+    "attack1@190": "normal:190",
+    "attack1@270": "block:270",
+    "attack2@30": "perfect:30",
+    "attack2@65": "perfect:65",
+    "attack2@100": "normal:100",
+    "attack2@190": "normal:190",
+    "attack2@270": "block:270",
+    "held@600": "block",
+    "tap@450": "hit"
+   }
+  },
+  {
+   "name": "guardia mantenida desde antes = BLOQUEO; tocar demasiado pronto y soltar = golpe",
+   "ok": true,
+   "info": {
+    "mantenida": "block",
+    "pronto": "hit"
+   }
+  },
+  {
+   "name": "la antelación medida coincide con la real (±2 ms): se mide al instante exacto del impacto",
+   "ok": true,
+   "info": [
+    [
+     40,
+     40
+    ],
+    [
+     120,
+     120
+    ],
+    [
+     180,
+     180
+    ]
+   ]
+  },
+  {
+   "name": "PERFECTO: mucha postura al enemigo, 0 para ti, sin gasto de stamina",
+   "ok": true,
+   "info": {
+    "perfecto": [
+     {
+      "enemigo": 24,
+      "tu": 0,
+      "stamina": 0,
+      "contra": 0.35,
+      "hitstop": "perfect"
+     },
+     {
+      "enemigo": 28,
+      "tu": 0,
+      "stamina": 0,
+      "contra": 0.35,
+      "hitstop": "perfect"
+     }
+    ]
+   }
+  },
+  {
+   "name": "NORMAL: postura media al enemigo y un pequeño coste de postura para ti",
+   "ok": true,
+   "info": {
+    "normal": [
+     {
+      "enemigo": 18,
+      "tu": 7,
+      "stamina": 0,
+      "contra": -15.878,
+      "hitstop": "normal"
+     },
+     {
+      "enemigo": 21,
+      "tu": 10,
+      "stamina": 0,
+      "contra": -16.844,
+      "hitstop": "normal"
+     }
+    ]
+   }
+  },
+  {
+   "name": "BLOQUEO: nada de postura al enemigo, más coste para ti y gasto de stamina",
+   "ok": true,
+   "info": {
+    "bloqueo": [
+     {
+      "enemigo": 0,
+      "tu": 18,
+      "stamina": -22
+     },
+     {
+      "enemigo": 0,
+      "tu": 26,
+      "stamina": -36
+     }
+    ]
+   }
+  },
+  {
+   "name": "PERFECTO: sonido propio y hitstop más largo que el normal",
+   "ok": true,
+   "info": {
+    "perfect": {
+     "hitstop": 0.16,
+     "sonido": "parryPerfect"
+    },
+    "normal": {
+     "hitstop": 0.11,
+     "sonido": "parry"
+    }
+   }
+  },
+  {
+   "name": "ventana de contraataque ~350 ms tras un PERFECTO: el golpe que empiezas en ella hace daño extra (×1.6) y no se puede defender",
+   "ok": true,
+   "info": {
+    "ventana": 0.35,
+    "ev": [
+     "adapt",
+     "counter",
+     "hit"
+    ],
+    "dmg": 16
+   }
+  },
+  {
+   "name": "pasada la ventana, el golpe es normal (y el enemigo puede defenderse)",
+   "ok": true,
+   "info": {
+    "ventana": 0.35,
+    "ev": [
+     "adapt",
+     "hit"
+    ],
+    "dmg": 10
+   }
+  },
+  {
+   "name": "spam: pulsar seguido encoge la ventana (penalización que se recupera sola)",
+   "ok": true,
+   "info": {
+    "win": 0.094,
+    "ev": "parry"
+   }
+  },
+  {
+   "name": "a 20 fps (pasos de 50 ms) los niveles salen igual: 50 ms → PERFECTO, 180 ms → NORMAL",
+   "ok": true,
+   "info": [
+    "perfect:50",
+    "normal:180"
+   ]
+  },
+  {
+   "name": "event.timeStamp: la pulsación cuenta desde el evento, no desde que se procesa (60 ms de retraso → 60 ms antes)",
+   "ok": true,
+   "info": {
+    "sinRetraso": "perfect:20",
+    "sinRetraso_faltaba": 20,
+    "procesado60msTarde": "normal:80",
+    "procesado60msTarde_faltaba": 20
+   }
+  },
+  {
+   "name": "calibración +40 ms: una pulsación que llega justo después del impacto cuenta como PERFECTO (sin calibrar, golpe)",
+   "ok": true,
+   "info": {
+    "calib0": {
+     "tarde": 14,
+     "res": "hit"
+    },
+    "calib40": {
+     "tarde": 14,
+     "res": "perfect:26"
+    },
+    "median": 40
+   }
+  },
+  {
+   "name": "prueba de ritmo: la mediana del desfase de los toques da la calibración",
+   "ok": true,
+   "info": {
+    "calib": 40
+   }
+  },
+  {
+   "name": "panel ⚙: deslizador de latencia y prueba de ritmo",
+   "ok": true,
+   "info": {
+    "slider": true,
+    "box": true
+   }
+  },
+  {
+   "name": "un parry NUNCA rompe tu postura aunque la barra esté llena",
+   "ok": true,
+   "info": {
+    "ev": "parry",
+    "post": 100,
+    "act": "parry",
+    "roto": false
+   }
+  },
+  {
+   "name": "un bloqueo sí puede romperla (POSTURA ROTA)",
+   "ok": true,
+   "info": {
+    "ev": [
+     "playerPostureBreak",
+     "block"
+    ],
+    "roto": true,
+    "act": "hit(rota)"
+   }
+  },
+  {
+   "name": "mantener la guardia sin recibir golpes recupera tu postura más deprisa (2.5 s)",
+   "ok": true,
+   "info": {
+    "guardia": 52,
+    "quieto": 8
+   }
+  },
+  {
+   "name": "postura del autómata por parry: 18-28 según el golpe y el nivel",
+   "ok": true,
+   "info": {
+    "normal_attack1": 18,
+    "normal_attack2": 21,
+    "perfect_attack1": 24,
+    "perfect_attack2": 28
+   }
+  },
+  {
+   "name": "bonus creciente por desvíos seguidos en la misma cadena (+3 cada uno); se pierde con una pausa o un bloqueo",
+   "ok": true,
+   "info": {
+    "racha": [
+     18,
+     21,
+     24,
+     27
+    ],
+    "tras_pausa": 18,
+    "tras_bloqueo": 18
+   }
+  },
+  {
+   "name": "una cadena de 4 desviada con perfectos le rompe la postura; con normales se queda cerca",
+   "ok": true,
+   "info": {
+    "normales": {
+     "post": 96,
+     "aturdido": false
+    },
+    "perfectos": {
+     "post": 100,
+     "aturdido": true
+    }
+   }
+  },
+  {
+   "name": "la recuperación de postura depende de la vida (dañar su vida la frena): con 30 % de vida, < 40 % de la recuperación con vida llena",
+   "ok": true,
+   "info": {
+    "vida_llena": {
+     "enemigo": 22,
+     "jugador": 22
+    },
+    "vida_30": {
+     "enemigo": 6,
+     "jugador": 6
+    }
+   }
+  },
+  {
+   "name": "cadenas de 2 a 4 golpes que combinan attack1 y attack2 (y a veces un peligroso)",
+   "ok": true,
+   "info": {
+    "n": 15,
+    "planificadas": "2424222222222422",
+    "completas": "242422222222222",
+    "cadenas": [
+     "lpr:attack2,attack1",
+     "cuatro:attack1,attack1,attack2,attack1",
+     "agarre:attack1,grab",
+     "cuatro:attack1,attack1,attack2,attack1",
+     "dos:attack1,attack2",
+     "lpr:attack2,attack1",
+     "estocada:attack2,thrust",
+     "lpr:attack2,attack1",
+     "agarre:attack1,grab",
+     "dos:attack1,attack2"
+    ]
+   }
+  },
+  {
+   "name": "desviar la cadena completa = un parry por golpe («clin-clin-clin»)",
+   "ok": true,
+   "info": [
+    "lpr: 2 desvíos, 1.57 s",
+    "cuatro: 4 desvíos, 1.32/1.32/1.55 s",
+    "cuatro: 4 desvíos, 1.32/1.32/1.55 s",
+    "dos: 2 desvíos, 1.4 s",
+    "lpr: 2 desvíos, 1.58 s"
+   ]
+  },
+  {
+   "name": "ritmos distintos: rápido-rápido-lento y lento-pausa-rápido",
+   "ok": true,
+   "info": {
+    "rrl": {
+     "preparaciones": [
+      0.48,
+      0.48,
+      0.95
+     ],
+     "entre_impactos": [
+      1.1,
+      1.7
+     ]
+    },
+    "lpr": {
+     "preparaciones": [
+      0.95,
+      0.48
+     ],
+     "entre_impactos": [
+      1.62
+     ]
+    }
+   }
+  },
+  {
+   "name": "golpe retrasado: retiene la preparación con el ojo FIJO encendido (no parpadea)",
+   "ok": true,
+   "info": {
+    "retenido": true,
+    "ojo_en_retencion": [
+     3.4
+    ],
+    "res": [
+     "parry",
+     "parry"
+    ]
+   }
+  },
+  {
+   "name": "el retraso castiga a quien pulsa de memoria y no a quien espera la suelta",
+   "ok": true,
+   "info": {
+    "memoria": [
+     "hit",
+     "parry"
+    ],
+    "reaccion": [
+     "parry",
+     "parry"
+    ]
+   }
+  },
+  {
+   "name": "finta: corta la carga sin destello de suelta y el golpe nuevo avisa de nuevo con ≥ 350 ms",
+   "ok": true,
+   "info": {
+    "finta": "attack2→attack1",
+    "sueltasAntes": 0,
+    "avisosAntes": 1,
+    "prepDelNuevo": 0.52,
+    "res": [
+     "parry",
+     "parry"
+    ]
+   }
+  },
+  {
+   "name": "como mucho un truco (retraso o finta) por cadena y nunca en dos cadenas seguidas",
+   "ok": true,
+   "info": {
+    "trucos_por_cadena": "10101010101010"
+   }
+  },
+  {
+   "name": "BARRIDO bajo: se salta (y en el aire se contraataca con daño extra); guardia y parry no sirven",
+   "ok": true,
+   "info": {
+    "salto": {
+     "res": "evade:jump",
+     "contra": [
+      35
+     ],
+     "postura": 53
+    },
+    "parry": "hit",
+    "bloqueo": "hit"
+   }
+  },
+  {
+   "name": "ESTOCADA: esquivar HACIA él = contraataque que le quita mucha postura; de lado solo la evita; parry no sirve",
+   "ok": true,
+   "info": {
+    "hacia": {
+     "res": "mikiri",
+     "contra": [],
+     "postura": 63
+    },
+    "lado": {
+     "res": "evade:dodge",
+     "contra": [],
+     "postura": 17
+    },
+    "parry": "hit"
+   }
+  },
+  {
+   "name": "AGARRE: se esquiva de lado; hacia atrás, saltando o con parry te atrapa",
+   "ok": true,
+   "info": {
+    "lado": "evade:side",
+    "atras": "hit",
+    "salto": "hit",
+    "parry": "hit"
+   }
+  },
+  {
+   "name": "justicia: preparación visible ≥ 350 ms en todos los golpes y la suelta avisa ≥ 360 ms antes",
+   "ok": true,
+   "info": {
+    "golpes": 63,
+    "prepMin": 0.48,
+    "sueltaMin": 0.36,
+    "niveles": [
+     "attack1:1:0.36",
+     "attack2:2:0.4",
+     "grab:3:0.46",
+     "sweep:3:0.46",
+     "thrust:3:0.46"
+    ]
+   }
+  },
+  {
+   "name": "avisos más evidentes cuanto más fuerte: zarpazo (1) < barrido (2) < peligrosos (3, ojo ROJO); la suelta avisa antes en los fuertes",
+   "ok": true,
+   "info": {
+    "niveles": [
+     "attack1:1:0.36",
+     "attack2:2:0.4",
+     "grab:3:0.46",
+     "sweep:3:0.46",
+     "thrust:3:0.46"
+    ],
+    "ojo": {
+     "red": 46,
+     "cyan": 43
+    }
+   }
+  },
+  {
+   "name": "nunca ataca mientras estás en el suelo o en tu animación de golpe recibido",
+   "ok": true,
+   "info": {
+    "golpe_recibido": 0,
+    "en_el_suelo": 0,
+    "de_pie": 2
+   }
+  },
+  {
+   "name": "tras cada cadena, ventana de castigo clara (~1 s resoplando: ni ataca ni se defiende)",
+   "ok": true,
+   "info": {
+    "ventana": 0.95,
+    "defensa": [],
+    "golpe": true,
+    "dmg": 10
+   }
+  },
+  {
+   "name": "te lee si te repites: el mismo combo con el mismo ritmo → la mayoría de tus golpes desviados",
+   "ok": true,
+   "info": {
+    "parry": 9,
+    "block": 0,
+    "hit": 5,
+    "desviados": 0.64,
+    "lecturas": 18
+   }
+  },
+  {
+   "name": "si varías el ritmo, retrasas o fintas, falla: pocos golpes desviados",
+   "ok": true,
+   "info": {
+    "parry": 1,
+    "block": 5,
+    "hit": 9,
+    "desviados": 0.07,
+    "fallos_de_su_parry": 2,
+    "fintas": 5
+   }
+  },
+  {
+   "name": "reacción de velocidad humana: 200-260 ms con variación según la dificultad, nunca menos de 200 ms",
+   "ok": true,
+   "info": {
+    "x0.5": {
+     "min": 233,
+     "max": 267,
+     "n": 10
+    },
+    "x1": {
+     "min": 216,
+     "max": 250,
+     "n": 10
+    },
+    "x1.6": {
+     "min": 216,
+     "max": 233,
+     "n": 10
+    },
+    "nota": "medido en pasos de 1/60 s (+17 ms)"
+   }
+  },
+  {
+   "name": "a un golpe más rápido que su reacción (zarpazo, 205 ms) no puede reaccionar: solo lo para si lo ha leído",
+   "ok": true,
+   "info": [
+    "hit",
+    "hit",
+    "hit",
+    "hit",
+    "hit",
+    "hit"
+   ]
+  },
+  {
+   "name": "su parry se ve venir: alza la guardia (ojo ámbar) ≥ 150 ms antes de intentarlo",
+   "ok": true,
+   "info": {
+    "intentos": 7,
+    "antelacion_ms": [
+     233,
+     200,
+     234,
+     234,
+     200,
+     200,
+     200
+    ],
+    "min": 200,
+    "frames_en_guardia": 26,
+    "ojo_ambar": 26
+   }
+  },
+  {
+   "name": "si lo engañas (retrasas el golpe que esperaba), su parry falla y queda EXPUESTO: tu golpe entra con más postura",
+   "ok": true,
+   "info": {
+    "secuencia": [
+     "foeParryTry",
+     "foeParryWhiff",
+     "hit",
+     "foeRead",
+     "foeGuard",
+     "foeParryTry",
+     "foeParryWhiff"
+    ],
+    "golpe_con_expuesto": true,
+    "postura": 10.5,
+    "golpe": {
+     "ev": "hit",
+     "who": "autómata",
+     "from": "jugador",
+     "anim": "attack1",
+     "dmg": 10,
+     "hp": 999739,
+     "res": "hit",
+     "surface": "dust",
+     "t": 638.427
+    }
+   }
+  },
+  {
+   "name": "tus herramientas: FINTA (guardia durante la preparación cancela tu golpe y gasta stamina) y RETRASO (mantener el ataque)",
+   "ok": true,
+   "info": {
+    "finta": {
+     "ev": [
+      "feint"
+     ],
+     "stamina": -14,
+     "act": "parry"
+    },
+    "normal": 205,
+    "retenido": 422
+   }
+  },
+  {
+   "name": "su conocimiento de tus hábitos se reinicia cada vez que reaparece",
+   "ok": true,
+   "info": {
+    "antes": 10,
+    "despues": 0,
+    "fichas": 0
+   }
+  },
+  {
+   "name": "dificultad adaptativa suave: muertes seguidas → pausas más largas; perfectos seguidos → más cortas y más trucos; se ve en el panel",
+   "ok": true,
+   "info": {
+    "tras_3_muertes": {
+     "adapt": -1.05,
+     "pausas": 1.26,
+     "muertes": 3
+    },
+    "tras_5_perfectos": {
+     "adapt": 0.47,
+     "pausas": 0.88
+    },
+    "panel": "Te lee: aún no\nFichas: 0 · reacción ~232 ms\nAdaptativa: +0.47 (pausas ×0.88, muertes seguidas 0)"
+   }
+  },
+  {
+   "name": "modo entrenamiento (panel ⚙): el autómata repite la cadena elegida, sin leerte ni defenderse, y nadie muere",
+   "ok": true,
+   "info": {
+    "opciones": ",rrl,lpr,dos,cuatro,barrido,estocada,agarre,dos+delay,dos+feint,rrl+delay",
+    "cadenas": [
+     "cuatro",
+     "cuatro",
+     "cuatro"
+    ],
+    "defensa": 0,
+    "vivos": true,
+    "sel": "cuatro"
+   }
+  },
+  {
+   "name": "indicador tras cada golpe: ms de antelación y nivel (PERFECTO / PARRY), PRONTO o TARDE, y en los peligrosos la respuesta",
+   "ok": true,
+   "info": {
+    "perfecto": {
+     "txt": "PERFECTO · 45 ms antes",
+     "early": 45
+    },
+    "normal": {
+     "txt": "PARRY · 130 ms antes",
+     "early": 130
+    },
+    "pronto": {
+     "txt": "PRONTO · 450 ms antes"
+    },
+    "tarde": {
+     "txt": "TARDE · 14 ms"
+    },
+    "peligro": [
+     "PARRY · 110 ms antes",
+     "BARRIDO → salta"
+    ]
+   }
+  },
+  {
+   "name": "barras de postura de ambos siempre visibles en combate (y ocultas lejos), con la ventana de contraataque bajo la tuya",
+   "ok": true,
+   "info": {
+    "cerca": {
+     "enemigo": true,
+     "tu": true,
+     "anchoE": 40,
+     "anchoP": 24.7
+    },
+    "lejos": {
+     "enemigo": false,
+     "tu": false
+    },
+    "contra": {
+     "visible": true,
+     "ancho": 100
+    },
+    "contra_despues": false
+   }
+  }
+ ],
+ "errors": []
+}

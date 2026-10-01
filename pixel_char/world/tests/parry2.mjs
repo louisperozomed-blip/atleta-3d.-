@@ -47,7 +47,9 @@ await page.evaluate(() => {
   const gauss = () => { let u = 0, v = 0; while (!u) u = brand(); while (!v) v = brand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
   window.Bot = {
     on: false, react: 0.25, jit: 0, mode: "react", seen: null, seenWarn: null, pending: null, out: [], airAttack: true,
-    reset(o) { Object.assign(this, { on: true, seen: null, seenWarn: null, pending: null, out: [] }, o || {}); bs = (o && o.seed) || 12345; },
+    reset(o) { Object.assign(this, { on: true, seen: null, seenWarn: null, pending: null, out: [] }, o || {});
+      // semilla mezclada (las semillas pequeñas seguidas daban un primer número ~0 → error extremo) y descarte inicial
+      bs = (((o && o.seed) || 12345) * 2654435761) % 2147483646 + 1; for (let i = 0; i < 8; i++) brand(); },
     step() {
       if (!this.on) return;
       const e = E(), a = e.act, p = W.pf;
@@ -69,7 +71,7 @@ await page.evaluate(() => {
       const e = E(), b = W.player, toE = Math.atan2(e.body.z - b.z, e.body.x - b.x), mv = q.move;
       const kind = this.answer ? this.answer[mv] || this.answer.all : null;
       const act = kind || (mv === "sweep" ? "jump" : mv === "thrust" ? "dodgeToward" : mv === "grab" ? "dodgeSide" : "parry");
-      if (act === "jump") { W.pf.act = W.pf.act && W.pf.act.name === "parry" ? null : W.pf.act; b.doJump(); }
+      if (act === "jump") b.doJump();
       else if (act === "dodgeToward") W.pf.input("dodge", { dir: toE });
       else if (act === "dodgeSide") W.pf.input("dodge", { dir: toE + Math.PI / 2 });
       else if (act === "dodgeBack") W.pf.input("dodge", { dir: toE + Math.PI });
@@ -81,7 +83,7 @@ await page.evaluate(() => {
   // simulación con el bot: n pasos
   window.TB = (n) => { for (let i = 0; i < (n || 1); i++) { Bot.step(); if (Bot.holdUntil && W.ct > Bot.holdUntil) { W.pf.input("guardUp"); Bot.holdUntil = 0; } T(); } };
   // pelea con la IA de cadenas: el autómata 0 ataca solo; el jugador no muere
-  window.duel = (a, d, o) => { pair(a, d || 2.0); const e = E(); e.ai.enabled = true; e.ai.state = "chase"; e.ai.cool = 0.2; e.ai.vent = 0; e.ai.forced = (o && o.chain) || null; e.ai.forcedTrick = (o && o.trick) || null; e.ai.noTricks = !!(o && o.noTricks);
+  window.duel = (a, d, o) => { pair(a, d || 2.0); const e = E(); e.ai.enabled = true; e.ai.passive = false; e.ai.state = "chase"; e.ai.cool = 0.2; e.ai.vent = 0; e.ai.forced = (o && o.chain) || null; e.ai.forcedTrick = (o && o.trick) || null; e.ai.noTricks = !!(o && o.noTricks);
     const p = W.pf; p.hpMax = p.hp = 1e6; W.combatLog.length = 0; };
 });
 const shot = async (name) => { await page.evaluate(() => { W.skipRender = false; T(1); }); await page.screenshot({ path: `${OUT}/${name}.png` }); await page.evaluate(() => { W.skipRender = true; }); };
@@ -144,8 +146,8 @@ if (STAGES.includes(1)) {
     return out;
   });
   check("PERFECTO: sonido propio y hitstop más largo que el normal", fx.perfect.sonido === "parryPerfect" && fx.normal.sonido === "parry" && fx.perfect.hitstop > fx.normal.hitstop, fx);
-  await page.evaluate(() => { pair(Math.PI * 0.75, 2.0); W.skipRender = false; const e = E(); e.startAttack("attack2", { dir: e.body.heading });
-    for (let n = 0; n < 300; n++) { const l = e.toImpact(); if (l != null && l <= 0.03) { W.pf.input("guardDown"); W.pf.input("guardUp"); break; } T(); } T(2); });
+  await page.evaluate(() => { pair(Math.PI * 0.75, 2.0); const e = E(); e.startAttack("attack2", { dir: e.body.heading });
+    for (let n = 0; n < 300; n++) { const l = e.toImpact(); if (l != null && l <= 0.03) { W.pf.input("guardDown"); W.pf.input("guardUp"); break; } T(); } T(1); W.skipRender = false; T(1); });
   await page.screenshot({ path: `${OUT}/E1_perfecto.png` });
   await page.evaluate(() => { W.skipRender = true; T(40); });
 
@@ -554,6 +556,67 @@ if (STAGES.includes(4)) {
   check("dificultad adaptativa suave: muertes seguidas → pausas más largas; perfectos seguidos → más cortas y más trucos; se ve en el panel",
     ad.tras_3_muertes.adapt <= -0.9 && ad.tras_3_muertes.muertes === 3 && ad.tras_3_muertes.pausas >= 1.2 && ad.tras_5_perfectos.adapt > 0.3 && ad.tras_5_perfectos.pausas < 0.95 && /Adaptativa/.test(info) && /Te lee/.test(info), { ...ad, panel: info });
   await page.evaluate(() => { E().ai.adapt = 0; E().ai.deaths = 0; W.skipRender = true; });
+}
+
+// =====================================================================================================
+// ETAPA 5 · práctica y lectura
+// =====================================================================================================
+if (STAGES.includes(5)) {
+  await page.evaluate(() => { W.skipRender = false; T(1); });
+  await page.click("#tbtn");
+  const opts = await page.evaluate(() => [...document.querySelectorAll("#trainSel option")].map((o) => o.value));
+  await page.selectOption("#trainSel", "cuatro");
+  await page.click("#tbtn");
+  const tr = await page.evaluate(() => {
+    const e = E(), p = W.pf; pair(0.6, 2.0); W.setTraining("cuatro"); e.ai.enabled = true; e.ai.state = "chase"; e.ai.cool = 0.2; W.combatLog.length = 0;
+    Bot.reset({ react: 0.25 }); let n = 0;
+    while (n < 60 * 25 && W.combatLog.filter((x) => x.ev === "chainEnd").length < 3) { TB(); n++; }
+    // sin defenderse: le das durante su cadena
+    const ids = W.combatLog.filter((x) => x.ev === "chainStart").map((x) => x.chain);
+    const defensa = W.combatLog.filter((x) => /^foe(Read|Guard|ParryTry|Block)/.test(x.ev)).length;
+    // nadie muere: te dejas golpear (sin bot)
+    Bot.on = false; p.hp = 12; e.hp = 5; for (let i = 0; i < 60 * 4; i++) T();
+    return { opciones: [...document.querySelectorAll("#trainSel option")].length, cadenas: ids, defensa, vivos: p.alive && e.alive, sel: document.getElementById("trainSel").value };
+  });
+  check("modo entrenamiento (panel ⚙): el autómata repite la cadena elegida, sin leerte ni defenderse, y nadie muere",
+    opts.length >= 10 && tr.cadenas.length >= 3 && tr.cadenas.every((c) => c === "cuatro") && tr.defensa === 0 && tr.vivos && tr.sel === "cuatro", { ...tr, opciones: opts.join(",") });
+  // indicador de timing tras cada golpe suyo
+  const ind = await page.evaluate(() => {
+    const r = {};
+    const one = (L, opt) => { pair(0.6, 2.0); W.setTraining("dos"); const e = E(); W.lastTiming = ""; e.startAttack("attack1", { dir: e.body.heading });
+      let n = 0, done = false; while (e.act && e.act.name === "attack1" && !e.act.hitDone && n < 400) { const l = e.toImpact(); if (!done && L != null && l <= L) { W.pf.input("guardDown", { ts: performance.now() + (l - L) * 1000 }); W.pf.input("guardUp"); done = true; } T(); n++; }
+      if (opt === "late") { T(2); W.pf.input("guardDown"); W.pf.input("guardUp"); }
+      T(3); const p = W.combatLog.filter((x) => x.ev === "parry").pop(); return { txt: W.lastTiming, early: p && p.early }; };
+    r.perfecto = one(0.045); r.normal = one(0.13); r.pronto = one(0.45); r.tarde = one(null, "late");
+    // peligroso fallado: la respuesta correcta
+    duel(0.6, 2.0, { chain: "barrido", noTricks: true }); W.setTraining("barrido"); W.lastTiming = ""; Bot.reset({ react: 0.25, answer: { sweep: "parry" } }); let n = 0, txts = [];
+    while (n < 60 * 6 && !W.combatLog.some((x) => x.ev === "chainEnd")) { TB(); n++; if (W.lastTiming && txts[txts.length - 1] !== W.lastTiming) txts.push(W.lastTiming); }
+    r.peligro = txts;
+    return r;
+  });
+  check("indicador tras cada golpe: ms de antelación y nivel (PERFECTO / PARRY), PRONTO o TARDE, y en los peligrosos la respuesta",
+    ind.perfecto.txt === "PERFECTO · " + ind.perfecto.early + " ms antes" && ind.normal.txt === "PARRY · " + ind.normal.early + " ms antes" &&
+    /^PRONTO · 4\d\d ms antes$/.test(ind.pronto.txt) && /^TARDE · \d+ ms$/.test(ind.tarde.txt) && ind.peligro.includes("BARRIDO → salta"), ind);
+  await page.evaluate(() => { W.skipRender = false; pair(Math.PI * 0.75, 2.0); W.setTraining("dos"); const e = E(); e.startAttack("attack2", { dir: e.body.heading });
+    let n = 0, done = false; while (e.act && e.act.name.startsWith("attack") && !e.act.hitDone && n < 400) { const l = e.toImpact(); if (!done && l <= 0.05) { W.pf.input("guardDown"); W.pf.input("guardUp"); done = true; } T(); n++; } T(3); W.skipRender = false; T(1); });
+  await page.screenshot({ path: `${OUT}/E5_entrenamiento.png` });
+  // barras de postura de ambos siempre visibles en combate + ventana de contraataque
+  const bars = await page.evaluate(() => {
+    const r = {}, vis = (id) => getComputedStyle(document.getElementById(id)).display !== "none";
+    W.setTraining(""); pair(0.6, 2.0); E().post = 40; W.pf.post = 25; T(2);
+    const w = (sel) => parseFloat(document.querySelector(sel).style.width);
+    r.cerca = { enemigo: vis("duelE"), tu: vis("duelP"), anchoE: w("#duelE .pb i"), anchoP: w("#duelP .pb i") };
+    const e = E(); W.teleport(e.home.x + 20, e.home.z); T(3); r.lejos = { enemigo: vis("duelE"), tu: vis("duelP") };
+    pair(0.6, 2.0); foeAttack("attack1", pressAt(0.04)); r.contra = { visible: document.querySelector("#duelP .cw").classList.contains("on"), ancho: w("#duelP .cw i") };
+    let n = 0; while (W.ct < W.pf.counterT + 0.02 && n < 60) { T(); n++; } T(1); r.contra_despues = document.querySelector("#duelP .cw").classList.contains("on");
+    return r;
+  });
+  check("barras de postura de ambos siempre visibles en combate (y ocultas lejos), con la ventana de contraataque bajo la tuya",
+    bars.cerca.enemigo && bars.cerca.tu && Math.abs(bars.cerca.anchoE - 40) < 6 && Math.abs(bars.cerca.anchoP - 25) < 6 && !bars.lejos.enemigo && !bars.lejos.tu && bars.contra.visible && !bars.contra_despues, bars);
+  await page.evaluate(() => { W.skipRender = false; pair(Math.PI * 0.75, 2.0); const e = E(); e.post = 62; e.startAttack("attack1", { dir: e.body.heading });
+    let n = 0, done = false; while (e.act && e.act.name.startsWith("attack") && !e.act.hitDone && n < 400) { const l = e.toImpact(); if (!done && l <= 0.04) { W.pf.input("guardDown"); W.pf.input("guardUp"); done = true; } T(); n++; } T(2); W.skipRender = false; T(1); });
+  await page.screenshot({ path: `${OUT}/E5_barras_contra.png` });
+  await page.evaluate(() => { W.setTraining(""); W.skipRender = true; });
 }
 
 const okN = results.filter((r) => r.ok).length;

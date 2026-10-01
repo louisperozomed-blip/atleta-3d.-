@@ -131,6 +131,9 @@
         // spam: una pulsación seguida encoge la ventana del parry (se recupera sola)
         if (pt - this.lastGuardT < C.spamGap) this.pen = Math.min(C.parryPenMax, this.pen + C.parryPen);
         this.lastGuardT = pt;
+        // entrenamiento: una pulsación justo después de que te alcanzara un golpe = «TARDE x ms»
+        const li = W.lastFoeImpact;
+        if (this.team === "player" && li && li.open && W.onLatePress) { const late = pt - li.t; if (late > 0 && late < 0.3) { li.open = false; W.onLatePress(late); } }
         this.buf = { type: "parry", t: this.time, pt, data };
         this.tryBuffered();
         return true;

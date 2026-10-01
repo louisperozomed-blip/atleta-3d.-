@@ -42,6 +42,7 @@
       foes.push(f);
     }
     W.foe = foes[0] || null;
+    if (W.TRAINING && W.TRAINING.on && W.setTraining) W.setTraining(W.TRAINING.id);   // el entrenamiento sigue al cambiar de tipo
     W.combatLog && W.combatLog.push({ ev: "enemies", type, n: foes.length, t: W.U ? +W.U.uTime.value.toFixed(3) : 0 });
     const sel = document.getElementById("enemySel"); if (sel) sel.value = type;
     return foes;
@@ -132,5 +133,6 @@
     bind("dBlock", "block", (v) => Math.round(v * 100) + "%");
     pn.querySelector("#tResp").addEventListener("click", () => W.respawnAll());
     if (W.initCalibUI) W.initCalibUI(pn);           // latencia del parry (calib.js)
+    if (W.initTrainingUI) W.initTrainingUI(pn);     // modo entrenamiento (practice.js)
   };
 })();

@@ -173,7 +173,7 @@
           else if (pl.act !== a) this.pAtks.splice(i, 1);
         }
         // defensa: compromiso por lectura y reacción humana
-        this.defendStep(); this.reactStep();
+        if (!this.training) { this.defendStep(); this.reactStep(); }   // en entrenamiento no te lee ni se defiende
         if (this.stanceUntil && W.ct > this.stanceUntil) { this.stanceUntil = 0; if (f.act && f.act.name === "block") f.guardHeld = false; }
         // cadena en curso: el siguiente golpe sale en la recuperación del anterior (con su pausa)
         if (this.chain) this.runChain(dt);
@@ -259,7 +259,7 @@
         this.addToken("E", W.ct);                     // para el modelo: «terminó su cadena»
         // ventana de castigo: resopla (ni ataca ni se defiende) y luego una pausa antes de la siguiente cadena
         if (clean && f.alive) this.vent = CFG.vent;
-        this.cool = (CFG.pause[0] + rand() * (CFG.pause[1] - CFG.pause[0])) * this.pauseK();
+        this.cool = this.training ? 1.1 : (CFG.pause[0] + rand() * (CFG.pause[1] - CFG.pause[0])) * this.pauseK();
         W.combatLog.push({ ev: "chainEnd", who: f.name, chain: C.id, uid: C.uid, clean, t: +W.U.uTime.value.toFixed(3) });
       },
       runChain(dt) {

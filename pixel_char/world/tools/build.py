@@ -7,7 +7,7 @@ from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORDER = ["core.js", "terrain.js", "props.js", "modules.js", "zones.js", "effects.js", "look.js", "player.js", "walk.js", "feet.js", "character.js",
-         "fighter.js", "combat.js", "calib.js", "enemies/core.js", "enemies/echo/echo.js", "enemies/automaton/automaton.js", "interact.js", "audio.js", "feel.js", "nav.js", "controls.js", "main.js"]
+         "fighter.js", "combat.js", "calib.js", "enemies/core.js", "enemies/echo/echo.js", "enemies/automaton/automaton.js", "practice.js", "interact.js", "audio.js", "feel.js", "nav.js", "controls.js", "main.js"]
 
 
 def webp(path, **kw):

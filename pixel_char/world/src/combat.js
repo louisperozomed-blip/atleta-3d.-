@@ -237,9 +237,13 @@
       const heavy = !!AT.heavy;
       const cx = (b.x + t.body.x) / 2, cz = (b.z + t.body.z) / 2, cy = Math.max(b.y, t.body.y) + 1.05;
       const dmg = AT.dmg * (att.dmgK || 1);
+      const toPlayer = t === W.pf && att.team !== "player";
+      if (toPlayer) W.lastFoeImpact = { t: a.impactT != null ? a.impactT : W.ct, open: false };
       if (AT.perilous) {
         // peligroso: guardia y parry no sirven; solo su respuesta
         const how = perilousAvoid(AT.perilous, t, att);
+        if (toPlayer && W.onDefenseInfo) W.onDefenseInfo({ perilous: AT.perilous, how: how || "hit", move: a.move });
+        if (toPlayer && !how) W.lastFoeImpact.open = true;
         if (how === "mikiri") {
           // esquivar HACIA la estocada: se la pisa; mucha postura y retrocede; tú quedas listo para contraatacar
           W.fx.dust(cx, cy - 0.45, cz, 40, { pal: GOLD, spd: 2.8, up: 2.0, life: 0.5 });
@@ -259,6 +263,9 @@
           continue;
         }
         def = "open";
+      } else if (toPlayer) {
+        if (def === "open") W.lastFoeImpact.open = true;
+        if (W.onDefenseInfo) W.onDefenseInfo({ def, early: t.lastEarly, guardT: t.lastGuardT, impactT: a.impactT, move: a.move || a.name });
       }
       if (def === "evade") {
         log({ ev: "evade", who: t.name, anim: a.name });
@@ -461,5 +468,6 @@
     }
     for (const f of fighters) if (f.ch) f.ch.uniforms.uFlash.value = f.flash;
     updateHud();
+    if (W.practiceAfter) W.practiceAfter(dt);         // barras de postura centrales, entrenamiento (practice.js)
   };
 })();
