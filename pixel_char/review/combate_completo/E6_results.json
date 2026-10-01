@@ -1,0 +1,171 @@
+{
+ "results": [
+  {
+   "name": "repetir L·L·L: la familiaridad sube en cada repetición y, alta, desvía el golpe final (bloquea antes)",
+   "ok": true,
+   "info": [
+    {
+     "fam": 0.24,
+     "read": "",
+     "parried": "",
+     "blocked": "attack3"
+    },
+    {
+     "fam": 0.4,
+     "read": "baja/baja",
+     "parried": "",
+     "blocked": "attack3"
+    },
+    {
+     "fam": 0.52,
+     "read": "media/media",
+     "parried": "",
+     "blocked": "attack2/attack3"
+    },
+    {
+     "fam": 0.6,
+     "read": "media/media",
+     "parried": "",
+     "blocked": "attack2/attack3"
+    },
+    {
+     "fam": 0.65,
+     "read": "alta/alta",
+     "parried": "attack3",
+     "blocked": "attack1/attack2"
+    },
+    {
+     "fam": 0.69,
+     "read": "alta/alta",
+     "parried": "attack3",
+     "blocked": "attack2"
+    },
+    {
+     "fam": 0.72,
+     "read": "alta/alta",
+     "parried": "attack3",
+     "blocked": "attack2"
+    },
+    {
+     "fam": 0.74,
+     "read": "alta/alta",
+     "parried": "attack3",
+     "blocked": "attack2"
+    }
+   ]
+  },
+  {
+   "name": "variar el ritmo (3.º 160 ms tarde) engaña al que te ha leído: su parry falla y queda expuesto",
+   "ok": true,
+   "info": {
+    "fam": {
+     "LLL:r": 0.51,
+     "LLL:m": 0.24
+    },
+    "parried": [],
+    "blocked": [
+     "attack1",
+     "attack2"
+    ],
+    "whiff": 1,
+    "read": [
+     "alta",
+     "alta"
+    ],
+    "interrupt": 0,
+    "hitsMe": 0
+   }
+  },
+  {
+   "name": "con L·H muy leído te interrumpe durante la carga; fintar (guardia en la carga) la cancela",
+   "ok": true,
+   "info": {
+    "fam": {
+     "LH:r": 0.73
+    },
+    "parried": [],
+    "blocked": [
+     "attack1"
+    ],
+    "whiff": 0,
+    "read": [
+     "alta"
+    ],
+    "interrupt": 0,
+    "hitsMe": 0,
+    "before": 0.7
+   }
+  },
+  {
+   "name": "alta familiaridad con un combo que acaba en fuerte: te interrumpe durante la carga",
+   "ok": true,
+   "info": [
+    0,
+    0,
+    0,
+    0,
+    1,
+    1,
+    1
+   ]
+  },
+  {
+   "name": "alternar 3 combos con buen ritmo: su familiaridad se queda baja y apenas desvía",
+   "ok": true,
+   "info": {
+    "parried": 0,
+    "finals": 12,
+    "fams": {
+     "HL:r": 0.4,
+     "LLH:r": 0.29,
+     "LLL:r": 0.08
+    }
+   }
+  },
+  {
+   "name": "cuando te ha leído su ojo parpadea en ámbar; solo desvía lo que ha predicho",
+   "ok": true,
+   "info": {
+    "amber": 22,
+    "blink": true,
+    "parries": 0,
+    "predicciones": 0
+   }
+  },
+  {
+   "name": "en grupo comparten el 50 % de lo aprendido; al reaparecer se reinicia",
+   "ok": true,
+   "info": {
+    "a": 0.519,
+    "b": 0.297,
+    "ratio": 0.57,
+    "trasReaparecer": 0
+   }
+  },
+  {
+   "name": "su HEAVY: preparación más larga (retención ≥ 0,35 s) con aviso evidente (ojo naranja, sonido grave) y rompe la guardia si lo bloqueas",
+   "ok": true,
+   "info": {
+    "anim": "heavy",
+    "prep_ms": 1108,
+    "hold_ms": 383,
+    "eyeOr": 66,
+    "sonido": true,
+    "guardbreak": 1
+   }
+  },
+  {
+   "name": "cadenas con su HEAVY y la rama «lo bloqueas» → HEAVY para romper la guardia",
+   "ok": true,
+   "info": {
+    "rama": "block",
+    "a": "heavy",
+    "cadenas": [
+     "pesado",
+     "pesado2"
+    ]
+   }
+  }
+ ],
+ "errors": []
+}

@@ -1387,3 +1387,37 @@ riposte de 3 en ritmo; DEFLECTED dura ~0,7 s; el 3.º fuera de ritmo lo desvía;
 → DEATHBLOW; reacción por peso (ligero: respingo; fuerte: tambaleo con más retroceso; su barrido amplio aguanta tu
 ligero con hyper armor); te desvía → desequilibrado + COUNTER → lo desvías con un perfecto (intercambio); choque.
 Regresión: duelo 22/22, parry 50/50.
+
+## Etapa 6 — El enemigo castiga la repetición (`enemies/automaton/automaton.js`)
+**Modelo de combos** (además de los trigramas de antes, que siguen para los golpes sueltos): cada combo tuyo se
+reconoce entero por su **firma** = secuencia L/H + ritmo («LLL:r» todo en ritmo, «:x» todo fuera, «:m» mezclado).
+- **Familiaridad por combo**: al terminarlo sube +25 % de lo que falta; los demás bajan ×0,75 (variar); todo se
+  olvida con el tiempo (vida media ~28 s). Umbrales: **baja ≥ 0,2** = bloquea a veces (probabilidad ∝
+  familiaridad); **media ≥ 0,38** = bloquea los golpes que prevé; **alta ≥ 0,55** = **desvía el golpe final** (y
+  bloquea los anteriores) o, si tu combo acaba en un fuerte, **te interrumpe durante la carga** con un zarpazo rápido.
+- Predicción: con lo que llevas del combo busca el combo más familiar que empieza igual; tras el impacto de cada
+  golpe prevé el siguiente: el **pulso** del ritmo + tu **desfase habitual** en ese paso (aprendido) + la
+  preparación del golpe que toca; y se compromete (guardia visible 280-340 ms antes, parry 90 ms antes).
+- **Justicia**: solo desvía lo que ha **predicho** (lo demás, a lo sumo lo bloquea reaccionando en 200-260 ms, como
+  antes); cuando te ha leído su **ojo parpadea en ámbar**; **variar el combo, el ritmo o fintar siempre lo engaña**
+  (su parry se queda en el aire y queda EXPUESTO). En entrenamiento no se compromete.
+- **Grupo**: cada autómata tiene su modelo, pero al terminar un combo los demás reciben el **50 %** de lo que subió
+  su familiaridad. **Al reaparecer se reinicia**.
+- Fichas: cuenta tus golpes normales (ligeros y fuertes), no el riposte ni el remate.
+
+**Su HEAVY** (hoja nueva): WIND UP, RAISE, **HOLD** (retención mínima 0,35-0,55 s: el aviso largo, con el ojo naranja
+y el sonido grave de carga) → SLAM → IMPACT. 32 de daño, **rompe la guardia** si lo bloqueas (se desvía o se
+esquiva), con hyper armor. Entra en sus cadenas («zarpazo y golpe pesado», «golpe pesado y zarpazo rápido») y es la
+**rama «lo bloqueas»** (antes, el rompeguardias con attack2). Siguen: desvías → el siguiente RETRASADO; esquivas →
+ESTOCADA; como mucho un truco por cadena y ventana de castigo al terminar.
+
+**Arreglos** encontrados por la prueba: el compromiso del golpe que acababa de llegar impedía prever el siguiente
+(se cumplía en el mismo paso); y exigía estar «libre» justo en el instante en que encajaba tu golpe.
+
+**Pruebas** (`tests/cc_e6.mjs`): **9/9**, sin errores JS — repetir L·L·L en ritmo: la familiaridad sube en cada
+repetición (0,24 → 0,74) y desvía el final desde la 5.ª (bloqueando antes); el 3.º 160 ms tarde engaña al que te ha
+leído (su parry falla); fintar la carga; con L·H muy leído te interrumpe la carga; alternar 3 combos con buen ritmo:
+familiaridad ≤ 0,4 y 0 desvíos en 12; ojo ámbar y ningún desvío sin predicción; 50 % compartido (0,52 → 0,30) y
+reinicio al reaparecer; su HEAVY (1,1 s de preparación, 0,38 s de HOLD, ojo naranja, rompe la guardia); su rama
+«bloqueas» → HEAVY. Regresión: autómata 21/21; parry y duelo con dos comprobaciones puestas al día al nuevo diseño
+(sus cadenas mezclan el HEAVY; «bloqueas» → HEAVY): parry 50/50, duelo 22/22.

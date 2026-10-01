@@ -432,8 +432,9 @@ if (STAGES.includes(3)) {
     return out;
   });
   const sum = (L) => L.map((r) => r.rama + " [" + r.golpes.join(", ") + "] prep≥" + r.prepMin + " trucos " + r.trucos + " resoplido " + r.vent);
-  check("ramas: desvías el 1.º → el siguiente va RETRASADO; esquivas → te persigue con la ESTOCADA; bloqueas → ROMPEGUARDIAS; te alcanza → sigue igual",
-    br.desvia.every((r) => r.rama === "attack2(retrasado)") && br.esquiva.every((r) => r.rama === "thrust") && br.bloquea.every((r) => r.rama === "breaker") && br.recibe.every((r) => r.rama === "—"),
+  // (Combate completo: si bloqueas, el rompeguardias es su HEAVY)
+  check("ramas: desvías el 1.º → el siguiente va RETRASADO; esquivas → te persigue con la ESTOCADA; bloqueas → HEAVY (rompe la guardia); te alcanza → sigue igual",
+    br.desvia.every((r) => r.rama === "attack2(retrasado)") && br.esquiva.every((r) => r.rama === "thrust") && br.bloquea.every((r) => r.rama === "heavy") && br.recibe.every((r) => r.rama === "—"),
     { desvia: sum(br.desvia), esquiva: sum(br.esquiva), bloquea: sum(br.bloquea), recibe: sum(br.recibe) });
   const all = [...br.desvia, ...br.esquiva, ...br.bloquea, ...br.recibe, ...br.desvia_con_truco];
   check("justicia: preparación visible ≥ 350 ms en todas las ramas, como mucho un truco por cadena (si ya lleva uno, la rama no añade otro) y ventana de castigo tras cada cadena",

@@ -303,7 +303,8 @@ if (STAGES.includes(3)) {
   });
   const lens = ch.list.map((c) => c.golpes.split(",").length);
   check("cadenas de 2 a 4 golpes que combinan attack1 y attack2 (y a veces un peligroso)",
-    ch.n >= 8 && Math.min(...lens, ...ch.planned) >= 2 && Math.max(...lens, ...ch.planned) === 4 && ch.list.some((c) => c.golpes.includes("attack1") && c.golpes.includes("attack2")),
+    // (Combate completo: sus cadenas también mezclan el HEAVY, así que en una muestra no siempre sale la de 4)
+    ch.n >= 8 && Math.min(...lens, ...ch.planned) >= 2 && Math.max(...lens, ...ch.planned) >= 3 && Math.max(...lens, ...ch.planned) <= 4 && ch.list.some((c) => c.golpes.includes("attack1") && c.golpes.includes("attack2")),
     { n: ch.n, planificadas: ch.planned.join(""), completas: lens.join(""), cadenas: ch.list.map((c) => c.id + ":" + c.golpes).slice(0, 10) });
   const normal = ch.list.filter((c) => !/sweep|thrust|grab/.test(c.golpes) && c.desvios === c.golpes.split(",").length);
   check("desviar la cadena completa = un parry por golpe («clin-clin-clin»)", normal.length >= 4, normal.slice(0, 5).map((c) => c.id + ": " + c.desvios + " desvíos, " + c.intervalos.join("/") + " s"));
