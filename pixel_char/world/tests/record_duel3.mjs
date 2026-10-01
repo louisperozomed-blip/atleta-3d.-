@@ -54,14 +54,51 @@ await page.evaluate(() => {
     if (d > 3.2 && !pa && !W.player.path.length) W.goTo(e.body.x - Math.cos(toE()) * 2.0, e.body.z - Math.sin(toE()) * 2.0);
   };
 });
-const N = +(process.env.FRAMES || 520);
+// escenas: A) duelo con la IA real (perfectos, riposte, deathblow); B) te desvía → counter → clin-clin → falla él
+// → riposte; C) choque
+await page.evaluate(() => {
+  const e = W.foe, p = W.pf, toE = () => Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x);
+  const atk = (at) => p.input("attack", { dir: toE(), ts: performance.now() + (at - W.ct) * 1000 });
+  window.sceneB = () => {
+    e.ai.enabled = true; e.ai.passive = true; e.ai.cool = 99; e.ai.chain = null; e.act = null; e.post = 0; p.act = null; p.post = 0; e.hp = Math.max(e.hp, 200);
+    window.SB = { k: 0, pressed: false, seen: null, rip: null };
+    p.startAttack("attack1", { dir: toE() });
+  };
+  window.stepB = () => {
+    const S = SB;
+    if (S.k === 0) { const l = p.toImpact(); if (!S.pressed && l != null && l <= 0.09) { e.input("guardDown"); e.input("guardUp"); S.pressed = true; S.k = 1; } }
+    const a = e.act;
+    if (a && a.move === "counter" && !a.hitDone && a !== S.seen) { const l = e.toImpact(); if (l != null && l <= 0.045) { S.seen = a; p.input("guardDown", { ts: performance.now() + (l - 0.04) * 1000 }); p.input("guardUp"); } }
+    if (a && a.name === "deflected" && !S.rip) S.rip = { k: 0, at: W.ct + 0.25 };
+    if (e.stunned && !S.db && !p.act) { S.db = true; atk(W.ct); }          // le rompiste la postura: remate
+    const R = S.rip;
+    if (R) {
+      const pa = p.act;
+      if (pa && pa.name === "riposte" && pa.ripN === 1 && pa.impactT != null && R.at2 == null) R.at2 = pa.impactT + 0.22;
+      if (R.k === 0 && W.ct >= R.at) { atk(R.at); R.k = 1; }
+      else if (R.k === 1 && R.at2 != null && W.ct >= R.at2) { atk(R.at2); R.k = 2; }
+      else if (R.k === 2 && p.rip && p.rip.beat != null) { R.at3 = p.rip.beat; R.k = 3; }
+      else if (R.k === 3 && W.ct >= R.at3) { atk(R.at3); R.k = 4; }
+    }
+  };
+  window.sceneC = () => { e.ai.enabled = false; e.act = null; p.act = null; e.startAttack("attack1", { dir: e.body.heading }); window.SC = { st: false }; };
+  window.stepC = () => { const l = e.toImpact(); if (!SC.st && l != null && l <= 0.205) { p.startAttack("attack1", { dir: toE() }); SC.st = true; } };
+});
 const info = [];
-for (let i = 0; i < N; i++) {
-  const s = await page.evaluate(() => { for (let k = 0; k < 3; k++) { dirStep(); W.tick(1 / 60); } const e = W.foe;
-    return { e: e.act && (e.act.move || e.act.name), p: W.pf.act && W.pf.act.name, post: [Math.round(W.pf.post), Math.round(e.post)], hp: Math.round(e.hp) }; });
-  info.push(s);
-  await page.screenshot({ path: `${out}/f${String(i).padStart(4, "0")}.png` });
+let fi = 0;
+async function rec(n, step) {
+  for (let i = 0; i < n; i++) {
+    const s = await page.evaluate((step) => { for (let k = 0; k < 3; k++) { window[step](); W.tick(1 / 60); } const e = W.foe;
+      return { e: e.act && (e.act.move || e.act.name), p: W.pf.act && W.pf.act.name }; }, step);
+    info.push(s);
+    await page.screenshot({ path: `${out}/f${String(fi++).padStart(4, "0")}.png` });
+  }
 }
+await rec(+(process.env.FRAMES_A || 230), "dirStep");
+await page.evaluate(() => sceneB());
+await rec(+(process.env.FRAMES_B || 150), "stepB");
+await page.evaluate(() => sceneC());
+await rec(+(process.env.FRAMES_C || 45), "stepC");
 const log = await page.evaluate(() => W.combatLog.filter((x) => !["swing", "warn", "hold", "release", "chainStart", "chainEnd"].includes(x.ev)).map((x) => x.ev + (x.n ? x.n : "") + (x.level ? "/" + x.level : "")));
 fs.writeFileSync(`${out}/info.json`, JSON.stringify({ info, log }));
 console.log("frames", info.length, "\n" + log.join(" "));
