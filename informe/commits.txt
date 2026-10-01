@@ -1,0 +1,85 @@
+25c1ee3|2026-09-28|Base body pipeline: reference crops, SDF anatomy, skin-modifier body, render/compare tools
+2c9ba56|2026-09-28|Full model pipeline: clothing cuts, pads, wristbands, shoes, hair, face, atlas colors; iterations 1-5
+36b5c22|2026-09-28|Rig, weights, animations (APose/Idle/Walk/Run/Jump), FBX/GLB export, final renders, README and PROGRESS
+5268436|2026-09-28|v2 copy: AO-painted shading, sharper muscles and grooves, abs local subdivision, shorts stripes, rounder knee pads (9053 tris)
+f452259|2026-09-28|v2: clearer face (bigger eyes and lashes, thicker brows, nose shading)
+9813515|2026-09-28|v2: extra face detail (eyelid crease, second iris highlight, nose/lip/chin shading)
+4f53d77|2026-09-29|v3 zone 1: silhouette and proportions (shoulders, waist, armpit gap, thighs)
+ab0fe85|2026-09-29|v3 zone 2: musculature (back, calves, glutes, deltoids, quads)
+0a81155|2026-09-29|v3 zone 3: clothing (U neckline, racerback, diagonal short stripes, pads, wristbands, bigger retro shoes)
+dd1920c|2026-09-29|v3 zone 4: hair (ponytail with 6 strands and arc, bangs with side part, crown spikes, ribbons), 4 spring-driven ponytail bones
+974a93f|2026-09-29|v3 zone 5: head and face (painted face texture on head faces, jaw/cheekbones/SCM, ears, bangs, profile)
+03a7324|2026-09-29|v3 deliverables: export/atleta_v3.{blend,fbx,glb}, final renders, face closeup, animation sheets, web viewer with v3
+0c8a9ea|2026-09-29|Base mesh etapa 1: torso y pelvis (scripts de modelado, render, validación y comparación)
+c02c407|2026-09-29|Base mesh etapa 2: piernas y pies (4 iteraciones, ajuste a la silueta)
+eec5c59|2026-09-29|Base mesh etapa 3: brazos y manos (4 iteraciones)
+688035b|2026-09-29|Base mesh etapa 4: cuello y cabeza (4 iteraciones, malla cerrada)
+d2cb90c|2026-09-29|Base mesh etapa 5: unión, validación final, test de deformación, exportes LOD0/LOD1, README y visor web
+628e79a|2026-09-29|Base mesh it2 etapa 1: cara con loops de ojos, boca y nasolabial, oreja con hélix y lóbulo
+58b49df|2026-09-29|Base mesh it2 etapa 2: deltoides por loft, agujero del brazo bajo el acromion, test de deformación ampliado
+8235989|2026-09-29|Base mesh it2 etapa 3: glúteos con loops propios, pliegue del glúteo y test de cadera a 90°
+ef36f54|2026-09-29|Base mesh it2 etapa 4: manos con 3 loops por nudillo, dedos paralelos y pulgar como en la hoja
+8ac6df5|2026-09-29|Base mesh it2 etapa 5: pie como continuación de la pierna (16 polos menos) y tabla de polos justificada
+959e671|2026-09-29|Base mesh it2 etapa 6: UVs sin solapes con costuras escondidas, densidad uniforme y cara 1.5x
+69a7581|2026-09-29|Base mesh it2 etapa 7: LOD0/LOD1 reexportados con UVs, renders finales, README y visor con modo UV
+7529e02|2026-09-29|Maniquí masculino, etapa 1: blockout de proporciones
+2a23b38|2026-09-29|Maniquí masculino, etapa 2: torso y pelvis tallados por planos
+942e7a6|2026-09-29|Maniquí masculino, etapa 3: brazos y piernas
+acd4880|2026-09-29|Maniquí masculino, etapa 4: manos y pies
+e8a0182|2026-09-29|Maniquí masculino, etapa 5: cuello y cabeza
+e0a9e44|2026-09-29|Maniquí masculino, etapa 6: densidad, limpieza y validación
+5ce7ff6|2026-09-29|Maniquí masculino, etapa 7: test de deformación, exportación, visor y README
+2516f02|2026-09-29|pixel_char etapa 1: recorte, limpieza, normalización y color de 192 frames
+da1399d|2026-09-29|pixel_char etapa 2: normal maps, especular, atlas y sprites.json
+680d0b0|2026-09-29|pixel_char etapa 3: demo WebGL de un solo archivo con luz por píxel, sombras y control táctil
+232cf51|2026-09-29|pixel_char etapa 4: pruebas E2E (escritorio e iPhone), capturas, GIF y publicación
+24e66f1|2026-09-29|world etapa 1: mundo isométrico 7x mayor, modular, con colisiones y cámara que sigue
+99ad898|2026-09-29|world etapa 2: personaje iluminado por las luces del mundo, sombra, profundidad e interacción
+757da7c|2026-09-29|world etapa 3: walk mejorado (tiempos, bob/balanceo, túnica, zancada medida) y visor de variantes
+45ba0c2|2026-09-29|world etapa 4: controles con A*, silueta al quedar tapado, pruebas E2E, GIF y publicación
+1879090|2026-09-29|world: pies anclados (detección del pie de apoyo, IK 2D de la pierna, velocidad desde los pies, medida de deslizamiento)
+5dc8136|2026-09-29|world: contacto con el suelo (sombra por bota, sombra proyectada desde el pie apoyado, oclusión y rebote del suelo en el sprite)
+916a1e6|2026-09-29|world: impacto de cada pisada (soplo por terreno, hierba aplastada, huellas, hundimiento en el contacto, sonido con silencio)
+701133e|2026-09-29|world: inercia (arranque en 0.25 s, asentamiento al frenar, inclinación al correr)
+73e408f|2026-09-29|world: misma materia (paleta compartida con dither, contorno de 1 px, pie exactamente en la superficie)
+bfd3c48|2026-09-29|world: escalones con el pie de apoyo (el cuerpo sigue la altura de la bota apoyada, anticipa al subir) y pruebas del paso 6
+8ae2a4a|2026-09-29|world: prueba de frenado con el umbral de llegada del momento y medida parado al final del escalón
+d05cafd|2026-09-29|world: PROGRESS de la etapa 5 (pasos 1-5 y fallos del paso 6); prueba de frenado sin atribuir el frenado normal al ajuste de llegada
+4e7629d|2026-09-30|world: paso 6 — pruebas de peso e integración (13/13) y E2E (31/31), GIF de escalón/charca/frenado y PROGRESS
+cc02914|2026-09-30|world arte E1: look de ilustración (tinta por profundidad y normales, líneas en lo oscuro, niebla por altura, paleta nueva, luz nublada, partículas y rayos)
+5d3bcbb|2026-09-30|world arte E2: zonas rehechas (titán caído con mano-plataforma, bosque retorcido, charcas bioluminiscentes, cementerio, árbol del farol) con módulos instanciados y restos de ciencia ficción
+25d128f|2026-09-30|world arte E3: sentimiento al caminar (luz envolvente, visor, pisadas por terreno con reflejo y chispa, niebla que se abre, cámara, primer plano con paralaje, audio ambiental)
+d9d08d1|2026-09-30|world arte E4: pruebas E2E del titán (rodear la columna, subir a la mano) y grabador de recorridos
+a36ff44|2026-09-30|world arte E4: GIF del recorrido por el mapa y capturas finales
+ea97c0d|2026-09-30|world arte E4: comparación antes/después y frente a las referencias
+4d7f098|2026-09-30|world arte E4: la prueba de SALTAR espera el aterrizaje por tiempo real (la escena nueva va a menos fps en SwiftShader)
+7398914|2026-09-30|world arte E4: la prueba de doble toque mide el intervalo real entre toques y repite si el arnés los separó más de 320 ms
+9f762fd|2026-09-30|world arte E4: E2E con ONLY=escritorio|iphone, espera más larga al seguir al dedo y diagnóstico del destino
+f86fa7b|2026-09-30|world: navegación más robusta (el suavizado comprueba el borde del cuerpo en una franja; atasco = sin progreso hacia el punto de paso, no deslizarse; re-planeo sin suavizar). Estrés 282 rutas: 95.5 % → 98.2 %
+4cb3bca|2026-09-30|world: la sonda del borde del cuerpo va en la dirección real del movimiento (un residuo 1e-17 la lanzaba contra un acantilado)
+b79f6d8|2026-09-30|world: A* no corta esquinas con desnivel (las celdas ortogonales también deben llevar al destino); E2E: doble toque táctil por CDP
+9510d04|2026-09-30|world: dist recompilado con A* sin cortar esquinas con desnivel
+7709c61|2026-09-30|world E2E: pausa el render solo durante los dos toques del doble toque táctil (el iPhone emulado retrasaba cada evento hasta el frame)
+5befa00|2026-09-30|world E2E: doble toque táctil con apoyar y levantar seguidos (más de 170 ms se toma por mantener pulsado)
+a10c8a8|2026-09-30|world arte E4: pruebas (E2E 33/33, peso 13/13, navegación 282/282), capturas por zona, GIF, revisión frente a referencias y PROGRESS
+7c86472|2026-09-30|Combate E0: 17 hojas de combate y etiquetas de fase en labels.json
+4a07827|2026-09-30|Combate E1: revisión de congruencia, recorte, color por zonas, escala y direcciones
+2e76104|2026-09-30|Combate E2: normales, especular, emisión de la cuchilla, hojas, atlas del mundo y JSON de fases
+95a6b6c|2026-09-30|Combate E3: máquina de estados, combo, hitbox, parry, bloqueo, esquiva, postura, barras y sensación de impacto
+ea474f9|2026-09-30|Combate E4: controles táctiles (tocar enemigo, deslizar para esquivar, botón guardia) y teclado (WASD, J, K, espacio, L)
+f1a1125|2026-09-30|Combate E5: el eco (recoloreado frío por materiales, IA con A*, aviso antes de cada golpe, aturdido, reaparecer)
+f35aac8|2026-09-30|Combate E6: pruebas Playwright (31/31 en 8 direcciones), capturas y GIF en review/combat, publicación y PROGRESS
+2900cd0|2026-09-30|Guardia: botón grande y aparte con su explicación, y avisos de parry/bloqueo/esquiva/remate sobre el personaje
+eba6c54|2026-09-30|Enemigo E0: 20 hojas del Autómata del bosque, detección de cuadrícula y etiquetas de fase en labels.json
+22d23e8|2026-09-30|Enemigo E1: recorte, color por zonas, escala y pivote, direcciones corregidas y hojas de revisión
+944ea55|2026-09-30|Enemigo E2: normales, especular por material, emisión del ojo, pies, hojas, atlas del mundo y JSON de fases
+0e0cc17|2026-09-30|Enemigo E3: Autómata del bosque (patrulla, A*, ataques con aviso, bloqueo/parry/esquiva adaptativos, postura, muerte que se desvanece), eco guardado en src/enemies/echo y panel de pruebas
+c5795e3|2026-09-30|Enemigo E4: pasos pesados (temblor, polvo, esporas, golpe grave), luz y halo del ojo, zumbido al preparar, tres zonas y reaparecer
+5801cfb|2026-09-30|Enemigo E5: pruebas del autómata (21/21), regresión del eco (31/31), stamina propia del autómata, GIF y capturas en review/enemy, publicado
+0f9cd7e|2026-09-30|Enemigo E5: regresión del mundo (stage5 13/13, e2e 33/33) anotada en PROGRESS
+973b69c|2026-10-01|Parry E1: niveles de parry (perfecto/normal/bloqueo) medidos al instante exacto del impacto con event.timeStamp, recompensas por nivel, contraataque y calibración de latencia
+3d05e68|2026-10-01|Parry E2: postura con tensión (parry nunca rompe la tuya, bloqueo sí; guardia alta recupera; 18-28 por desvío con racha en la cadena; recuperación según la vida)
+e15973f|2026-10-01|Parry E3: el autómata ataca como un duelista (cadenas de 2-4 golpes con ritmos, carga/retención/suelta, retrasos y fintas, barrido/estocada/agarre peligrosos con su respuesta, reglas de justicia)
+e2e448f|2026-10-01|Parry E4: el autómata te lee (n-gramas de tus golpes y su ritmo) en vez de tirar dados; reacción humana 200-260 ms; su parry se ve venir y, si falla, queda expuesto; finta y retraso del jugador; adaptativa suave
+d863f01|2026-10-01|Parry E5: modo entrenamiento (cadena elegida en bucle), indicador de ms y nivel tras cada golpe, barras de postura centrales siempre visibles en combate y ventana de contraataque
+712f7b3|2026-10-01|Parry E6: bot con reacción humana (250 ms ± 40) ≥ 92 % en cada golpe tras ajustar la suelta del barrido (0.40→0.38 s) y la ventana de esquiva de los peligrosos; pruebas de interfaz en escritorio y móvil, GIF del duelo y de la lectura, publicado
