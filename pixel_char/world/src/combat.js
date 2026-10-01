@@ -30,6 +30,17 @@
     block: { atkPost: 0, defPost: 18, defPostHeavy: 26, st: 22, stHeavy: 36 },
   });
   const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+  // postura que gana el atacante desviado: su "post" × nivel + racha dentro de la misma cadena de ataques
+  // (la cadena la marca la IA en act.chainId; si no, golpes seguidos a menos de chainGap s)
+  W.parryPostGain = function (att, t, AT, level) {
+    const C = W.COMBAT, base = (AT.post || 38) * LEVEL[level === "perfect" ? "perfect" : "parry"].atkPost;
+    const s = att._defl || (att._defl = { n: 0, t: -9, key: null });
+    const key = att.act && att.act.chainId != null ? att.act.chainId : null;
+    const same = key != null ? key === s.key : W.ct - s.t < C.chainGap;
+    s.n = same ? s.n + 1 : 1; s.t = W.ct; s.key = key;
+    return base + C.chainBonus * (s.n - 1);
+  };
+  const breakStreak = (att) => { if (att._defl) att._defl.n = 0; };
   W.combatLog = [];
   function log(e) { e.t = W.U ? +W.U.uTime.value.toFixed(3) : 0; W.combatLog.push(e); if (W.combatLog.length > 400) W.combatLog.shift(); feedback(e); }
   // aviso sobre el personaje de lo que acaba de pasar (¡PARRY!, BLOQUEO...): así se ve si ha salido
@@ -242,6 +253,7 @@
         continue;
       }
       if (def === "block") {
+        breakStreak(att);
         const L = LEVEL.block, cost = heavy ? L.stHeavy : L.st;
         t.st -= cost; t.stT = 0;
         if (t.st <= 0) {
@@ -267,6 +279,7 @@
         continue;
       }
       // golpe limpio (remate si está aturdido)
+      breakStreak(att);
       const deathblow = t.stunned;
       const counter = !!a.counter && !deathblow;
       const dm = deathblow ? Math.max(40, dmg * 3) : counter ? dmg * W.COMBAT.counterDmg : dmg;

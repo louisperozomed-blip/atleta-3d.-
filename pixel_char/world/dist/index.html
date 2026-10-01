@@ -3556,6 +3556,10 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     staminaRegen: 34, staminaDelay: 0.55, blockRegenK: 0.35,
     dodgeCost: 18, attackCost: [6, 7, 12], dodgeDist: 2.3,
     postureDecay: 9, postureDelay: 1.6, stunTime: 2.4,
+    // postura con tensión (estilo Sekiro): con la guardia alta y sin recibir golpes se recupera más deprisa;
+    // la recuperación depende de la vida que queda (dañar la vida frena la recuperación de la postura)
+    guardRecovDelay: 0.45, guardRecovK: 2.8, hpRecovMin: 0.15, hpRecovPow: 1.5,
+    chainGap: 1.25, chainBonus: 3,                  // racha de desvíos dentro de la misma cadena de ataques
   });
 
   // reloj de combate: avanza con el tiempo de juego (se congela en el hitstop); lo usan la defensa y los impactos
@@ -3783,9 +3787,13 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       // stamina: se recupera tras un momento sin gastarla (más despacio con la guardia alta)
       this.stT += dt;
       if (this.stT > C.staminaDelay) this.st = Math.min(this.stMax, this.st + this.stRegen * dt * (this.act && this.act.name === "block" ? C.blockRegenK : 1));
-      // postura: baja sola si pasa un rato sin recibir
+      // postura: baja sola si pasa un rato sin recibir; más deprisa con la guardia alta; más despacio con poca vida
       this.postT += dt;
-      if (this.postT > C.postureDelay && !this.stunned) this.post = Math.max(0, this.post - C.postureDecay * dt * (0.6 + 0.4 * this.hp / this.hpMax));
+      const guarding = this.act && this.act.name === "block" && this.guardHeld;
+      if (this.postT > (guarding ? C.guardRecovDelay : C.postureDelay) && !this.stunned) {
+        const hpK = C.hpRecovMin + (1 - C.hpRecovMin) * Math.pow(Math.max(0, this.hp / this.hpMax), C.hpRecovPow);
+        this.post = Math.max(0, this.post - C.postureDecay * dt * hpK * (guarding ? C.guardRecovK : 1));
+      }
       if (this.buf) this.tryBuffered();
       // guardia mantenida al terminar otra acción (golpe, rotura de guardia...): vuelve a bloquear
       if (!this.act && this.guardHeld && this.alive && !this.body.jump) { this.start("block"); this.act.tt = 0.07; }
@@ -3875,7 +3883,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     }
     respawn(x, z) {
       this.hp = this.hpMax; this.st = this.stMax; this.post = 0; this.act = null; this.buf = null; this.flash = 0;
-      this.guardHeld = false; this.pen = 0; this.counterT = 0;
+      this.guardHeld = false; this.pen = 0; this.counterT = 0; this._defl = null;
       if (x != null) { const b = this.body; b.x = x; b.z = z; b.y = b.ground = W.heightAt(x, z); b.path = []; b.speed = 0; }
     }
   }
@@ -3916,6 +3924,17 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     block: { atkPost: 0, defPost: 18, defPostHeavy: 26, st: 22, stHeavy: 36 },
   });
   const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+  // postura que gana el atacante desviado: su "post" × nivel + racha dentro de la misma cadena de ataques
+  // (la cadena la marca la IA en act.chainId; si no, golpes seguidos a menos de chainGap s)
+  W.parryPostGain = function (att, t, AT, level) {
+    const C = W.COMBAT, base = (AT.post || 38) * LEVEL[level === "perfect" ? "perfect" : "parry"].atkPost;
+    const s = att._defl || (att._defl = { n: 0, t: -9, key: null });
+    const key = att.act && att.act.chainId != null ? att.act.chainId : null;
+    const same = key != null ? key === s.key : W.ct - s.t < C.chainGap;
+    s.n = same ? s.n + 1 : 1; s.t = W.ct; s.key = key;
+    return base + C.chainBonus * (s.n - 1);
+  };
+  const breakStreak = (att) => { if (att._defl) att._defl.n = 0; };
   W.combatLog = [];
   function log(e) { e.t = W.U ? +W.U.uTime.value.toFixed(3) : 0; W.combatLog.push(e); if (W.combatLog.length > 400) W.combatLog.shift(); feedback(e); }
   // aviso sobre el personaje de lo que acaba de pasar (¡PARRY!, BLOQUEO...): así se ve si ha salido
@@ -4128,6 +4147,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         continue;
       }
       if (def === "block") {
+        breakStreak(att);
         const L = LEVEL.block, cost = heavy ? L.stHeavy : L.st;
         t.st -= cost; t.stT = 0;
         if (t.st <= 0) {
@@ -4153,6 +4173,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         continue;
       }
       // golpe limpio (remate si está aturdido)
+      breakStreak(att);
       const deathblow = t.stunned;
       const counter = !!a.counter && !deathblow;
       const dm = deathblow ? Math.max(40, dmg * 3) : counter ? dmg * W.COMBAT.counterDmg : dmg;
@@ -4677,8 +4698,9 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     prepK: 1.9,                  // preparación de los ataques (× más lenta)
     see: 8, leash: 15, patrolR: 3.2,
     attacks: {
-      attack1: { dmg: 18, reach: 2.2, arc: 75, stop: 0.09, kb: 0.45, post: 40 },
-      attack2: { dmg: 26, reach: 2.5, arc: 115, stop: 0.12, kb: 0.7, heavy: true, post: 50 },
+      // post = postura que gana al desviárselo (NORMAL; PERFECTO ×1.33): 18-24 y 21-28, + racha en la cadena
+      attack1: { dmg: 18, reach: 2.2, arc: 75, stop: 0.09, kb: 0.45, post: 18 },
+      attack2: { dmg: 26, reach: 2.5, arc: 115, stop: 0.12, kb: 0.7, heavy: true, post: 21 },
     },
     eyeLight: { color: 0x5fe8ff, intensity: 0.9, distance: 4.5 },
   });

@@ -80,7 +80,7 @@ if (STAGES.includes(1)) {
   });
   const L = await page.evaluate(() => W.PARRY_LEVELS);
   check("PERFECTO: mucha postura al enemigo, 0 para ti, sin gasto de stamina",
-    ["attack1", "attack2"].every((an) => rw["perfect_" + an].enemigo >= rw["normal_" + an].enemigo + 8 && rw["perfect_" + an].tu === 0 && rw["perfect_" + an].stamina >= 0),
+    ["attack1", "attack2"].every((an) => rw["perfect_" + an].enemigo >= rw["normal_" + an].enemigo * 1.3 - 1 && rw["perfect_" + an].tu === 0 && rw["perfect_" + an].stamina >= 0),
     { perfecto: [rw.perfect_attack1, rw.perfect_attack2] });
   check("NORMAL: postura media al enemigo y un pequeño coste de postura para ti",
     ["attack1", "attack2"].every((an) => rw["normal_" + an].enemigo > 0 && rw["normal_" + an].tu > 0 && rw["normal_" + an].tu <= 12),

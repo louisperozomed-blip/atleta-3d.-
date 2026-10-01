@@ -28,8 +28,9 @@
     prepK: 1.9,                  // preparación de los ataques (× más lenta)
     see: 8, leash: 15, patrolR: 3.2,
     attacks: {
-      attack1: { dmg: 18, reach: 2.2, arc: 75, stop: 0.09, kb: 0.45, post: 40 },
-      attack2: { dmg: 26, reach: 2.5, arc: 115, stop: 0.12, kb: 0.7, heavy: true, post: 50 },
+      // post = postura que gana al desviárselo (NORMAL; PERFECTO ×1.33): 18-24 y 21-28, + racha en la cadena
+      attack1: { dmg: 18, reach: 2.2, arc: 75, stop: 0.09, kb: 0.45, post: 18 },
+      attack2: { dmg: 26, reach: 2.5, arc: 115, stop: 0.12, kb: 0.7, heavy: true, post: 21 },
     },
     eyeLight: { color: 0x5fe8ff, intensity: 0.9, distance: 4.5 },
   });

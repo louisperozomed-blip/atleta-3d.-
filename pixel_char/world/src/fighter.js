@@ -29,6 +29,10 @@
     staminaRegen: 34, staminaDelay: 0.55, blockRegenK: 0.35,
     dodgeCost: 18, attackCost: [6, 7, 12], dodgeDist: 2.3,
     postureDecay: 9, postureDelay: 1.6, stunTime: 2.4,
+    // postura con tensión (estilo Sekiro): con la guardia alta y sin recibir golpes se recupera más deprisa;
+    // la recuperación depende de la vida que queda (dañar la vida frena la recuperación de la postura)
+    guardRecovDelay: 0.45, guardRecovK: 2.8, hpRecovMin: 0.15, hpRecovPow: 1.5,
+    chainGap: 1.25, chainBonus: 3,                  // racha de desvíos dentro de la misma cadena de ataques
   });
 
   // reloj de combate: avanza con el tiempo de juego (se congela en el hitstop); lo usan la defensa y los impactos
@@ -256,9 +260,13 @@
       // stamina: se recupera tras un momento sin gastarla (más despacio con la guardia alta)
       this.stT += dt;
       if (this.stT > C.staminaDelay) this.st = Math.min(this.stMax, this.st + this.stRegen * dt * (this.act && this.act.name === "block" ? C.blockRegenK : 1));
-      // postura: baja sola si pasa un rato sin recibir
+      // postura: baja sola si pasa un rato sin recibir; más deprisa con la guardia alta; más despacio con poca vida
       this.postT += dt;
-      if (this.postT > C.postureDelay && !this.stunned) this.post = Math.max(0, this.post - C.postureDecay * dt * (0.6 + 0.4 * this.hp / this.hpMax));
+      const guarding = this.act && this.act.name === "block" && this.guardHeld;
+      if (this.postT > (guarding ? C.guardRecovDelay : C.postureDelay) && !this.stunned) {
+        const hpK = C.hpRecovMin + (1 - C.hpRecovMin) * Math.pow(Math.max(0, this.hp / this.hpMax), C.hpRecovPow);
+        this.post = Math.max(0, this.post - C.postureDecay * dt * hpK * (guarding ? C.guardRecovK : 1));
+      }
       if (this.buf) this.tryBuffered();
       // guardia mantenida al terminar otra acción (golpe, rotura de guardia...): vuelve a bloquear
       if (!this.act && this.guardHeld && this.alive && !this.body.jump) { this.start("block"); this.act.tt = 0.07; }
@@ -348,7 +356,7 @@
     }
     respawn(x, z) {
       this.hp = this.hpMax; this.st = this.stMax; this.post = 0; this.act = null; this.buf = null; this.flash = 0;
-      this.guardHeld = false; this.pen = 0; this.counterT = 0;
+      this.guardHeld = false; this.pen = 0; this.counterT = 0; this._defl = null;
       if (x != null) { const b = this.body; b.x = x; b.z = z; b.y = b.ground = W.heightAt(x, z); b.path = []; b.speed = 0; }
     }
   }

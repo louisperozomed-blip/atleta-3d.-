@@ -89,7 +89,8 @@ await page.evaluate(() => T(60));
 const pr = await page.evaluate((A8) => A8.map((a) => { pair(a, 2.0); const e = E(); const p0 = e.post;
   foeAttack(a % (Math.PI / 2) === 0 ? "attack1" : "attack2", parryAt(0.1));
   return { ev: evs()[0], hp: W.pf.hp, post: Math.round(e.post - p0), dir: [W.foe.ch.st.dir, W.foe.ch.dirFromHeading(W.foe.body.heading, W.ui.thetaT)] }; }), A8);
-check("parry del jugador a 100 ms del impacto: sin daño y +40/+50 de postura, 8 direcciones", pr.every((r) => r.ev === "parry" && r.hp === 100 && r.post >= 40), pr.map((r) => [r.ev, r.post]));
+// (desde la postura con tensión: 18 por attack1 y 21 por attack2 en un parry normal)
+check("parry del jugador a 100 ms del impacto: sin daño y +18/+21 de postura, 8 direcciones", pr.every((r, i) => r.ev === "parry" && r.hp === 100 && r.post === (i % 2 ? 21 : 18)), pr.map((r) => [r.ev, r.post]));
 check("el autómata mira al jugador al atacar en las 8 direcciones", pr.every((r) => r.dir[0] === r.dir[1]) && new Set(pr.map((r) => r.dir[0])).size === 8, pr.map((r) => r.dir[0]));
 const late = await page.evaluate((A8) => A8.map((a) => { pair(a, 2.0); foeAttack("attack1", parryAt(0.55)); return evs()[0]; }), A8);
 check("guardia demasiado pronto contra el autómata (550 ms antes): recibe el golpe, 8 direcciones", late.every((x) => x === "hit"), late);
@@ -126,14 +127,14 @@ await page.evaluate(() => { W.skipRender = true; T(60); });
 
 // ---- aturdimiento por postura y remate ------------------------------------------------------------------
 const st = await page.evaluate(() => { pair(0, 2.0); const e = E(); let k = 0;
-  while (!e.stunned && k < 5) { foeAttack(k % 2 ? "attack2" : "attack1", parryAt(0.1)); T(30); k++; }
+  while (!e.stunned && k < 6) { foeAttack(k % 2 ? "attack2" : "attack1", parryAt(0.1)); if (!e.stunned) { e.act = null; T(8); } k++; }
   const r = { stunned: e.stunned, parries: k, post: Math.round(e.post), dur: e.stunTime };
   T(20); W.pf.act = null; W.pf.input("attack", { dir: Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x) });
   let n = 0; while (!W.combatLog.some((x) => x.ev === "deathblow") && n < 80) { T(); n++; }
   const d = W.combatLog.find((x) => x.ev === "deathblow"); r.deathblow = d ? d.dmg : null; return r; });
-check("sus ataques desviados le llenan la postura: aturdido en 2-3 parries", st.stunned && st.parries <= 3, st);
+check("sus ataques desviados le llenan la postura: aturdido al desviar una cadena entera (≤ 5 seguidos)", st.stunned && st.parries >= 4 && st.parries <= 5, st);
 check("remate al autómata aturdido (daño ×3, mínimo 40)", st.deathblow >= 40, { dmg: st.deathblow });
-await page.evaluate(() => { pair(Math.PI * 0.75, 2.0); const e = E(); for (let k = 0; k < 3 && !e.stunned; k++) { foeAttack("attack2", parryAt(0.1)); T(20); } T(10); });
+await page.evaluate(() => { pair(Math.PI * 0.75, 2.0); const e = E(); for (let k = 0; k < 6 && !e.stunned; k++) { foeAttack("attack2", parryAt(0.1)); if (!e.stunned) { e.act = null; T(8); } } T(10); });
 await shot("05_aturdido");
 
 // ---- muerte: se queda en el suelo, se desvanece con esporas; reaparecer ------------------------------------

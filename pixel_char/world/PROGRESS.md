@@ -744,3 +744,24 @@ afectan las mecánicas del jugador, no su IA.
 - En `enemy.mjs`: bloquear también le sube la postura, así que la presión sostenida le rompe la guardia o la
   postura; además, la prueba de la muerte desactiva su defensa para ser determinista.
 - Capturas: `review/parry2/E1_perfecto.png` (chispas doradas, ¡PERFECTO!, barra CONTRA) y `E1_calibrar.png`.
+
+## Etapa 2 — Postura con tensión (estilo Sekiro)
+- **Tu postura** sube poco al desviar (NORMAL +7/+10; PERFECTO 0) y mucho al bloquear (+18/+26). **Un parry nunca
+  la rompe** aunque la barra esté llena (`addPosture(v, {noBreak})`); un bloqueo sí («POSTURA ROTA»: tambaleo largo).
+- **Guardia alta sin recibir golpes** = la postura se recupera ×2.8 y empieza a los 0.45 s (en vez de 1.6 s).
+- **Postura del enemigo por parry** (su campo `post` × nivel): el autómata gana 18 (zarpazo) / 21 (barrido) con
+  un NORMAL y 24 / 28 con un PERFECTO; **racha**: cada desvío seguido dentro de la misma cadena de ataques suma +3
+  más (18, 21, 24, 27…). La cadena la marca la IA (`act.chainId`, etapa 3); sin ella, golpes a menos de 1.25 s.
+  La racha se pierde si un golpe te alcanza o lo bloqueas. Resultado: hace falta desviar cadenas enteras (4
+  desvíos normales la dejan en ~96; con perfectos se rompe).
+- **Recuperación según la vida** (ambos): ×(0.15 + 0.85·(vida/máx)^1.5): con el 30 % de vida se recupera ~4 veces
+  más despacio que con la vida llena (antes ×0.6-1.0). Dañar su vida hace que la presión de postura dure.
+- El eco conserva su tabla (38 por parry): su batería sigue igual.
+- **Pruebas** `tests/parry2.mjs` (STAGES=1,2): 22/22 OK, sin errores JS. Comprueban:
+  - que un parry con la barra llena no te rompe la postura y un bloqueo sí;
+  - que con la guardia alta se recupera 52 frente a 8 en 2.5 s;
+  - que la postura que gana el autómata es 18/21/24/28 y que la racha va 18-21-24-27 y se pierde con una pausa o un bloqueo;
+  - que 4 desvíos normales de una cadena lo dejan en 96 y con perfectos se rompe;
+  - que con el 30 % de vida la recuperación es de 6 frente a 22.
+- **Regresión**: autómata 21/21 (con las expectativas nuevas: +18/+21 por parry, aturdido al desviar una cadena
+  entera) y eco 31/31.
