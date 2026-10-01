@@ -1112,7 +1112,15 @@ su fila de la hoja; `review/duel3/E5_deathblow_8dir.png`, capturado en el impact
 | `parry2_ui.mjs` (escritorio y móvil) | 10/10 |
 | `enemy.mjs` (autómata) | 21/21 |
 | `combat.mjs` con el eco (`#enemy=echo`) | 31/31 |
-| `stage5.mjs` y `e2e.mjs` (mundo, `#enemy=none`) | ver abajo |
+| `stage5.mjs` (mundo, `#enemy=none`) | 13/13 |
+| `e2e.mjs` (mundo, `#enemy=none`, escritorio e iPhone) | 30-31/33 |
+
+`e2e.mjs`: en esta máquina fallan 2-3 comprobaciones de iPhone en tiempo real (rodear la columna del titán, subir
+a su mano, suavidad en escalones). **No es una regresión**: la versión de antes de este trabajo, compilada y probada
+en la misma máquina, falla esas mismas y una más (29/33); son pruebas de navegación a tiempo real sensibles a la
+carga del contenedor (stage5 tarda ahora ~25 min con las dos versiones). El escritorio pasa entero.
+
+**Publicado** en el mismo enlace (versión 8): https://claude.ai/artifact/ANHrkwwHE8urZjzme74NhG
 
 **Revisión** en `review/duel3/`: E0 (hojas antes/después, tamaño, emisión, lista de problemas), E1-E4 (capturas de
 cada etapa), `E5_duelo.gif` (duelo con la IA: perfectos con cámara lenta, riposte de 3 con el anillo del ritmo,
