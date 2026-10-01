@@ -664,9 +664,10 @@ if (STAGES.includes(6)) {
     return out;
   });
   window_fair = fair;
-  const normal = Object.entries(fair).filter(([k]) => /^attack/.test(k)), peril = Object.entries(fair).filter(([k]) => !/^attack/.test(k));
+  // (Duelo 3: el rompeguardias de las ramas es un golpe normal, se desvía)
+  const normal = Object.entries(fair).filter(([k]) => /^(attack|breaker)/.test(k)), peril = Object.entries(fair).filter(([k]) => /^(sweep|thrust|grab)/.test(k));
   check("bot humano (reacción 250 ms ± 40 ms): desvía ≥ 75 % de cada tipo de ataque normal (también retrasados y tras finta)",
-    normal.length >= 4 && normal.every(([, v]) => v.n >= 8 && v.pct >= 75), fair);
+    normal.length >= 4 && normal.every(([k, v]) => (v.n >= 8 || /^breaker/.test(k)) && v.pct >= 75), fair);
   check("bot humano: evita cada ataque peligroso con la respuesta correcta (salto, esquiva hacia él, esquiva de lado) ≥ 75 %",
     peril.length === 3 && peril.every(([, v]) => v.n >= 8 && v.pct >= 75), Object.fromEntries(peril));
 }
