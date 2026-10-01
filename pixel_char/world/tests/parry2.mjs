@@ -418,6 +418,144 @@ if (STAGES.includes(3)) {
   check("tras cada cadena, ventana de castigo clara (~1 s resoplando: ni ataca ni se defiende)", pw.ventana >= 0.8 && pw.defensa.length === 0 && pw.golpe && pw.dmg > 0, pw);
 }
 
+// =====================================================================================================
+// ETAPA 4 · defensa del enemigo basada en leerte
+// =====================================================================================================
+if (STAGES.includes(4)) {
+  await page.evaluate(() => {
+    // registro de cuándo empieza cada golpe tuyo (para medir sus reacciones)
+    const prev = W.onCombatAct;
+    W.onCombatAct = function (actor, act) { if (actor === W.pf && act.name.startsWith("attack")) W.combatLog.push({ ev: "pStart", ct: +W.ct.toFixed(3), anim: act.name }); if (prev) prev(actor, act); };
+    // guion de combos del jugador contra el autómata pasivo (no ataca: así se mide solo su defensa)
+    window.combos = (mode, n, seed) => {
+      const e = E(), p = W.pf; pair(0, 1.9); e.ai.enabled = true; e.ai.passive = true; e.ai.state = "chase"; p.hpMax = p.hp = 1e6; e.hpMax = e.hp = 1e6; W.combatLog.length = 0;
+      let s = seed || 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+      const per = [];
+      for (let k = 0; k < n; k++) {
+        const toE = () => Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x), n0 = W.combatLog.length;
+        let plan, dur;
+        if (mode === "repite") { plan = [[0, "a"], [0.25, "a"], [0.5, "a"]]; dur = 1.6; }
+        else {
+          const L = 1 + Math.floor(rnd() * 3); plan = [[0, rnd() < 0.35 ? "h" : "a"]];
+          for (let i = 1; i < L; i++) plan.push([0.25 * i, "a"]);
+          if (rnd() < 0.25) plan = [[0, "a"], [0.08, "F"], [0.4 + rnd() * 0.3, "a"]];      // finta y golpe
+          dur = 1.0 + rnd() * 1.3;
+        }
+        const t0 = W.ct; let i = 0, held = false, rel = 0.1 + rnd() * 0.35;
+        while (W.ct - t0 < dur) {
+          const now = W.ct - t0;
+          while (i < plan.length && plan[i][0] <= now) { const a = plan[i][1];
+            if (a === "h") { p.input("attack", { dir: toE(), hold: true }); held = true; } else if (a === "F") { p.input("guardDown"); p.input("guardUp"); } else p.input("attack", { dir: toE() }); i++; }
+          if (held && now > 0.15 + rel) { p.input("attackUp"); held = false; }
+          T();
+        }
+        per.push(W.combatLog.slice(n0));
+        W.teleport(e.body.x + 1.9, e.body.z);
+      }
+      return per;
+    };
+    window.outcome = (per, from) => { const r = { parry: 0, block: 0, hit: 0 }; for (const L of per.slice(from)) for (const x of L) if (x.from === "jugador" && r[x.ev] != null) r[x.ev]++; return r; };
+  });
+  const sp = await page.evaluate(() => { const per = combos("repite", 14); const o = outcome(per, 4);
+    return { ...o, desviados: +(o.parry / (o.parry + o.block + o.hit)).toFixed(2), lecturas: per.flat().filter((x) => x.ev === "foeRead").length }; });
+  check("te lee si te repites: el mismo combo con el mismo ritmo → la mayoría de tus golpes desviados", sp.desviados > 0.5, sp);
+  const va = await page.evaluate(() => { const per = combos("varia", 18, 11); const o = outcome(per, 4); const L = per.flat();
+    return { ...o, desviados: +(o.parry / (o.parry + o.block + o.hit)).toFixed(2), fallos_de_su_parry: L.filter((x) => x.ev === "foeParryWhiff").length, fintas: L.filter((x) => x.ev === "feint" && x.who === "jugador").length }; });
+  check("si varías el ritmo, retrasas o fintas, falla: pocos golpes desviados", va.desviados <= 0.25 && va.desviados < sp.desviados - 0.3, va);
+
+  // reacción humana: nunca reacciona antes de 200 ms; 200-260 según la dificultad
+  const rx = await page.evaluate(() => {
+    const D = W.ENEMY_DIFF, keep = D.react, r = {};
+    for (const v of [0.5, 1.0, 1.6]) {
+      D.react = v; const e = E(), p = W.pf, ts = [];
+      for (let k = 0; k < 10; k++) { pair(0, 1.9); e.ai.enabled = true; e.ai.passive = true; e.ai.state = "chase"; e.ai.resetModel(); W.combatLog.length = 0;
+        p.input("attack", { dir: Math.PI, hold: true }); T(50); p.input("attackUp"); T(40);       // golpe retenido: le da tiempo a reaccionar
+        const s0 = W.combatLog.find((x) => x.ev === "pStart"), b = W.combatLog.find((x) => x.ev === "foeBlock" && x.reactive);
+        if (s0 && b) ts.push(Math.round((b.ct - s0.ct) * 1000)); }
+      r["x" + v] = { min: Math.min(...ts), max: Math.max(...ts), n: ts.length };
+    }
+    D.react = keep; return r;
+  });
+  check("reacción de velocidad humana: 200-260 ms con variación según la dificultad, nunca menos de 200 ms",
+    Object.values(rx).every((q) => q.n >= 8 && q.min >= 200 && q.max <= 260 + 17) && rx["x0.5"].min > rx["x1.6"].max - 30, { ...rx, nota: "medido en pasos de 1/60 s (+17 ms)" });
+  const fast = await page.evaluate(() => { const e = E(), p = W.pf; const res = [];
+    for (let k = 0; k < 6; k++) { pair(0, 1.9); e.ai.enabled = true; e.ai.passive = true; e.ai.state = "chase"; e.ai.resetModel(); W.combatLog.length = 0; p.input("attack", { dir: Math.PI }); T(40);
+      res.push(W.combatLog.filter((x) => /^foe|^parry$|^block$|^hit$/.test(x.ev)).map((x) => x.ev).join("|")); }
+    return res; });
+  check("a un golpe más rápido que su reacción (zarpazo, 205 ms) no puede reaccionar: solo lo para si lo ha leído", fast.every((x) => x === "hit"), fast);
+
+  // su parry se ve venir: guardia (ojo ámbar) unos ms antes; si falla, queda expuesto
+  const vis = await page.evaluate(() => {
+    const per = combos("repite", 10); const L = per.flat(), e = E();
+    const tries = L.filter((x) => x.ev === "foeParryTry"), guards = L.filter((x) => x.ev === "foeGuard");
+    const leads = tries.map((t) => { const g = guards.filter((x) => x.ct <= t.ct).pop(); return g ? Math.round((t.ct - g.ct) * 1000) : -1; });
+    // color del ojo durante la guardia leída
+    let amber = 0; const c = e.ai.commit; return { intentos: tries.length, antelacion_ms: leads, min: Math.min(...leads) };
+  });
+  const eye = await page.evaluate(() => { combos("repite", 6); const e = E(), p = W.pf; let amber = 0, n = 0;
+    // un combo más observando el ojo
+    const toE = () => Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x), t0 = W.ct; let i = 0; const plan = [[0, 1], [0.25, 1], [0.5, 1]];
+    while (W.ct - t0 < 1.6) { while (i < plan.length && plan[i][0] <= W.ct - t0) { p.input("attack", { dir: toE() }); i++; } T(); const col = e.ch.uniforms.uEyeCol.value; if (e.ai.commit && e.ai.commit.stanceOn) { n++; if (col.x > 0.95 && col.y > 0.6 && col.y < 0.8) amber++; } }
+    return { frames_en_guardia: n, ojo_ambar: amber }; });
+  check("su parry se ve venir: alza la guardia (ojo ámbar) ≥ 150 ms antes de intentarlo", vis.intentos >= 3 && vis.min >= 150 && eye.frames_en_guardia > 5 && eye.ojo_ambar === eye.frames_en_guardia, { ...vis, ...eye });
+  const ex = await page.evaluate(() => {
+    // le enseñas un ritmo y luego lo cambias (retrasas el golpe): su parry se queda en el aire
+    const e = E(), p = W.pf; combos("repite", 7); const toE = () => Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x);
+    W.combatLog.length = 0; e.post = 0; const t0 = W.ct; let pressed = false, released = false, gain = null, exp = false;
+    while (W.ct - t0 < 1.6) { const now = W.ct - t0;
+      if (!pressed) { p.input("attack", { dir: toE(), hold: true }); pressed = true; }
+      if (!released && now > 0.55) { p.input("attackUp"); released = true; }
+      const before = e.post, wasExp = !!(e.act && e.act.exposed), nh = W.combatLog.filter((x) => x.ev === "hit").length;
+      T();
+      if (gain == null && W.combatLog.filter((x) => x.ev === "hit").length > nh) { gain = e.post - before; exp = wasExp; window._dbgHit = W.combatLog.filter((x) => x.ev === "hit").pop(); } }
+    const L = W.combatLog;
+    return { secuencia: L.filter((x) => /^foe|^hit$|^parry$/.test(x.ev)).map((x) => x.ev), golpe_con_expuesto: exp, postura: gain == null ? null : +gain.toFixed(1), golpe: window._dbgHit };
+  });
+  check("si lo engañas (retrasas el golpe que esperaba), su parry falla y queda EXPUESTO: tu golpe entra con más postura",
+    ex.secuencia.includes("foeParryWhiff") && ex.golpe_con_expuesto && ex.postura >= 10.4, ex);
+  await page.evaluate(() => { const e = E(); combos("repite", 7); W.skipRender = false; const p = W.pf, toE = () => Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x);
+    const t0 = W.ct; p.input("attack", { dir: toE() }); while (W.ct - t0 < 1.0 && !(e.ai.commit && e.ai.commit.stanceOn)) T(); });
+  await shot("E4_guardia_leida");
+
+  // herramientas del jugador: finta (gasta stamina) y retraso manteniendo el ataque
+  const tools = await page.evaluate(() => {
+    const p = W.pf, r = {};
+    pair(0, 1.9); W.combatLog.length = 0; p.input("attack", { dir: Math.PI }); T(5); const st0 = p.st; p.input("guardDown"); p.input("guardUp"); T(2);
+    r.finta = { ev: W.combatLog.filter((x) => x.who === "jugador").map((x) => x.ev), stamina: Math.round(p.st - st0), act: p.act && p.act.name };
+    T(30);
+    for (const [k, hold] of [["normal", 0], ["retenido", 0.35]]) { pair(0, 1.9); W.combatLog.length = 0; const t0 = W.ct; p.input("attack", { dir: Math.PI, hold: true });
+      let n = 0; while (!(p.act && p.act.impactT != null) && n < 120) { if (W.ct - t0 >= (hold || 0.0) ) p.input("attackUp"); T(); n++; } r[k] = Math.round((p.act.impactT - t0) * 1000); }
+    return r;
+  });
+  check("tus herramientas: FINTA (guardia durante la preparación cancela tu golpe y gasta stamina) y RETRASO (mantener el ataque)",
+    tools.finta.ev.includes("feint") && tools.finta.stamina <= -12 && tools.finta.act === "parry" && tools.retenido >= tools.normal + 150, tools);
+
+  // su conocimiento se reinicia al reaparecer
+  const rs = await page.evaluate(() => { const e = E(); combos("repite", 5); const before = Object.keys(e.ai.grams).length; W.respawnAll(); return { antes: before, despues: Object.keys(e.ai.grams).length, fichas: e.ai.tokens.length }; });
+  check("su conocimiento de tus hábitos se reinicia cada vez que reaparece", rs.antes > 3 && rs.despues === 0 && rs.fichas === 0, rs);
+
+  // dificultad adaptativa suave
+  const ad = await page.evaluate(() => {
+    const e = E(), p = W.pf, r = {}; e.ai.adapt = 0; e.ai.deaths = 0;
+    pair(0, 2.0); e.ai.enabled = true;
+    for (let k = 0; k < 3; k++) { p.hp = 0; p.start("death", { kb: 0, kdir: 0, moved: 0 }); T(5); W.respawnAll(); T(5); }
+    r.tras_3_muertes = { adapt: +e.ai.adapt.toFixed(2), pausas: +e.ai.pauseK().toFixed(2), muertes: e.ai.deaths };
+    e.ai.deaths = 0;
+    e.ai.adapt = 0; e.ai.perfStreak = 0;
+    for (let k = 0; k < 5; k++) { pair(0.6, 2.0); foeAttack("attack1", pressAt(0.04)); }
+    r.tras_5_perfectos = { adapt: +e.ai.adapt.toFixed(2), pausas: +e.ai.pauseK().toFixed(2) };
+    return r;
+  });
+  await page.evaluate(() => { W.skipRender = false; T(1); });
+  await page.click("#tbtn"); await page.evaluate(() => { T(60); });
+  const info = await page.evaluate(() => document.getElementById("tInfo").innerText);
+  await page.screenshot({ path: `${OUT}/E4_panel.png` });
+  await page.click("#tbtn");
+  check("dificultad adaptativa suave: muertes seguidas → pausas más largas; perfectos seguidos → más cortas y más trucos; se ve en el panel",
+    ad.tras_3_muertes.adapt <= -0.9 && ad.tras_3_muertes.muertes === 3 && ad.tras_3_muertes.pausas >= 1.2 && ad.tras_5_perfectos.adapt > 0.3 && ad.tras_5_perfectos.pausas < 0.95 && /Adaptativa/.test(info) && /Te lee/.test(info), { ...ad, panel: info });
+  await page.evaluate(() => { E().ai.adapt = 0; E().ai.deaths = 0; W.skipRender = true; });
+}
+
 const okN = results.filter((r) => r.ok).length;
 console.log(`\n${okN}/${results.length} OK`, errors.length ? `, ${errors.length} errores JS` : ", sin errores JS");
 fs.writeFileSync(`${OUT}/results.json`, JSON.stringify({ results, errors }, null, 1));

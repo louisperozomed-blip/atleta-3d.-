@@ -105,23 +105,34 @@ const ph = await page.evaluate((A8) => { const D = W.ENEMY_DIFF, keep = [D.parry
 check("los golpes del jugador alcanzan al autómata desde las 8 direcciones", ph.every((x) => x === "hit"), ph);
 
 // ---- su bloqueo y su parry ---------------------------------------------------------------------------
-const def = await page.evaluate(() => { const D = W.ENEMY_DIFF, keep = [D.parry, D.block], p = W.pf, r = {};
-  D.parry = 0; D.block = 1; pair(0, 2.1); p.input("attack", { dir: Math.PI }); T(50); r.block = evs();
-  let st0 = E().st; for (let i = 0; i < 14 && !W.combatLog.some((x) => x.ev === "guardbreak"); i++) { T(40); p.input("attack", { dir: Math.PI }); T(50); }
-  r.blockSeq = evs(); r.st = Math.round(E().st);
-  D.parry = 1; D.block = 0; pair(0, 2.1); const post0 = p.post; p.input("attack", { dir: Math.PI }); T(60); r.parry = evs(); r.playerPost = Math.round(p.post - post0);
-  // repetición: con parry al 30 %, repetir attack1 sube la probabilidad
-  D.parry = 0.3; D.block = 0; let tries = 0; const seq = [];
-  for (let k = 0; k < 3; k++) { pair(0, 2.1); for (let i = 0; i < 6; i++) { p.act = null; p.input("attack", { dir: Math.PI }); T(55); } seq.push(W.combatLog.filter((x) => x.ev === "foeParryTry").map((x) => x.rep)); }
-  r.parryReps = seq.flat();
-  D.parry = keep[0]; D.block = keep[1]; return r; });
-check("su bloqueo: bloquea el golpe del jugador", def.block.includes("foeBlock") && def.block.includes("block"), def.block);
-// (desde el parry por niveles, bloquear también le sube la postura: la presión sostenida le rompe la guardia o la postura)
+// (desde la defensa por lectura: bloquea por reacción lo que tarda más que su reacción humana, y hace parry a lo
+// que ha aprendido de ti: el mismo combo con el mismo ritmo)
+const def = await page.evaluate(() => { const p = W.pf, r = {}, e = E();
+  const prep = () => { pair(0, 2.1); e.ai.enabled = true; e.ai.passive = true; e.ai.state = "chase"; W.combatLog.length = 0; };
+  // golpe retenido (lento): le da tiempo a reaccionar y bloquea
+  prep(); p.input("attack", { dir: Math.PI, hold: true }); T(30); p.input("attackUp"); T(40); r.block = evs();
+  // presión sostenida con golpes retenidos
+  // (sin dejarle aprender: si no, acaba leyendo la presión repetida y desviándola)
+  prep(); for (let i = 0; i < 14 && !W.combatLog.some((x) => x.ev === "guardbreak" || x.ev === "stun"); i++) { e.ai.resetModel(); p.act = null; p.input("attack", { dir: Math.PI, hold: true }); T(30); p.input("attackUp"); T(50); }
+  r.blockSeq = evs(); r.st = Math.round(e.st);
+  // su parry: le enseñas el mismo combo con el mismo ritmo
+  prep(); p.hpMax = p.hp = 1e6; const post0 = p.post; let parried = null; const tries = [];
+  for (let k = 0; k < 9 && !parried; k++) { const t0 = W.ct, n0 = W.combatLog.length; let i = 0; const plan = [0, 0.25, 0.5];
+    while (W.ct - t0 < 1.6) { while (i < plan.length && plan[i] <= W.ct - t0) { p.input("attack", { dir: Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x) }); i++; } T(); }
+    tries.push(W.combatLog.slice(n0).filter((x) => x.ev === "foeParryTry").length);
+    const pe = W.combatLog.slice(n0).find((x) => x.ev === "parry" && x.who === "autómata"); if (pe) parried = { k, post: Math.round(p.post - post0) };
+    W.teleport(e.body.x + 2.0, e.body.z); }
+  r.parry = parried; r.tries = tries; p.hpMax = p.hp = 100;
+  e.ai.passive = false; return r; });
+check("su bloqueo: por reacción (200-260 ms) bloquea los golpes que tardan más que eso (retenidos)", def.block.includes("foeBlock") && def.block.includes("block"), def.block);
 check("su bloqueo no aguanta para siempre: gasta stamina y postura hasta romperse la guardia o quedar aturdido", def.blockSeq.includes("guardbreak") || def.blockSeq.includes("stun"), { seq: def.blockSeq.slice(0, 16).join(","), st: def.st });
-check("su parry: desvía el golpe y el jugador pierde postura", def.parry.includes("parry") && def.playerPost >= 38, { ev: def.parry, postura: def.playerPost });
-check("su parry sale más cuanto más se repite el mismo ataque", def.parryReps.length > 0 && Math.max(...def.parryReps) >= 2, { repeticiones_en_sus_parries: def.parryReps });
-await page.evaluate(() => { const D = W.ENEMY_DIFF, k = D.parry; D.parry = 1; pair(Math.PI * 0.75, 2.1); W.skipRender = false; W.pf.input("attack", { dir: Math.PI * 1.75 });
-  let n = 0; while (!W.combatLog.some((x) => x.ev === "parry") && n < 90) { T(); n++; } D.parry = k; });
+check("su parry: te desvía lo que te ha leído (el mismo combo repetido) y pierdes postura", def.parry && def.parry.post >= 30, def.parry);
+check("sus intentos de parry llegan con la repetición (al principio no te conoce)", def.tries[0] === 0 && def.tries.slice(1).some((x) => x > 0), { intentos_por_combo: def.tries });
+await page.evaluate(() => { const e = E(), p = W.pf; pair(Math.PI * 0.75, 2.1); e.ai.enabled = true; e.ai.passive = true; e.ai.state = "chase";
+  for (let k = 0; k < 6; k++) { const t0 = W.ct; let i = 0; const plan = [0, 0.25, 0.5]; while (W.ct - t0 < 1.6) { while (i < plan.length && plan[i] <= W.ct - t0) { p.input("attack", { dir: Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x) }); i++; } T(); } W.teleport(e.body.x + Math.cos(Math.PI * 0.75) * 2.1, e.body.z + Math.sin(Math.PI * 0.75) * 2.1); }
+  W.skipRender = false; W.combatLog.length = 0; const t0 = W.ct; let i = 0; const plan = [0, 0.25, 0.5];
+  while (W.ct - t0 < 1.6 && !W.combatLog.some((x) => x.ev === "parry" && x.who === "autómata")) { while (i < plan.length && plan[i] <= W.ct - t0) { p.input("attack", { dir: Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x) }); i++; } T(); }
+  e.ai.passive = false; });
 await shot("04_su_parry");
 await page.evaluate(() => { W.skipRender = true; T(60); });
 

@@ -58,6 +58,9 @@
       f.ch.update(dt, f.body, theta, thetaT);
       if (def.update) def.update(f, dt);
     }
+    // panel: lo que te está leyendo el autómata y la dificultad adaptativa (cada 0.25 s)
+    const ti = document.getElementById("tInfo");
+    if (ti && W.automatonInfo && !document.getElementById("tpanel").hidden) { W._tiT = (W._tiT || 0) + dt; if (W._tiT > 0.25) { W._tiT = 0; ti.innerHTML = W.automatonInfo(); } }
     // botón REAPARECER: se ilumina si algún enemigo o el jugador han muerto
     const rb = document.getElementById("respawn");
     if (rb) {
@@ -102,7 +105,8 @@
       <label>Reacción <input id="dReact" type="range" min="0.5" max="1.6" step="0.1"><output id="oReact"></output></label>
       <label>Parry <input id="dParry" type="range" min="0" max="0.9" step="0.05"><output id="oParry"></output></label>
       <label>Bloqueo <input id="dBlock" type="range" min="0" max="0.9" step="0.05"><output id="oBlock"></output></label>
-      <button id="tResp">reaparecer enemigos</button>`;
+      <button id="tResp">reaparecer enemigos</button>
+      <div id="tInfo" class="ti"></div>`;
     wrap.appendChild(btn); wrap.appendChild(pn);
     const css = document.createElement("style");
     css.textContent = `#tbtn{position:absolute;right:calc(12px + env(safe-area-inset-right,0px));top:calc(12px + env(safe-area-inset-top,0px));min-width:40px;min-height:40px;
@@ -111,7 +115,7 @@
         background:rgba(10,18,26,.92);border:2px solid var(--edge);font-size:8px;line-height:1.5;display:flex;flex-direction:column;gap:8px;z-index:6}
       #tpanel[hidden]{display:none}#tpanel .tt{color:var(--dim)}#tpanel label{display:grid;grid-template-columns:62px 1fr 34px;align-items:center;gap:6px}
       #tpanel select,#tpanel button{font:inherit;font-size:8px;color:var(--ink);background:#0d1a26;border:1px solid var(--edge);min-height:32px}
-      #tpanel select{grid-column:2/4}#tpanel input{width:100%}#tpanel output{text-align:right}`;
+      #tpanel select{grid-column:2/4}#tpanel input{width:100%}#tpanel output{text-align:right}#tpanel .ti{color:#ffd9a0;line-height:1.7}`;
     document.head.appendChild(css);
     btn.addEventListener("click", (e) => { e.stopPropagation(); pn.hidden = !pn.hidden; btn.setAttribute("aria-expanded", String(!pn.hidden)); });
     for (const ev of ["pointerdown", "click"]) pn.addEventListener(ev, (e) => e.stopPropagation());
@@ -123,7 +127,7 @@
       i.value = D[key]; o.textContent = fmt(D[key]);
       i.addEventListener("input", () => { D[key] = +i.value; o.textContent = fmt(D[key]); });
     };
-    bind("dReact", "react", (v) => "×" + (+v).toFixed(1));
+    bind("dReact", "react", (v) => Math.round(1000 * (0.25 - 0.04 * Math.max(0, Math.min(1, (v - 0.5) / 1.1)))) + "ms");
     bind("dParry", "parry", (v) => Math.round(v * 100) + "%");
     bind("dBlock", "block", (v) => Math.round(v * 100) + "%");
     pn.querySelector("#tResp").addEventListener("click", () => W.respawnAll());

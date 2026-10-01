@@ -808,3 +808,51 @@ afectan las mecánicas del jugador, no su IA.
 - Capturas:
   - `review/parry2/E3_poses.png`: carga, suelta e impacto de los cinco golpes;
   - `E3_peligro_agarre.png` y `E3_peligro_barrido.png`.
+
+## Etapa 4 — Defensa del enemigo basada en leerte, no en dados
+- **Fuera los dados**: se quitan `onPlayerAttack`/`react` con sus probabilidades (parry ×repetición, bloqueo,
+  esquiva al azar).
+- **Modelo del jugador** (`ai.addToken/forecast`):
+  - *Fichas*: cada impacto de tus golpes (a1/a2/a3), cada finta tuya (F), el final de su cadena (E) y las pausas
+    largas (·). Cada ficha lleva su ritmo desde la anterior: rápido < 0.45 s, medio < 1 s, lento.
+  - *N-gramas*: trigramas (las dos fichas anteriores → siguiente) con bigrama de respaldo, cada uno con su intervalo
+    medio. Tienen **memoria reciente**: lo anterior pesa ×0.8 en cada actualización.
+  - *Predicción*: si lo más probable es un ataque visto ≥ 2 veces con confianza suficiente, se compromete a
+    defender en el instante previsto: PARRY si está muy seguro (≥ 1 − 0.5·«Parry»), BLOQUEO si lo está menos
+    (≥ 0.9 − 0.6·«Bloqueo»).
+  - *Resultado*: si te repites te lee (mismo combo y ritmo → 64 % de tus golpes desviados); si varías ritmo,
+    retrasas o fintas, falla (13 %).
+- **Su parry se ve venir**: alza la guardia (pose de bloqueo y **ojo ámbar**) 280-340 ms antes del impacto
+  previsto, ≥ 190 ms antes de intentar el parry. Tiene su ventana (200 ms) y su recuperación. Si lo engañas, su
+  parry se queda en el aire: **¡EXPUESTO!** 0.6 s, tambaleándose, y tus golpes le hacen ×1.5 de postura.
+- Si espera tu golpe (te ha leído), no empieza cadenas: se queda a defender. Como es pesado, puede defender desde
+  el 2.º frame de un golpe recibido, así que puede desviar tu combo a mitad.
+- **Reacción humana**: 200-260 ms según «Reacción» (el deslizador ahora muestra los ms), con ±25 ms al azar.
+  Nunca reacciona a algo más rápido: el zarpazo del jugador (205 ms) solo lo para si lo ha leído. Por reacción solo
+  bloquea lo lento (golpes retenidos, el de salto) o se aparta de lado si está bajo de vida o tras encajar un combo.
+- **Tus herramientas para ganarle la lectura**:
+  - **finta**: guardia durante la preparación de tu golpe; lo cancela, gasta 14 de stamina y la pulsación sigue
+    como guardia;
+  - **retraso**: mantén el ataque (J mantenida, o el dedo sobre el enemigo) y la preparación se queda en la pose
+    de carga hasta soltar, como mucho 0.6 s.
+- **Su conocimiento se reinicia** cada vez que reaparece.
+- **Dificultad adaptativa suave** (`ai.adapt`, de −1.2 a +1, vuelve sola despacio a 0):
+  - cada muerte seguida tuya: −0.35, y pausas entre cadenas más largas (×1.26 tras 3);
+  - parries perfectos seguidos: +0.12 cada uno desde el 2.º, pausas más cortas (×0.88 tras 5) y más trucos.
+
+  El panel ⚙ lo muestra: «Te lee: golpe 2 rápido 82 % → PARRY», número de fichas, reacción en ms, adaptativa y
+  muertes seguidas.
+- **Pruebas** `tests/parry2.mjs` (STAGES=4): 9/9 OK, sin errores JS. Comprueban:
+  - contra el mismo combo repetido: 64 % desviados;
+  - contra combos variados, con retrasos y fintas: 13 % desviados;
+  - reacción: 250-284 ms en la dificultad más lenta y 216-234 ms en la más rápida, nunca por debajo de 200 (medido en pasos de 1/60 s);
+  - que el zarpazo sin leer no lo para;
+  - que alza la guardia 200-250 ms antes de su parry, con el ojo ámbar en todos los frames;
+  - que si lo engañas queda expuesto y tu golpe le hace +10.5 de postura (×1.5);
+  - la finta (−14 de stamina, pasa a parry) y el retraso (impacto a 405 ms en vez de 205);
+  - que el modelo se reinicia al reaparecer;
+  - la adaptativa: −1.05 tras 3 muertes (pausas ×1.26) y +0.47 tras 5 perfectos (×0.88), visible en el panel.
+- **Regresión**: parry E1-E3 36/36; autómata 21/21 (su bloqueo y su parry ya salen de la reacción y de la lectura,
+  no de dados); eco 31/31.
+- Capturas: `review/parry2/E4_guardia_leida.png` (guardia leída, ojo ámbar) y `E4_panel.png` (panel con la lectura
+  y la adaptativa).

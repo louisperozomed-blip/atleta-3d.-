@@ -20,9 +20,13 @@
 //     se esquiva de lado)
 //   · nunca ataca si estás en el suelo o encajando un golpe; tras cada cadena, ventana de castigo clara (se
 //     queda resoplando: ni ataca ni se defiende)
-//   · defensa ante los golpes del jugador (dificultad del panel): a veces bloquea (block) y a veces hace
-//     parry (sobre todo si el jugador repite el mismo ataque); su parry quita postura al jugador
-//   · esquiva (dodge) de lado cuando está bajo de vida o tras encajar un combo
+//   · defensa: te LEE en vez de tirar dados (modelo de trigramas de tus golpes y su ritmo): si te repites,
+//     alza la guardia (ojo ámbar) un poco antes del impacto previsto y te hace parry (quita postura); si varías el
+//     ritmo, retrasas o fintas, su parry falla y queda expuesto. Reacciona como un humano (200-260 ms): solo
+//     bloquea lo que tarda más que eso. Su conocimiento se reinicia al reaparecer
+//   · esquiva (dodge) de lado cuando está bajo de vida o tras encajar un combo, si le da tiempo
+//   · dificultad adaptativa suave: muertes seguidas → pausas más largas; parries perfectos seguidos → pausas
+//     más cortas y más trucos
 //   · postura: los parries del jugador la llenan rápido (40-50 cada uno); llena = aturdido 3.2 s (frames
 //     STAGGER de hit en bucle lento), expuesto a un remate (×3)
 //   · al perder vida: hit con retroceso; al morir: death, se queda en el suelo y a los 3 s se desvanece
@@ -72,6 +76,7 @@
     vent: 0.95,                  // ventana de castigo tras cada cadena (resopla: ni ataca ni se defiende)
     pause: [0.9, 1.6],           // pausa entre cadenas
     lastRecK: 0.7,               // la recuperación del último golpe de la cadena, más lenta
+    exposed: 0.6,                // su parry falló (le engañaste): expuesto este tiempo (más postura por tus golpes)
     eyeLight: { color: 0x5fe8ff, intensity: 0.9, distance: 4.5 },
   });
   let seed = 4242;
@@ -152,16 +157,24 @@
   function makeAI(f) {
     return {
       enabled: true, state: "patrol", t: 0, replan: 0, cool: 1.2, idleT: 0, warnT: -1, pending: null,
-      hold: 0, playerSeq: [], lastHits: [], chain: null, chainN: 0, vent: 0, lastTrick: false, forced: null,
+      lastHits: [], chain: null, chainN: 0, vent: 0, lastTrick: false, forced: null, stanceUntil: 0, pAtks: [],
+      adapt: 0, deaths: 0, perfStreak: 0, sawDeath: false,
       update(dt) {
         const b = f.body, pl = W.pf, D = W.ENEMY_DIFF;
         this.t += dt;
         if (this.warnT >= 0) this.warnT += dt;
         if (this.vent > 0) this.vent = Math.max(0, this.vent - dt);
+        this.adaptStep(dt);
         if (!this.enabled || !f.alive || !pl) return;
-        // reacciones programadas (bloqueo, parry, esquiva)
-        if (this.pending && this.t >= this.pending.at) { const q = this.pending; this.pending = null; this.react(q); }
-        if (this.hold > 0) { this.hold -= dt; if (this.hold <= 0 && f.act && f.act.name === "block") f.guardHeld = false; }
+        // tus golpes: cada impacto es una ficha para el modelo
+        for (let i = this.pAtks.length - 1; i >= 0; i--) {
+          const a = this.pAtks[i];
+          if (a.impactT != null) { this.pAtks.splice(i, 1); this.addToken(a.name === "attack1" ? "a1" : a.name === "attack2" ? "a2" : "a3", a.impactT); }
+          else if (pl.act !== a) this.pAtks.splice(i, 1);
+        }
+        // defensa: compromiso por lectura y reacción humana
+        this.defendStep(); this.reactStep();
+        if (this.stanceUntil && W.ct > this.stanceUntil) { this.stanceUntil = 0; if (f.act && f.act.name === "block") f.guardHeld = false; }
         // cadena en curso: el siguiente golpe sale en la recuperación del anterior (con su pausa)
         if (this.chain) this.runChain(dt);
         if (f.act || this.chain) return;
@@ -190,7 +203,9 @@
         // persecución y combate
         if (this.vent <= 0) this.cool -= dt;
         if (d < 3.6) b.heading += norm(toP - b.heading) * Math.min(1, dt * 5);
-        if (this.cool <= 0 && this.vent <= 0 && d <= 2.6 && this.canStrike()) { b.stop(); b.heading = toP; this.startChain(this.pickChain(d)); return; }
+        // si espera tu golpe (te ha leído), no ataca: se queda a defender
+        const waiting = this.commit && W.ct > this.commit.stance - 0.7;
+        if (this.cool <= 0 && this.vent <= 0 && !waiting && !this.passive && d <= 2.6 && this.canStrike()) { b.stop(); b.heading = toP; this.startChain(this.pickChain(d)); return; }
         if (d > 1.9) {
           this.replan -= dt;
           if (this.replan <= 0 || !b.path.length) {
@@ -241,6 +256,7 @@
       endChain(clean) {
         const C = this.chain; if (!C) return;
         this.chain = null;
+        this.addToken("E", W.ct);                     // para el modelo: «terminó su cadena»
         // ventana de castigo: resopla (ni ataca ni se defiende) y luego una pausa antes de la siguiente cadena
         if (clean && f.alive) this.vent = CFG.vent;
         this.cool = (CFG.pause[0] + rand() * (CFG.pause[1] - CFG.pause[0])) * this.pauseK();
@@ -292,64 +308,151 @@
       },
       // un golpe suelto (pruebas y compatibilidad)
       attack(name, dir) { this.chain = { uid: ++this.chainN, id: "suelto", steps: [{ m: name, r: "n", gap: 0 }], i: 0, readyT: null }; this.strike(name, "n", null); },
-      // el jugador empieza un ataque cerca: decidir (con el tiempo de reacción de la dificultad)
-      onPlayerAttack(act) {
-        const pl = W.pf, b = f.body, D = W.ENEMY_DIFF;
-        if (!f.alive || this.state !== "chase" && this.state !== "patrol") return;
-        if (this.vent > 0) return;                                        // resoplando: ventana de castigo
-        const d = Math.hypot(pl.body.x - b.x, pl.body.z - b.z);
-        if (d > 3.4) return;
-        // en mitad del tambaleo (tras encajar golpes) solo puede esquivar
-        const inHit = f.act && f.act.name === "hit" && f.act.f >= 2 && !f.act.gb;
-        if (f.act && !inHit && !(f.act.name === "block" || (f.act.name.startsWith("attack") && f.act.f >= 5))) return;
-        this.state = "chase";
-        // repetición: el mismo ataque varias veces seguidas -> más parry
-        const now = this.t;
-        this.playerSeq = this.playerSeq.filter((q) => now - q.t < 3.5); this.playerSeq.push({ t: now, n: act.name });
-        let rep = 0; for (let i = this.playerSeq.length - 1; i >= 0 && this.playerSeq[i].n === act.name; i--) rep++;
-        this.lastHits = this.lastHits.filter((t) => now - t < 2.2);
-        const combo = this.lastHits.length >= 2;
-        const pDodge = (f.hp < f.hpMax * 0.35 ? 0.35 : 0) + (combo ? 0.35 : 0);
-        const pParry = Math.min(0.85, D.parry * (1 + 0.8 * (rep - 1)));
-        const pBlock = D.block;
-        const M = pl.M(), c = M.animations[act.name].ms;
-        const toImpact = (c[0] + c[1] + c[2]) / 1000 - (act.tt || 0);
-        const reactT = 0.14 / Math.max(0.3, D.react);
-        const r = rand();
-        let kind = null;
-        if (inHit) { if (r < pDodge + 0.15) kind = "dodge"; }
-        else if (r < pDodge) kind = "dodge";
-        else if (r < pDodge + pParry * (1 - pDodge)) kind = "parry";
-        else if (r < pDodge + (pParry + pBlock) * (1 - pDodge)) kind = "block";
-        if (!kind) return;
-        const at = kind === "parry" ? this.t + Math.max(reactT, toImpact - 0.1) : this.t + (kind === "dodge" ? reactT * 0.5 : reactT);
-        if (kind !== "parry" && reactT > toImpact + 0.05) return;         // no le da tiempo
-        this.pending = { kind, at, dir: Math.atan2(pl.body.z - b.z, pl.body.x - b.x), rep };
+      // ---- defensa: te LEE (modelo del jugador), no tira dados -----------------------------------------
+      // Fichas: cada impacto de tu ataque (a1/a2/a3), cada finta tuya (F), el final de su cadena (E) y una pausa
+      // larga (·). Cada ficha lleva el ritmo desde la anterior (q < 0.45 s, m < 1 s, s más). Tabla de trigramas:
+      // (dos fichas anteriores) → siguiente ficha, con su intervalo medio. Si la siguiente es un ataque y la
+      // confianza basta, se compromete a defender en el instante previsto: guardia visible (ojo ámbar) unos ms
+      // antes y parry (o bloqueo, si está menos seguro). Si te repites, te lee; si varías el ritmo, retrasas el
+      // golpe o fintas, falla: su parry se queda en el aire y queda EXPUESTO un momento.
+      // Además reacciona como un humano (200-260 ms): solo a lo que tarda más que eso (golpe de salto, golpes
+      // retenidos) y solo bloqueando.
+      tokens: [], grams: {}, predict: null, commit: null, exposed: 0, react1: 0,
+      bucket(g) { return g < 0.45 ? "q" : g < 1.0 ? "m" : "s"; },
+      resetModel() { this.tokens = []; this.grams = {}; this.predict = null; this.commit = null; },
+      // nueva ficha (instante en el reloj de combate)
+      addToken(kind, t) {
+        const T = this.tokens, last = T[T.length - 1];
+        if (last && t - last.t > 2.5 && kind !== "·") this.addToken("·", last.t + 2.5);
+        const gap = last ? t - last.t : 9;
+        const key = kind === "E" || kind === "·" ? kind : kind + this.bucket(gap);
+        // trigrama (dos fichas anteriores) y bigrama (la última) → esta ficha, con su intervalo medio
+        const ctxs = [];
+        if (T.length >= 2) ctxs.push(T[T.length - 2].key + "|" + T[T.length - 1].key);
+        if (T.length >= 1) ctxs.push(T[T.length - 1].key);
+        for (const ctx of ctxs) {
+          // memoria reciente: lo anterior pesa cada vez menos (×0.8), así sigue tus cambios de hábito
+          const g = this.grams[ctx] || (this.grams[ctx] = { n: 0, next: {} });
+          for (const k in g.next) g.next[k].n *= 0.8;
+          const nx = g.next[key] || (g.next[key] = { n: 0, gap: 0, seen: 0 });
+          nx.n += 1; nx.seen++; nx.gap += (gap - nx.gap) / Math.min(nx.seen, 3);   // intervalo medio (las últimas)
+          g.n = 0; for (const k in g.next) g.n += g.next[k].n;
+        }
+        T.push({ kind, key, t }); if (T.length > 40) T.shift();
+        // ¿un compromiso pendiente para este instante? (si la ficha llega, ya se ha resuelto o ha fallado)
+        this.forecast(t);
       },
-      react(q) {
-        const b = f.body;
-        const inHit = f.act && f.act.name === "hit" && f.act.f >= 2 && !f.act.gb;
-        if (!f.alive || (f.act && f.act.name !== "block" && !inHit && !(f.act.name.startsWith("attack") && f.act.f >= 5))) return;
-        if (inHit && q.kind !== "dodge") return;
-        if (q.kind === "block") {
-          f.guardHeld = true; f.start("block"); f.act.tt = 0.07; this.hold = 0.75;
-          W.combatLog.push({ ev: "foeBlock", who: f.name, t: +W.U.uTime.value.toFixed(3) });
-        } else if (q.kind === "parry") {
-          f.act = null; b.heading = q.dir; f.input("guardDown"); f.input("guardUp");
-          W.combatLog.push({ ev: "foeParryTry", who: f.name, rep: q.rep, t: +W.U.uTime.value.toFixed(3) });
-        } else if (q.kind === "dodge") {
+      // predicción de la siguiente ficha a partir de las dos últimas
+      forecast(now) {
+        const T = this.tokens; this.predict = null;
+        if (T.length < 1) return;
+        // trigrama si ya lo ha visto al menos 2 veces; si no, el bigrama
+        let ctx = T.length >= 2 ? T[T.length - 2].key + "|" + T[T.length - 1].key : null, g = ctx && this.grams[ctx];
+        if (!g || g.n < 1.7) { ctx = T[T.length - 1].key; g = this.grams[ctx]; }
+        if (!g || g.n < 1.7) return;
+        let best = null; for (const k in g.next) if (!best || g.next[k].n > g.next[best].n) best = k;
+        const nx = g.next[best], conf = nx.n / g.n;
+        this.predict = { key: best, conf, at: now + nx.gap, n: nx.n, ctx };
+        const D = W.ENEMY_DIFF, parryConf = 1 - 0.5 * D.parry, blockConf = 0.9 - 0.6 * D.block;
+        if (!/^a/.test(best) || nx.seen < 2 || conf < Math.min(parryConf, blockConf)) return;
+        const kind = conf >= parryConf ? "parry" : "block";
+        // guardia visible 280-340 ms antes del impacto previsto (≥ 190 ms antes de su parry); el parry, 90 ms antes
+        const lead = 0.28 + rand() * 0.06;
+        this.commit = { kind, at: this.predict.at, stance: this.predict.at - lead, press: this.predict.at - 0.09, conf, key: best, done: false };
+        W.combatLog.push({ ev: "foeRead", ct: +W.ct.toFixed(3), who: f.name, key: best, conf: +conf.toFixed(2), kind, in: +(this.predict.at - now).toFixed(2), t: +W.U.uTime.value.toFixed(3) });
+      },
+      // libre para defenderse: sin acción (o en guardia), no atacando, no resoplando
+      freeToDefend() {
+        const a = f.act;
+        if (!f.alive || this.vent > 0 || this.exposed > W.ct || f.stunned) return false;
+        // pesado: se repone del golpe recibido enseguida (desde su 2.º frame) para defender el siguiente
+        return !a || a.name === "block" || a.name === "parry" || (a.name === "hit" && !a.gb && !a.exposed && a.f >= 1) ||
+          (a.name.startsWith("attack") && a.f >= 5 && !this.chain);
+      },
+      defendStep() {
+        const c = this.commit, now = W.ct;
+        if (!c) return;
+        if (now > c.at + 0.3) { this.commit = null; return; }
+        if (!this.freeToDefend()) { if (!f.act || !f.act.name.startsWith("attack")) return; this.commit = null; return; }
+        const b = f.body, pl = W.pf;
+        // te ve tambaleándote (le has dado a su guardia o te ha desviado): no va a llegar ese golpe
+        if (!c.stanceOn && now >= c.stance && pl.act && (pl.act.name === "hit" || pl.act.name === "death")) { this.commit = null; return; }
+        if (!c.stanceOn && now >= c.stance) {
+          // se ve venir: alza la guardia (ojo ámbar)
+          c.stanceOn = true; b.stop(); b.heading = Math.atan2(pl.body.z - b.z, pl.body.x - b.x);
+          f.guardHeld = true; if (!f.act || f.act.name !== "block") { f.act = null; f.start("block"); f.act.tt = 0.07; }
+          this.stanceUntil = c.at + 0.25;
+          W.combatLog.push({ ev: "foeGuard", ct: +W.ct.toFixed(3), who: f.name, kind: c.kind, t: +W.U.uTime.value.toFixed(3) });
+        }
+        // ya defendió (parry o bloqueo): compromiso cumplido
+        if ((c.pressed || c.stanceOn) && f.lastDefT != null && f.lastDefT >= (c.pressT || c.stance) - 1e-6) { this.commit = null; return; }
+        if (c.kind === "parry" && c.stanceOn && !c.pressed && now >= c.press) {
+          c.pressed = true; c.pressT = now;
+          f.guardHeld = false; f.input("guardDown"); f.input("guardUp");
+          W.combatLog.push({ ev: "foeParryTry", ct: +W.ct.toFixed(3), who: f.name, conf: +c.conf.toFixed(2), t: +W.U.uTime.value.toFixed(3) });
+        }
+        // su parry se quedó en el aire: expuesto un momento
+        if (c.kind === "parry" && c.pressed && !c.hitSeen && now > c.pressT + 0.22) {
+          this.commit = null; this.exposed = now + CFG.exposed;
+          f.act = null; f.start("hit", { kb: 0, kdir: 0, moved: 0, speed: 0.55, exposed: true, recoil: true });
+          W.combatLog.push({ ev: "foeParryWhiff", ct: +W.ct.toFixed(3), who: f.name, t: +W.U.uTime.value.toFixed(3) });
+          if (W.combatPop) W.combatPop("¡EXPUESTO!", "#ffd34a", f);
+        }
+        if (c.kind === "block" && c.stanceOn && now > this.stanceUntil) { f.guardHeld = false; this.commit = null; }
+      },
+      // reacción humana a un ataque que empieza (200-260 ms + variación): solo bloquea lo que tarda más que eso
+      onPlayerAttack(act) {
+        if (!f.alive || this.state === "home") return;
+        const pl = W.pf, b = f.body, D = W.ENEMY_DIFF;
+        if (Math.hypot(pl.body.x - b.x, pl.body.z - b.z) > 3.6) return;
+        this.state = "chase";
+        const rt = this.reactionTime();
+        this.react1 = { act, at: W.ct + rt };
+      },
+      reactionTime() {
+        // dificultad: reacción 200-260 ms (deslizador «Reacción» ×0.5-1.6: más alto = más rápido) ± 25 ms
+        const D = W.ENEMY_DIFF, base = 0.25 - 0.04 * Math.max(0, Math.min(1, (D.react - 0.5) / 1.1));
+        return Math.max(0.2, Math.min(0.26, base + (rand() - 0.5) * 0.04));
+      },
+      reactStep() {
+        const q = this.react1; if (!q || W.ct < q.at) return;
+        this.react1 = null;
+        const pl = W.pf, a = pl.act;
+        if (!a || a !== q.act || !this.freeToDefend() || this.commit) return;
+        const left = pl.toImpact(); if (left == null) return;
+        // tras encajar un combo o con poca vida: se aparta de lado si le da tiempo
+        this.lastHits = this.lastHits.filter((t) => this.t - t < 2.2);
+        const b = f.body, dir = Math.atan2(pl.body.z - b.z, pl.body.x - b.x);
+        if ((f.hp < f.hpMax * 0.35 || this.lastHits.length >= 2) && left > 0.12 && f.st > 10) {
           f.act = null; const side = rand() < 0.5 ? 1 : -1;
-          f.startDodge({ dir: q.dir + side * Math.PI / 2 + Math.PI * 0.15 * side });
-          W.combatLog.push({ ev: "foeDodge", who: f.name, t: +W.U.uTime.value.toFixed(3) });
+          f.startDodge({ dir: dir + side * Math.PI / 2 + Math.PI * 0.15 * side });
+          W.combatLog.push({ ev: "foeDodge", ct: +W.ct.toFixed(3), who: f.name, t: +W.U.uTime.value.toFixed(3) });
+          return;
+        }
+        if (left > 0.05 && W.ENEMY_DIFF.block > 0) {
+          f.guardHeld = true; f.act = null; f.start("block"); f.act.tt = 0.07; this.stanceUntil = W.ct + left + 0.3;
+          this.commit = { kind: "block", at: W.ct + left, stance: W.ct, press: 0, stanceOn: true, conf: 0, reactive: true };
+          W.combatLog.push({ ev: "foeBlock", ct: +W.ct.toFixed(3), who: f.name, reactive: true, t: +W.U.uTime.value.toFixed(3) });
         }
       },
+      // dificultad adaptativa suave: muertes seguidas → más pausa; parries perfectos seguidos → menos pausa y más trucos
+      adaptStep(dt) {
+        const pl = W.pf; if (!pl) return;
+        if (!pl.alive && !this.sawDeath) { this.sawDeath = true; this.deaths++; this.perfStreak = 0; this.adapt = Math.max(-1.2, this.adapt - 0.35); W.combatLog.push({ ev: "adapt", who: f.name, adapt: +this.adapt.toFixed(2), why: "muerte", t: +W.U.uTime.value.toFixed(3) }); }
+        if (pl.alive) this.sawDeath = false;
+        this.adapt -= Math.sign(this.adapt) * Math.min(Math.abs(this.adapt), 0.004 * dt);     // vuelve despacio a 0
+      },
+      onDeflected(level) {
+        if (level === "perfect") { this.perfStreak++; if (this.perfStreak >= 2) { this.adapt = Math.min(1, this.adapt + 0.12); W.combatLog.push({ ev: "adapt", who: f.name, adapt: +this.adapt.toFixed(2), why: "perfectos", t: +W.U.uTime.value.toFixed(3) }); } }
+        else this.perfStreak = 0;
+      },
+      onPlayerHit() { this.perfStreak = 0; },
     };
   }
 
   // ---- ganchos -----------------------------------------------------------------------------------------
   function onAct(f, actor, act) {
-    if (actor === W.pf && act.name.startsWith("attack") && f.ai && f.ai.enabled) f.ai.onPlayerAttack(act);
-    if (actor === W.pf && act.name === "hit" && f.ai) { /* el jugador golpeado: nada */ }
+    if (actor === W.pf && act.name.startsWith("attack") && f.ai) { f.ai.pAtks.push(act); if (f.ai.enabled) f.ai.onPlayerAttack(act); }
   }
   function onFrame(f, a) {
     if (a.name === "hit" && a.f === 0 && f.ai) f.ai.lastHits.push(f.ai.t);
@@ -394,10 +497,13 @@
       k = 0.45;
       if (W.fx && Math.floor(tt * 8) !== Math.floor((tt - dt) * 8)) { const b = f.body; W.fx.dust(b.x, b.y + W.CHAR_H * 1.15, b.z, 2, { pal: [[0.8, 0.82, 0.85], [0.65, 0.68, 0.72]], spd: 0.2, up: 0.8, life: 0.9 }); }
     }
-    const col = U.uEyeCol.value, want = red ? [1.0, 0.22, 0.14] : [0.35, 0.95, 1.0];
+    // guardia leída (se ve venir su parry): ojo ámbar
+    const guardEye = ai && ai.commit && ai.commit.stanceOn && a && (a.name === "block" || a.name === "parry");
+    if (guardEye) k = Math.max(k, 2.2);
+    const col = U.uEyeCol.value, want = red ? [1.0, 0.22, 0.14] : guardEye ? [1.0, 0.72, 0.22] : [0.35, 0.95, 1.0];
     col.set(want[0], want[1], want[2]);
     if (f.eyeLight) f.eyeLight.color.setRGB(want[0], want[1], want[2]);
-    if (f.eyeHalo) f.eyeHalo.material.color.setRGB(red ? 1 : 0.5, red ? 0.35 : 0.94, red ? 0.3 : 1);
+    if (f.eyeHalo) f.eyeHalo.material.color.setRGB(red || guardEye ? 1 : 0.5, red ? 0.35 : guardEye ? 0.8 : 0.94, red ? 0.3 : guardEye ? 0.35 : 1);
     if (!f.alive) k = Math.max(0, 1 - f.deadT / 1.2);
     U.uEyeK.value = k;
     // luz del ojo: sigue al ojo; más fuerte en el aviso; se apaga al morir
@@ -434,7 +540,11 @@
     f.respawn(f.home.x, f.home.z); f.body.heading = f.home.heading;
     f.deadT = 0; f.fade = 1; f.hidden = false; f.ch.uniforms.uFade.value = 1;
     const ch = f.ch; ch.mesh.visible = ch.caster.visible = ch.blob.visible = ch.ghost.visible = true;
-    if (f.ai) { f.ai.state = "patrol"; f.ai.cool = 1.2; f.ai.pending = null; f.ai.hold = 0; f.ai.warnT = -1; f.ai.chain = null; f.ai.vent = 0; f.ai.lastTrick = false; }
+    if (f.ai) {
+      const ai = f.ai; Object.assign(ai, { state: "patrol", cool: 1.2, warnT: -1, chain: null, vent: 0, lastTrick: false, stanceUntil: 0, react1: null, exposed: 0, pAtks: [] });
+      ai.resetModel();                               // su conocimiento de tus hábitos se reinicia al reaparecer
+      if (!W.pf || W.pf.alive) ai.deaths = 0;        // (las muertes seguidas cuentan aunque reaparezca)
+    }
   }
   function remove(f) { if (f.eyeLight) { f.eyeLight.intensity = 0; W.scene.remove(f.eyeLight); } if (f.eyeHalo) W.scene.remove(f.eyeHalo); }
 
@@ -457,4 +567,20 @@
     update, onFrame, onAct, respawn, remove,
   });
   W.automatonEye = eyeWorld;
+  // tus fintas también son fichas para su modelo
+  const prevFeint = W.onFeint;
+  W.onFeint = function (actor, a) { if (prevFeint) prevFeint(actor, a); if (actor !== W.pf) return; for (const f of W.foes || []) if (f.type === "automaton" && f.ai) f.ai.addToken("F", W.ct); };
+  // texto para el panel de pruebas: qué te está leyendo y la dificultad adaptativa
+  W.automatonInfo = function () {
+    const p = W.pf; if (!p) return "";
+    let e = null, bd = 1e9; for (const f of W.foes || []) { if (f.type !== "automaton" || !f.alive) continue; const d = Math.hypot(f.body.x - p.body.x, f.body.z - p.body.z); if (d < bd) { bd = d; e = f; } }
+    if (!e) return "";
+    const ai = e.ai, pr = ai.predict, k = ai.pauseK();
+    const NAME = { a1: "golpe 1", a2: "golpe 2", a3: "golpe 3", F: "finta", E: "fin de su cadena" }, RIT = { q: "rápido", m: "medio", s: "lento" };
+    const say = (key) => key ? (NAME[key.slice(0, 2)] || NAME[key[0]] || key) + (RIT[key[2]] ? " " + RIT[key[2]] : "") : "";
+    const D = W.ENEMY_DIFF, ms = Math.round(1000 * (0.25 - 0.04 * Math.max(0, Math.min(1, (D.react - 0.5) / 1.1))));
+    return "Te lee: " + (pr ? say(pr.key) + " " + Math.round(pr.conf * 100) + "%" + (ai.commit ? " → " + (ai.commit.kind === "parry" ? "PARRY" : "BLOQUEO") : "") : "aún no") +
+      "<br>Fichas: " + ai.tokens.length + " · reacción ~" + ms + " ms" +
+      "<br>Adaptativa: " + (ai.adapt >= 0 ? "+" : "") + ai.adapt.toFixed(2) + " (pausas ×" + k.toFixed(2) + ", muertes seguidas " + ai.deaths + ")";
+  };
 })();

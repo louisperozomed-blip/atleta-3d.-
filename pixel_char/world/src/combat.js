@@ -280,13 +280,14 @@
         const cost = heavy ? L.defPostHeavy : L.defPost;
         if (cost) t.addPosture(cost, { noBreak: true });
         if (perfect) t.counterT = W.ct + W.COMBAT.counterWin;
-        t.parries = (t.parries || 0) + 1;
+        t.parries = (t.parries || 0) + 1; t.lastDefT = W.ct;
+        if (att.ai && att.ai.onDeflected) att.ai.onDeflected(perfect ? "perfect" : "normal");
         log({ ev: "parry", level: perfect ? "perfect" : "normal", early: Math.round(t.lastEarly * 1000), who: t.name, from: att.name, anim: a.name,
           win: +t.parryWindow().toFixed(3), gain: Math.round(gain), cost, post: Math.round(att.post), broke });
         continue;
       }
       if (def === "block") {
-        breakStreak(att);
+        breakStreak(att); t.lastDefT = W.ct;
         const L = LEVEL.block, cost = heavy ? L.stHeavy : L.st;
         t.st -= cost; t.stT = 0;
         if (t.st <= 0) {
@@ -313,12 +314,14 @@
       }
       // golpe limpio (remate si está aturdido)
       breakStreak(att);
+      if (att.ai && att.ai.onPlayerHit && t === W.pf) att.ai.onPlayerHit();
+      const exposed = !!(t.act && t.act.exposed);          // su parry falló (le engañaste): más postura
       const deathblow = t.stunned;
       const counter = !!a.counter && !deathblow;
       const dm = deathblow ? Math.max(40, dmg * 3) : counter ? dmg * W.COMBAT.counterDmg : dmg;
       const res = t.hurt({ dmg: dm, dir, kb: AT.kb || (heavy ? 0.6 : 0.35), guardBreak: !!AT.throw });
       if (AT.throw) log({ ev: "grab", who: t.name, from: att.name, anim: a.name, move: a.move });
-      if (!deathblow && t.alive) t.addPosture(dm * 0.7 * (counter ? W.COMBAT.counterPost : 1));
+      if (!deathblow && t.alive) t.addPosture(dm * 0.7 * (counter ? W.COMBAT.counterPost : 1) * (exposed ? 1.5 : 1));
       if (counter) { log({ ev: "counter", who: t.name, from: att.name, anim: a.name, dmg: Math.round(dm) }); W.fx.dust(t.body.x, t.body.y + 1.0, t.body.z, 18, { pal: GOLD, spd: 2.2, up: 1.6, life: 0.4 }); }
       const kind = groundBurst(t.body.x, t.body.z, heavy ? 14 : 9, heavy);
       W.fx.dust(t.body.x - Math.cos(dir) * 0.1, t.body.y + 0.9, t.body.z - Math.sin(dir) * 0.1, heavy ? 16 : 10, { pal: EMBER, spd: 1.8, up: 1.3, life: 0.35 });

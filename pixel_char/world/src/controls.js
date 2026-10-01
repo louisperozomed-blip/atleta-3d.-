@@ -1,11 +1,13 @@
 // controls.js — controles táctiles (y ratón/teclado en Mac):
 //   · tocar/clic en el suelo: va ahí por un camino A* (camina si está cerca, corre si está lejos)
 //   · mantener pulsado (> 170 ms o arrastrar): sigue al dedo (se re-planifica cada 0.2 s)
-//   · tocar al enemigo: atacar (toques seguidos encadenan el combo); si está lejos va hacia él y ataca
+//   · tocar al enemigo: atacar (toques seguidos encadenan el combo); si está lejos va hacia él y ataca;
+//     mantener el dedo sobre él = golpe RETRASADO (se suelta al levantar el dedo)
 //   · deslizar rápido: esquivar hacia allí
 //   · botón GUARDIA: tocar = parry, mantener = bloquear
 //   · doble toque en el suelo o botón SALTAR: salta en el sitio, o hacia delante si se mueve
-//   · teclado: WASD/flechas mover (Mayús corre), J atacar, K guardia, Espacio esquivar, L saltar
+//   · teclado: WASD/flechas mover (Mayús corre), J atacar (mantener = retrasar el golpe), K guardia (durante la
+//     preparación de tu golpe = finta), Espacio esquivar, L saltar
 //   · marcador en el suelo: círculo que se encoge y se desvanece
 (function () {
   "use strict";
@@ -113,8 +115,18 @@
       try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
       Object.assign(ptr, { down: true, id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, t0: performance.now(), foe: W.foeAt(e.clientX, e.clientY) });
       clearTimeout(ptr.timer);
-      // sobre el enemigo no se sigue al dedo: es un ataque (o un deslizamiento)
+      // sobre el enemigo no se sigue al dedo: es un ataque (o un deslizamiento); mantenerlo = golpe retrasado
       ptr.timer = setTimeout(() => { if (ptr.down && !ptr.foe) startFollow(); }, TAP_MS);
+      ptr.atkHold = false;
+      if (ptr.foe) {
+        clearTimeout(ptr.holdTimer);
+        ptr.holdTimer = setTimeout(() => {
+          if (!ptr.down || !ptr.foe || Math.hypot(ptr.x - ptr.x0, ptr.y - ptr.y0) > 14) return;
+          const f = ptr.foe, d = Math.hypot(f.body.x - W.player.x, f.body.z - W.player.z);
+          if (d > 3.2 && !W.pf.act) return;
+          ptr.atkHold = true; W.pf.input("attack", { dir: Math.atan2(f.body.z - W.player.z, f.body.x - W.player.x), hold: true });
+        }, 150);
+      }
     });
     canvas.addEventListener("pointermove", (e) => {
       if (!ptr.down || e.pointerId !== ptr.id) return;
@@ -125,7 +137,8 @@
     });
     const end = (e) => {
       if (!ptr.down || e.pointerId !== ptr.id) return;
-      ptr.down = false; clearTimeout(ptr.timer);
+      ptr.down = false; clearTimeout(ptr.timer); clearTimeout(ptr.holdTimer);
+      if (ptr.atkHold) { ptr.atkHold = false; W.pf.input("attackUp"); lastTap = null; return; }   // suelta el golpe retenido
       // deslizar rápido: esquivar en esa dirección
       const dx = e.clientX - ptr.x0, dy = e.clientY - ptr.y0, el = performance.now() - ptr.t0;
       W.lastGesture = { dx, dy, ms: Math.round(el), following, foe: !!ptr.foe };
@@ -188,7 +201,7 @@
       if (e.code === "KeyJ") {
         e.preventDefault();
         const f = W.nearestFoe ? W.nearestFoe(W.pf, 3.4, 2.0) : null;
-        W.pf.input("attack", f ? { dir: Math.atan2(f.body.z - W.player.z, f.body.x - W.player.x) } : { dir: kbDir() });
+        W.pf.input("attack", f ? { dir: Math.atan2(f.body.z - W.player.z, f.body.x - W.player.x), hold: true } : { dir: kbDir(), hold: true });
       } else if (e.code === "KeyK") { e.preventDefault(); W.pf.input("guardDown", { ts: e.timeStamp }); }
       else if (e.code === "Space") {
         e.preventDefault();
@@ -200,8 +213,9 @@
       if (MOVE[e.code]) { keys[e.code] = false; return; }
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") { keys.shift = false; return; }
       if (e.code === "KeyK") W.pf.input("guardUp");
+      if (e.code === "KeyJ") W.pf.input("attackUp");
     });
-    addEventListener("blur", () => { for (const k in keys) keys[k] = false; if (W.pf) W.pf.input("guardUp"); });
+    addEventListener("blur", () => { for (const k in keys) keys[k] = false; if (W.pf) { W.pf.input("guardUp"); W.pf.input("attackUp"); } });
     function kbDir() {
       let sx = 0, sy = 0;
       for (const k in MOVE) if (keys[k]) { sx += MOVE[k][0]; sy += MOVE[k][1]; }

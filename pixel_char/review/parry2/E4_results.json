@@ -1,0 +1,149 @@
+{
+ "results": [
+  {
+   "name": "te lee si te repites: el mismo combo con el mismo ritmo → la mayoría de tus golpes desviados",
+   "ok": true,
+   "info": {
+    "parry": 9,
+    "block": 0,
+    "hit": 5,
+    "desviados": 0.64,
+    "lecturas": 18
+   }
+  },
+  {
+   "name": "si varías el ritmo, retrasas o fintas, falla: pocos golpes desviados",
+   "ok": true,
+   "info": {
+    "parry": 1,
+    "block": 5,
+    "hit": 9,
+    "desviados": 0.07,
+    "fallos_de_su_parry": 2,
+    "fintas": 5
+   }
+  },
+  {
+   "name": "reacción de velocidad humana: 200-260 ms con variación según la dificultad, nunca menos de 200 ms",
+   "ok": true,
+   "info": {
+    "x0.5": {
+     "min": 233,
+     "max": 267,
+     "n": 10
+    },
+    "x1": {
+     "min": 233,
+     "max": 250,
+     "n": 10
+    },
+    "x1.6": {
+     "min": 216,
+     "max": 234,
+     "n": 10
+    },
+    "nota": "medido en pasos de 1/60 s (+17 ms)"
+   }
+  },
+  {
+   "name": "a un golpe más rápido que su reacción (zarpazo, 205 ms) no puede reaccionar: solo lo para si lo ha leído",
+   "ok": true,
+   "info": [
+    "hit",
+    "hit",
+    "hit",
+    "hit",
+    "hit",
+    "hit"
+   ]
+  },
+  {
+   "name": "su parry se ve venir: alza la guardia (ojo ámbar) ≥ 150 ms antes de intentarlo",
+   "ok": true,
+   "info": {
+    "intentos": 7,
+    "antelacion_ms": [
+     250,
+     217,
+     233,
+     233,
+     234,
+     200,
+     233
+    ],
+    "min": 200,
+    "frames_en_guardia": 24,
+    "ojo_ambar": 24
+   }
+  },
+  {
+   "name": "si lo engañas (retrasas el golpe que esperaba), su parry falla y queda EXPUESTO: tu golpe entra con más postura",
+   "ok": true,
+   "info": {
+    "secuencia": [
+     "foeParryTry",
+     "foeParryWhiff",
+     "hit",
+     "foeRead",
+     "foeGuard",
+     "foeParryTry",
+     "foeParryWhiff"
+    ],
+    "golpe_con_expuesto": true,
+    "postura": 10.5,
+    "golpe": {
+     "ev": "hit",
+     "who": "autómata",
+     "from": "jugador",
+     "anim": "attack1",
+     "dmg": 10,
+     "hp": 999739,
+     "res": "hit",
+     "surface": "dust",
+     "t": 158.647
+    }
+   }
+  },
+  {
+   "name": "tus herramientas: FINTA (guardia durante la preparación cancela tu golpe y gasta stamina) y RETRASO (mantener el ataque)",
+   "ok": true,
+   "info": {
+    "finta": {
+     "ev": [
+      "feint"
+     ],
+     "stamina": -14,
+     "act": "parry"
+    },
+    "normal": 205,
+    "retenido": 405
+   }
+  },
+  {
+   "name": "su conocimiento de tus hábitos se reinicia cada vez que reaparece",
+   "ok": true,
+   "info": {
+    "antes": 10,
+    "despues": 0,
+    "fichas": 0
+   }
+  },
+  {
+   "name": "dificultad adaptativa suave: muertes seguidas → pausas más largas; perfectos seguidos → más cortas y más trucos; se ve en el panel",
+   "ok": true,
+   "info": {
+    "tras_3_muertes": {
+     "adapt": -1.05,
+     "pausas": 1.26,
+     "muertes": 3
+    },
+    "tras_5_perfectos": {
+     "adapt": 0.47,
+     "pausas": 0.88
+    },
+    "panel": "Te lee: aún no\nFichas: 0 · reacción ~232 ms\nAdaptativa: +0.47 (pausas ×0.88, muertes seguidas 0)"
+   }
+  }
+ ],
+ "errors": []
+}

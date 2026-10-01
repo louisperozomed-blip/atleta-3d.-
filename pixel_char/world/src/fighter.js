@@ -20,6 +20,8 @@
 //  · plan de golpe (enemigos): CARGA (frames 0-1) → RETENCIÓN (frame 1 fijo) → SUELTA (frame 2) → impacto, con
 //    duraciones propias (act.plan = {wind, hold, rel}); avisa de las fases con this.onPhase(act, "hold"|"release")
 //  · tras saltar un barrido, contraataque en el aire (airCounterT)
+//  · herramientas para ganar la lectura: FINTA (guardia durante la preparación de tu ataque: lo cancela, gasta
+//    stamina) y RETRASO (mantener pulsado el ataque: la preparación se queda en la pose de carga hasta soltar)
 (function () {
   "use strict";
   const W = (window.W = window.W || {});
@@ -28,6 +30,7 @@
     buffer: 0.18,
     parryWin: 0.2, perfectWin: 0.07, parryPartial: 0.12, parryPen: 0.045, parryPenMax: 0.13, parryPenDecay: 0.12, spamGap: 0.7,
     counterWin: 0.35, counterDmg: 1.6, counterPost: 1.5,   // contraataque tras un parry perfecto
+    feintCost: 14, holdMax: 0.6,                   // finta (stamina) y retraso máximo manteniendo el ataque (s)
     calib: 0,                                      // ms (+ = tus pulsaciones llegan tarde): desplaza la ventana
     staminaRegen: 34, staminaDelay: 0.55, blockRegenK: 0.35,
     dodgeCost: 18, attackCost: [6, 7, 12], dodgeDist: 2.3,
@@ -116,6 +119,14 @@
       if (!this.alive) return false;
       if (type === "guardDown") {
         const pt = W.pressTime(data && data.ts, this.team === "player");
+        // FINTA: guardia durante la preparación de tu ataque = lo cancelas (gasta stamina) y la pulsación sigue
+        // como guardia
+        const fa = this.act;
+        if (fa && fa.name.startsWith("attack") && fa.f < 3 && !fa.plan && this.st >= C.feintCost * 0.5) {
+          this.st = Math.max(0, this.st - C.feintCost); this.stT = 0; this.act = null; this.atkHeld = false;
+          if (W.combatLog) W.combatLog.push({ ev: "feint", who: this.name, anim: fa.name, t: W.U ? +W.U.uTime.value.toFixed(3) : 0 });
+          if (W.onFeint) W.onFeint(this, fa);
+        }
         this.guardHeld = true;
         // spam: una pulsación seguida encoge la ventana del parry (se recupera sola)
         if (pt - this.lastGuardT < C.spamGap) this.pen = Math.min(C.parryPenMax, this.pen + C.parryPen);
@@ -125,6 +136,8 @@
         return true;
       }
       if (type === "guardUp") { this.guardHeld = false; return true; }
+      if (type === "attackUp") { this.atkHeld = false; return true; }          // suelta el golpe retenido
+      if (type === "attack" && data && data.hold) this.atkHeld = true;
       this.buf = { type, t: this.time, data };
       this.tryBuffered();
       return true;
@@ -199,6 +212,7 @@
         if (data.crouch) a.crouch = data.crouch;
         if (data.lungeFrom) a.lungeFrom = data.lungeFrom;
         if (data.track) a.track = true;                // persigue al objetivo hasta el impacto (agarre, barrido)
+        if (data.hold) a.holdable = true;              // retraso: se queda en la carga mientras se mantenga
       }
       if (this.counterT && W.ct <= this.counterT) { a.counter = true; this.counterT = 0; }   // contraataque
       // atracción suave hacia el enemigo más cercano (delante, a menos de 3.4 u): gira hacia él y se acerca
@@ -320,7 +334,13 @@
         }
       } else {
         if (a.slow && a.slow !== 1 && a.name.startsWith("attack") && a.f < 3) sp /= a.slow;
-        a.tt = (a.tt || 0) + dt * sp;
+        let nt = (a.tt || 0) + dt * sp;
+        // RETRASO: mientras se mantenga el ataque, la preparación se queda al final de la carga (frame 1)
+        if (a.holdable && a.name.startsWith("attack") && a.f < 3) {
+          const c2 = cumOf(this.M(), a.name)[2];
+          if (this.atkHeld && nt >= c2 && (a.heldT || 0) < C.holdMax) { nt = c2 - 1e-4; a.heldT = (a.heldT || 0) + dt; if (a.heldT >= C.holdMax) this.atkHeld = false; }
+        }
+        a.tt = nt;
       }
       const f = frameAt(a.name, a.tt, this.M());
       if (a.name === "block") {
