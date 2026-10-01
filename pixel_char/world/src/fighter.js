@@ -142,8 +142,10 @@
           if (W.onFeint) W.onFeint(this, fa);
         }
         this.guardHeld = true;
-        // spam: una pulsación seguida encoge la ventana del parry (se recupera sola)
-        if (pt - this.lastGuardT < C.spamGap) this.pen = Math.min(C.parryPenMax, this.pen + C.parryPen);
+        // spam: una pulsación seguida encoge la ventana del parry (se recupera sola); si la pulsación anterior desvió
+        // algo, no es spam (golpes de varios enemigos, uno tras otro: un parry por golpe)
+        if (pt - this.lastGuardT < C.spamGap && !this.pressDeflected) this.pen = Math.min(C.parryPenMax, this.pen + C.parryPen);
+        this.pressDeflected = false;
         this.lastGuardT = pt;
         // entrenamiento: una pulsación justo después de que te alcanzara un golpe = «TARDE x ms»
         const li = W.lastFoeImpact;

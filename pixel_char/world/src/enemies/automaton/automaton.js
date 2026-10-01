@@ -244,7 +244,19 @@
         if (d < 3.6) b.heading += norm(toP - b.heading) * Math.min(1, dt * 5);
         // si espera tu golpe (te ha leído), no ataca: se queda a defender
         const waiting = this.commit && W.ct > this.commit.stance - 0.7;
-        if (this.cool <= 0 && this.vent <= 0 && !waiting && !this.passive && d <= 2.6 && this.canStrike()) { b.stop(); b.heading = toP; this.startChain(this.pickChain(d)); return; }
+        // en grupo: como mucho 2 atacan a la vez (group.js); el resto rodea
+        // (el que tiene turno se acerca y ataca; los que no, rodean hasta que lo tengan)
+        const ready = this.cool <= 0 && this.vent <= 0 && !waiting && !this.passive && this.canStrike();
+        const turn = !W.groupActive || !W.groupActive() || W.groupHolds(f) || (ready && W.groupCanAttack(f));
+        if (ready && d <= 2.6 && turn) { b.stop(); b.heading = toP; this.startChain(this.pickChain(d)); return; }
+        if (!turn) {
+          const o = W.groupOrbit(f);
+          if (o) {
+            this.replan -= dt;
+            if (this.replan <= 0 || !b.path.length) { this.replan = 0.5; if (Math.hypot(o.x - b.x, o.z - b.z) > 0.6) { const path = W.findPath(b.x, b.z, o.x, o.z, 6000); if (path.length) { b.setPath(path, { noDelay: true }); b.gait = "walk"; } } else b.stop(); }
+            return;
+          }
+        }
         if (d > 1.9) {
           this.replan -= dt;
           if (this.replan <= 0 || !b.path.length) {
@@ -295,7 +307,8 @@
       },
       endChain(clean) {
         const C = this.chain; if (!C) return;
-        this.chain = null;
+        this.chain = null; this.pincerAt = null;
+        if (W.groupRelease) W.groupRelease(f);           // suelta su turno de ataque (group.js)
         this.addToken("E", W.ct);                     // para el modelo: «terminó su cadena»
         // ventana de castigo: resopla (ni ataca ni se defiende) y luego una pausa antes de la siguiente cadena
         // (su counter es un solo golpe: resopla menos, pero también hay ventana de castigo)
@@ -407,6 +420,15 @@
           C.steps.splice(1, C.steps.length - 1, { m: B[0], r: B[1], gap: B[2] });
         }
         W.combatLog.push({ ev: "branch", who: f.name, chain: C.id, resp: C.resp, from: old, to: C.steps[1].m + (C.steps[1].delay ? "(retrasado)" : ""), t: +W.U.uTime.value.toFixed(3) });
+      },
+      // PINZA (group.js): un zarpazo cuyo impacto cae en «at» (la retención alinea los dos)
+      pincerStrike(at) {
+        const wind = CFG.wind.n, rel = CFG.moves.attack1.rel, hold = Math.max(0, at - W.ct - wind - rel);
+        const step = { m: "attack1", r: "n", gap: 0, delay: hold };
+        this.pincerAt = at; this.cool = 99; this.vent = 0;
+        this.chain = { uid: ++this.chainN, id: "pinza", steps: [step], i: 0, readyT: null, trick: { kind: "pinza" }, t0: this.t };
+        W.combatLog.push({ ev: "chainStart", who: f.name, chain: "pinza", uid: this.chain.uid, steps: ["attack1"], t: +W.U.uTime.value.toFixed(3) });
+        this.strike("attack1", "n", step);
       },
       // un golpe suelto (pruebas y compatibilidad)
       attack(name, dir) { this.chain = { uid: ++this.chainN, id: "suelto", steps: [{ m: name, r: "n", gap: 0 }], i: 0, readyT: null }; this.strike(name, "n", null); },
@@ -710,6 +732,8 @@
     } else if (a && W.isAtk(a) && (a.level || 0) >= 3) red = true;
     if (a && a.name === "stun") k = 0.5 + 0.4 * Math.sin(tt * 10);
     if (f.eyeBlink > 0) { f.eyeBlink -= dt; k = 0.25; }                                                           // finta: se apaga un instante
+    // pinza (group.js): los dos ojos destellan a la vez
+    if (f.pincerFlash > 0) { f.pincerFlash -= dt; k = Math.max(k, 3.6 + 1.5 * Math.sin(f.pincerFlash * 30)); }
     // te ha leído (Combate completo): parpadeo ámbar
     let readEye = false;
     if (f.readBlink > 0) { f.readBlink -= dt; readEye = Math.sin(f.readBlink * 40) > 0; if (readEye) k = Math.max(k, 2.4); }

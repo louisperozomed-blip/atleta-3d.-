@@ -3748,8 +3748,10 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
           if (W.onFeint) W.onFeint(this, fa);
         }
         this.guardHeld = true;
-        // spam: una pulsación seguida encoge la ventana del parry (se recupera sola)
-        if (pt - this.lastGuardT < C.spamGap) this.pen = Math.min(C.parryPenMax, this.pen + C.parryPen);
+        // spam: una pulsación seguida encoge la ventana del parry (se recupera sola); si la pulsación anterior desvió
+        // algo, no es spam (golpes de varios enemigos, uno tras otro: un parry por golpe)
+        if (pt - this.lastGuardT < C.spamGap && !this.pressDeflected) this.pen = Math.min(C.parryPenMax, this.pen + C.parryPen);
+        this.pressDeflected = false;
         this.lastGuardT = pt;
         // entrenamiento: una pulsación justo después de que te alcanzara un golpe = «TARDE x ms»
         const li = W.lastFoeImpact;
@@ -4464,7 +4466,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         //  desviar con un perfecto — el intercambio de desvíos —; antes, tras su parry perfecto, salía indefendible)
         if (perfect && !t.rip && t.team === "player") t.counterT = W.ct + W.COMBAT.counterWin;
         if (perfect && t.team === "player" && W.slowmo) W.slowmo(W.DUEL ? W.DUEL.slowmo[0] : 0.12, W.DUEL ? W.DUEL.slowmo[1] : 0.3);
-        t.parries = (t.parries || 0) + 1; t.lastDefT = W.ct;
+        t.parries = (t.parries || 0) + 1; t.lastDefT = W.ct; t.pressDeflected = true;
+        if (W.multiParryNote) W.multiParryNote(t, att, perfect);   // varios impactos en la misma pulsación (group.js)
         if (att.ai && att.ai.onDeflected) att.ai.onDeflected(perfect ? "perfect" : "normal");
         log({ ev: "parry", level: perfect ? "perfect" : "normal", early: Math.round(t.lastEarly * 1000), who: t.name, from: att.name, anim: a.name,
           win: +t.parryWindow().toFixed(3), gain: Math.round(gain), cost, post: Math.round(att.post), broke });
@@ -5308,6 +5311,195 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
 })();
 
 </script>
+<script>/* group.js */
+// group.js — combate en grupo (Combate completo, etapa 7).
+//
+//  · TURNOS: como mucho 2 enemigos atacan a la vez (W.groupCanAttack: un enemigo pide turno antes de empezar su
+//    cadena y lo suelta al acabarla); el resto RODEA al jugador a ~3,6 u, repartidos en círculo, sin echarse encima
+//  · ataques por la espalda o fuera de pantalla: flecha en el borde de la pantalla (o junto al personaje, si viene
+//    por detrás) mientras el enemigo prepara el golpe; roja si es peligroso
+//  · PINZA ocasional: dos autómatas libres a lados opuestos atacan sincronizados (impactos a ≤ 40 ms), con un aviso
+//    doble claro: los dos ojos destellan a la vez, sonido propio y «¡PINZA!»
+//  · MULTI-PARRY: si varios impactos caen con ≤ 150 ms entre ellos, una sola pulsación desvía todos los que estén en su
+//    ventana, cada uno con su nivel (lo hace la defensa de siempre: la guardia cubre 360° y su ventana vale para todos
+//    los golpes que lleguen dentro). Todos perfectos = DOBLE / TRIPLE PERFECTO: estallido dorado radial, cámara lenta
+//    breve (~150 ms al 30 %), todos DEFLECTED y bonus de postura. El riposte de después va al objetivo fijado
+//  · impactos más separados = un parry por golpe, sin penalización por spam si cada pulsación desvía algo (fighter.js)
+//  · panel de pruebas: aparecer 2 o 3 autómatas alrededor (con la opción de mezclar con el eco)
+(function () {
+  "use strict";
+  const W = (window.W = window.W || {});
+  const G = (W.GROUP = { max: 2, holders: new Map(), orbitR: 3.6, pincerP: 0.35, pincerCool: 4, pincerT: 0, multiWin: 0.15, mpBonus: 15, slow: [0.15, 0.3], mp: null, ind: new Map() });
+  const now3 = () => (W.U ? +W.U.uTime.value.toFixed(3) : 0);
+  const log = (e) => { e.t = now3(); W.combatLog.push(e); };
+  const engaged = (f) => f.alive && !f.hidden && f.ai && f.ai.enabled && f.ai.state === "chase" && Math.hypot(f.body.x - W.player.x, f.body.z - W.player.z) < 9;
+
+  // ---- turnos --------------------------------------------------------------------------------------------
+  W.groupCanAttack = function (f) {
+    if (G.holders.has(f)) return true;
+    if (G.holders.size >= G.max) return false;
+    G.holders.set(f, W.ct); return true;
+  };
+  W.groupRelease = function (f) { G.holders.delete(f); };
+  W.groupHolds = (f) => G.holders.has(f);
+  // ¿cuántos enemigos te están atacando en grupo? (para decidir si los demás rodean)
+  W.groupActive = function () { let n = 0; for (const f of W.foes || []) if (engaged(f)) n++; return n >= 2; };
+  // puesto en el círculo para el que no tiene turno: repartidos por ángulo alrededor del jugador
+  W.groupOrbit = function (f) {
+    const L = (W.foes || []).filter((o) => engaged(o) && !G.holders.has(o));
+    const i = L.indexOf(f); if (i < 0) return null;
+    const pl = W.player, base = Math.atan2(f.body.z - pl.z, f.body.x - pl.x);
+    // cada uno se queda cerca de su ángulo actual, pero separados al menos 2π/(n+2)
+    const n = L.length, ang = base + (i - (n - 1) / 2) * (2 * Math.PI / (n + 3)) * 0.35;
+    return { x: pl.x + Math.cos(ang) * G.orbitR, z: pl.z + Math.sin(ang) * G.orbitR, ang };
+  };
+
+  // ---- pinza -------------------------------------------------------------------------------------------
+  function tryPincer(dt) {
+    G.pincerT -= dt;
+    if (G.pincerT > 0) return;
+    G.pincerT = 0.6;
+    const pl = W.player;
+    const free = (W.foes || []).filter((f) => engaged(f) && f.type === "automaton" && !f.act && !f.ai.chain && f.ai.vent <= 0 && !f.ai.passive && f.ai.cool <= 0.4 && !f.ai.training &&
+      Math.hypot(f.body.x - pl.x, f.body.z - pl.z) < 3.4);
+    if (free.length < 2 || G.holders.size > 0) return;
+    // dos a lados opuestos (más de 100° entre ellos, vistos desde el jugador)
+    let pair = null;
+    for (let i = 0; i < free.length && !pair; i++) for (let j = i + 1; j < free.length && !pair; j++) {
+      const a = Math.atan2(free[i].body.z - pl.z, free[i].body.x - pl.x), b = Math.atan2(free[j].body.z - pl.z, free[j].body.x - pl.x);
+      let d = Math.abs(a - b); if (d > Math.PI) d = 2 * Math.PI - d;
+      if (d > 1.75) pair = [free[i], free[j]];
+    }
+    if (!pair || Math.random() > G.pincerP) { G.pincerT = 1.2; return; }
+    W.groupPincer(pair[0], pair[1]);
+  }
+  // los dos golpean a la vez: misma carga y suelta; la retención alinea los impactos (≤ 40 ms de diferencia)
+  W.groupPincer = function (a, b, spread) {
+    for (const f of [a, b]) { G.holders.set(f, W.ct); f.act = null; f.guardHeld = false; f.ai.commit = null; }
+    const at = W.ct + 1.05, off = spread == null ? (Math.random() - 0.5) * 0.08 : spread;
+    a.ai.pincerStrike(at); b.ai.pincerStrike(at + off);
+    for (const f of [a, b]) { f.eyeBlink = 0; f.pincerFlash = 0.6; const e = W.automatonEye ? W.automatonEye(f) : null; if (e && W.combatStar) W.combatStar(e.p.x, e.p.y, e.p.z, 1.5, 0xff8a2a, 0.45); }
+    if (W.sfx) W.sfx.combat("pincer");
+    if (W.combatPop) W.combatPop("¡PINZA!", "#ff9a4a", W.pf);
+    G.pincerT = G.pincerCool;
+    log({ ev: "pincer", who: [a.name, b.name], at: +at.toFixed(3), off: +off.toFixed(3) });
+  };
+
+  // ---- multi-parry ------------------------------------------------------------------------------------------
+  // combat.js lo llama en cada parry del jugador: los que caen en la ventana de la misma pulsación forman grupo
+  W.multiParryNote = function (t, att, perfect) {
+    if (t !== W.pf) return;
+    let M = G.mp;
+    if (!M || M.press !== t.guardT || W.ct - M.t0 > G.multiWin + 0.02) M = G.mp = { press: t.guardT, t0: W.ct, list: [], done: false };
+    M.list.push({ att, perfect });
+    if (M.list.length >= 2) M.due = W.ct + 0.01;      // se resuelve en cuanto se cierra la ventana (o llega el 3.º)
+  };
+  function resolveMulti() {
+    const M = G.mp; if (!M || M.done || M.list.length < 2) return;
+    if (W.ct < M.t0 + G.multiWin && M.list.length < 3 && (W.foes || []).some((f) => f.act && W.isAtk(f.act) && f.toImpact() != null && f.toImpact() < G.multiWin)) return;
+    M.done = true;
+    const n = M.list.length, all = M.list.every((x) => x.perfect), p = W.pf;
+    log({ ev: "multiParry", n, perfect: all, levels: M.list.map((x) => (x.perfect ? "perfect" : "normal")) });
+    if (!all) { if (W.combatPop) W.combatPop(n === 2 ? "DOBLE PARRY" : "TRIPLE PARRY", "#ffe08a", p); return; }
+    // DOBLE / TRIPLE PERFECTO: estallido dorado radial, cámara lenta, todos desequilibrados y bonus de postura
+    const b = p.body, FX = W.combatFx;
+    for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8; W.fx.dust(b.x + Math.cos(a) * 0.5, b.y + 1.0, b.z + Math.sin(a) * 0.5, 5, { pal: FX.GOLD, spd: 3.2, up: 1.4, life: 0.6 }); }
+    FX.flash(b.x, b.y + 1.2, b.z, 0xffc444, 8); FX.star(b.x, b.y + 1.1, b.z, 2.4, 0xffd040, 0.35);
+    if (W.slowmo) W.slowmo(G.slow[0], G.slow[1]);
+    if (W.duelFlash) W.duelFlash(0.5);
+    if (W.sfx) W.sfx.combat("multiPerfect", n);
+    if (W.combatPop) W.combatPop(n === 2 ? "¡DOBLE PERFECTO!" : "¡TRIPLE PERFECTO!", "#ffd34a", p);
+    for (const x of M.list) {
+      const f = x.att; if (!f.alive) continue;
+      f.addPosture(G.mpBonus, { noBreak: false });
+      if (!(f.act && f.act.name === "deflected") && !f.stunned && W.duelDeflect) { W.duelDeflect(f, Math.atan2(f.body.z - b.z, f.body.x - b.x) + Math.PI); }
+    }
+    if (W.duelFlushLog) W.duelFlushLog();
+    // el riposte va al objetivo fijado (si es uno de los desviados)
+    const tg = W.getTarget ? W.getTarget() : null;
+    if (p.rip && tg && M.list.some((x) => x.att === tg)) p.rip.target = tg;
+  }
+
+  // ---- indicador de borde: ataques por la espalda o fuera de pantalla ------------------------------------------
+  function indicator(f) {
+    let el = G.ind.get(f);
+    if (!el) {
+      el = document.createElement("div"); el.className = "edgeInd";
+      el.innerHTML = "<i></i>";
+      document.getElementById("wrap").appendChild(el); G.ind.set(f, el);
+    }
+    return el;
+  }
+  let css = false;
+  function updateIndicators() {
+    if (!css) {
+      css = true; const s = document.createElement("style");
+      s.textContent = `.edgeInd{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:6;display:none}
+        .edgeInd i{position:absolute;left:-15px;top:-15px;width:30px;height:30px;background:#9ff4ff;clip-path:polygon(100% 50%,0 0,22% 50%,0 100%);filter:drop-shadow(0 0 4px #000)}
+        .edgeInd.red i{background:#ff4a3a}.edgeInd.heavy i{background:#ff9a2a}.edgeInd.pulse i{transform:scale(1.25)}`;
+      document.head.appendChild(s);
+    }
+    const r = document.getElementById("wrap").getBoundingClientRect(), W_ = r.width, H_ = r.height, pl = W.player;
+    const ps = W.toScreen(pl.x, pl.y + 1.0, pl.z);
+    for (const f of W.foes || []) {
+      const el = indicator(f), a = f.act;
+      const winding = f.alive && !f.hidden && a && W.isAtk(a) && a.f < W.hitF(a);
+      if (!winding) { if (el.style.display !== "none") el.style.display = "none"; continue; }
+      const s = W.toScreen(f.body.x, f.body.y + 1.0, f.body.z);
+      const off = s[0] < 24 || s[0] > W_ - 24 || s[1] < 24 || s[1] > H_ - 24;
+      // por la espalda: más de 110° respecto a hacia donde mira el jugador
+      let back = Math.abs(Math.atan2(f.body.z - pl.z, f.body.x - pl.x) - pl.heading); if (back > Math.PI) back = 2 * Math.PI - back;
+      const behind = back > 1.92;
+      if (!off && !behind) { el.style.display = "none"; continue; }
+      const dx = s[0] - ps[0], dy = s[1] - ps[1], ang = Math.atan2(dy, dx);
+      let x, y;
+      if (off) {
+        // en el borde, en la dirección del enemigo
+        const kx = dx > 0 ? (W_ - 26 - ps[0]) / dx : (26 - ps[0]) / dx, ky = dy > 0 ? (H_ - 26 - ps[1]) / dy : (26 - ps[1]) / dy, k = Math.min(Math.abs(kx), Math.abs(ky));
+        x = ps[0] + dx * k; y = ps[1] + dy * k;
+      } else { x = ps[0] + Math.cos(ang) * 70; y = ps[1] + Math.sin(ang) * 70; }   // junto al personaje
+      el.style.display = "block";
+      el.style.transform = `translate(${x}px,${y}px) rotate(${ang}rad)`;
+      const lvl = a.level || 1;
+      el.classList.toggle("red", lvl >= 3); el.classList.toggle("heavy", lvl === 2);
+      el.classList.toggle("pulse", Math.sin(W.ct * 18) > 0);
+      el.dataset.foe = (W.foes || []).indexOf(f); el.dataset.kind = off ? "borde" : "espalda";
+    }
+  }
+
+  W.groupUpdate = function (dt) {
+    if (!W.foes || !W.pf) return;
+    // turnos: se sueltan los que ya no atacan (sin cadena ni golpe en curso) y los muertos
+    // (el que lo pidió tiene 2,5 s para acercarse y empezar)
+    for (const [f, t0] of G.holders) { const busy = f.act || (f.ai && (f.ai.chain || f.ai.pincerAt != null)); if (busy) G.holders.set(f, W.ct); if (!f.alive || f.hidden || (!busy && W.ct - G.holders.get(f) > 2.5)) G.holders.delete(f); }
+    if (W.groupActive()) tryPincer(dt);
+    resolveMulti();
+    updateIndicators();
+  };
+  W.groupState = () => ({ holders: [...G.holders.keys()].map((f) => (W.foes || []).indexOf(f)), active: W.groupActive() });
+
+  // ---- panel: aparecer un grupo alrededor del jugador --------------------------------------------------------
+  W.spawnGroup = function (n, mixEcho) {
+    const types = [];
+    for (let i = 0; i < n; i++) types.push("automaton");
+    if (mixEcho) types.push("echo");
+    const p = W.player, h = W.heightAt(p.x, p.z);
+    if (W.clearFoes) W.clearFoes();
+    G.holders.clear();
+    const m = types.length;
+    types.forEach((t, k) => {
+      const a = k * 2 * Math.PI / m + 0.4;
+      const s = W.findSpot(p.x + Math.cos(a) * 4.6, p.z + Math.sin(a) * 4.6, h, 0.8) || W.findSpot(p.x + Math.cos(a) * 3, p.z + Math.sin(a) * 3, null, 0.6);
+      if (!s) return;
+      W.addFoe(t, { x: s.x, z: s.z, heading: Math.atan2(p.z - s.z, p.x - s.x), zone: "grupo" });
+    });
+    W.enemyType = "grupo";
+    log({ ev: "group", n: types.length, types });
+    return W.foes;
+  };
+})();
+
+</script>
 <script>/* calib.js */
 // calib.js — calibración de la latencia táctil para el parry (como en los juegos de ritmo).
 // Panel de pruebas ⚙ → «Latencia»: deslizador en ms y botón «calibrar». La prueba da 10 pulsos (destello + clic)
@@ -5450,6 +5642,12 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     return foes;
   };
   W.setEnemyType = function (t) { return W.spawnEnemies(t); };
+  // grupos (group.js): quitar todos y añadir uno de un tipo en un punto
+  W.clearFoes = function () { while (foes.length) removeFoe(foes.pop()); W.foe = null; };
+  W.addFoe = function (type, p) {
+    const def = TYPES[type]; if (!def) return null;
+    const f = def.spawn(p, W.assets); f.type = type; f.zone = p.zone; foes.push(f); if (!W.foe) W.foe = f; return f;
+  };
 
   W.updateFoes = function (dt, theta, thetaT) {
     for (const f of foes) {
@@ -5509,6 +5707,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       <label>Parry <input id="dParry" type="range" min="0" max="0.9" step="0.05"><output id="oParry"></output></label>
       <label>Bloqueo <input id="dBlock" type="range" min="0" max="0.9" step="0.05"><output id="oBlock"></output></label>
       <button id="tResp">reaparecer enemigos</button>
+      <div class="tg"><button id="tG2">2 autómatas</button><button id="tG3">3 autómatas</button><button id="tGE">2 + eco</button></div>
       <div id="tInfo" class="ti"></div>`;
     wrap.appendChild(btn); wrap.appendChild(pn);
     const css = document.createElement("style");
@@ -5518,7 +5717,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         background:rgba(10,18,26,.92);border:2px solid var(--edge);font-size:8px;line-height:1.5;display:flex;flex-direction:column;gap:8px;z-index:6}
       #tpanel[hidden]{display:none}#tpanel .tt{color:var(--dim)}#tpanel label{display:grid;grid-template-columns:62px 1fr 34px;align-items:center;gap:6px}
       #tpanel select,#tpanel button{font:inherit;font-size:8px;color:var(--ink);background:#0d1a26;border:1px solid var(--edge);min-height:32px}
-      #tpanel select{grid-column:2/4}#tpanel input{width:100%}#tpanel output{text-align:right}#tpanel .ti{color:#ffd9a0;line-height:1.7}`;
+      #tpanel .tg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px}#tpanel select{grid-column:2/4}#tpanel input{width:100%}#tpanel output{text-align:right}#tpanel .ti{color:#ffd9a0;line-height:1.7}`;
     document.head.appendChild(css);
     btn.addEventListener("click", (e) => { e.stopPropagation(); pn.hidden = !pn.hidden; btn.setAttribute("aria-expanded", String(!pn.hidden)); });
     for (const ev of ["pointerdown", "click"]) pn.addEventListener(ev, (e) => e.stopPropagation());
@@ -5534,6 +5733,10 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     bind("dParry", "parry", (v) => Math.round(v * 100) + "%");
     bind("dBlock", "block", (v) => Math.round(v * 100) + "%");
     pn.querySelector("#tResp").addEventListener("click", () => W.respawnAll());
+    // grupos alrededor del jugador (group.js)
+    pn.querySelector("#tG2").addEventListener("click", () => W.spawnGroup(2, false));
+    pn.querySelector("#tG3").addEventListener("click", () => W.spawnGroup(3, false));
+    pn.querySelector("#tGE").addEventListener("click", () => W.spawnGroup(2, true));
     if (W.initCalibUI) W.initCalibUI(pn);           // latencia del parry (calib.js)
     if (W.initTrainingUI) W.initTrainingUI(pn);     // modo entrenamiento (practice.js)
     if (W.initAnimViewerUI) W.initAnimViewerUI(pn); // visor de animaciones (animviewer.js)
@@ -5604,7 +5807,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         this.cool -= dt;
         // de cara al jugador cuando está cerca
         if (d < 3.5) b.heading += norm(toP - b.heading) * Math.min(1, dt * 8);
-        if (this.cool <= 0 && d <= 2.4 && (!p.act || p.act.name !== "death")) {
+        // (en grupo, como mucho 2 atacan a la vez: group.js)
+        if (this.cool <= 0 && d <= 2.4 && (!p.act || p.act.name !== "death") && (!W.groupCanAttack || !W.groupActive() || W.groupCanAttack(f))) {
           // ataque: attack3 (salto) a media distancia o a veces de cerca; attack1 (+ attack2) si no
           b.stop(); b.heading = toP;
           const heavy = d > 1.75 ? this.rand() < 0.7 : this.rand() < 0.25;
@@ -5919,7 +6123,19 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         if (d < 3.6) b.heading += norm(toP - b.heading) * Math.min(1, dt * 5);
         // si espera tu golpe (te ha leído), no ataca: se queda a defender
         const waiting = this.commit && W.ct > this.commit.stance - 0.7;
-        if (this.cool <= 0 && this.vent <= 0 && !waiting && !this.passive && d <= 2.6 && this.canStrike()) { b.stop(); b.heading = toP; this.startChain(this.pickChain(d)); return; }
+        // en grupo: como mucho 2 atacan a la vez (group.js); el resto rodea
+        // (el que tiene turno se acerca y ataca; los que no, rodean hasta que lo tengan)
+        const ready = this.cool <= 0 && this.vent <= 0 && !waiting && !this.passive && this.canStrike();
+        const turn = !W.groupActive || !W.groupActive() || W.groupHolds(f) || (ready && W.groupCanAttack(f));
+        if (ready && d <= 2.6 && turn) { b.stop(); b.heading = toP; this.startChain(this.pickChain(d)); return; }
+        if (!turn) {
+          const o = W.groupOrbit(f);
+          if (o) {
+            this.replan -= dt;
+            if (this.replan <= 0 || !b.path.length) { this.replan = 0.5; if (Math.hypot(o.x - b.x, o.z - b.z) > 0.6) { const path = W.findPath(b.x, b.z, o.x, o.z, 6000); if (path.length) { b.setPath(path, { noDelay: true }); b.gait = "walk"; } } else b.stop(); }
+            return;
+          }
+        }
         if (d > 1.9) {
           this.replan -= dt;
           if (this.replan <= 0 || !b.path.length) {
@@ -5970,7 +6186,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       },
       endChain(clean) {
         const C = this.chain; if (!C) return;
-        this.chain = null;
+        this.chain = null; this.pincerAt = null;
+        if (W.groupRelease) W.groupRelease(f);           // suelta su turno de ataque (group.js)
         this.addToken("E", W.ct);                     // para el modelo: «terminó su cadena»
         // ventana de castigo: resopla (ni ataca ni se defiende) y luego una pausa antes de la siguiente cadena
         // (su counter es un solo golpe: resopla menos, pero también hay ventana de castigo)
@@ -6082,6 +6299,15 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
           C.steps.splice(1, C.steps.length - 1, { m: B[0], r: B[1], gap: B[2] });
         }
         W.combatLog.push({ ev: "branch", who: f.name, chain: C.id, resp: C.resp, from: old, to: C.steps[1].m + (C.steps[1].delay ? "(retrasado)" : ""), t: +W.U.uTime.value.toFixed(3) });
+      },
+      // PINZA (group.js): un zarpazo cuyo impacto cae en «at» (la retención alinea los dos)
+      pincerStrike(at) {
+        const wind = CFG.wind.n, rel = CFG.moves.attack1.rel, hold = Math.max(0, at - W.ct - wind - rel);
+        const step = { m: "attack1", r: "n", gap: 0, delay: hold };
+        this.pincerAt = at; this.cool = 99; this.vent = 0;
+        this.chain = { uid: ++this.chainN, id: "pinza", steps: [step], i: 0, readyT: null, trick: { kind: "pinza" }, t0: this.t };
+        W.combatLog.push({ ev: "chainStart", who: f.name, chain: "pinza", uid: this.chain.uid, steps: ["attack1"], t: +W.U.uTime.value.toFixed(3) });
+        this.strike("attack1", "n", step);
       },
       // un golpe suelto (pruebas y compatibilidad)
       attack(name, dir) { this.chain = { uid: ++this.chainN, id: "suelto", steps: [{ m: name, r: "n", gap: 0 }], i: 0, readyT: null }; this.strike(name, "n", null); },
@@ -6385,6 +6611,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     } else if (a && W.isAtk(a) && (a.level || 0) >= 3) red = true;
     if (a && a.name === "stun") k = 0.5 + 0.4 * Math.sin(tt * 10);
     if (f.eyeBlink > 0) { f.eyeBlink -= dt; k = 0.25; }                                                           // finta: se apaga un instante
+    // pinza (group.js): los dos ojos destellan a la vez
+    if (f.pincerFlash > 0) { f.pincerFlash -= dt; k = Math.max(k, 3.6 + 1.5 * Math.sin(f.pincerFlash * 30)); }
     // te ha leído (Combate completo): parpadeo ámbar
     let readEye = false;
     if (f.readBlink > 0) { f.readBlink -= dt; readEye = Math.sin(f.readBlink * 40) > 0; if (readEye) k = Math.max(k, 2.4); }
@@ -6992,6 +7220,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       tone(c, t, "triangle", 2200, 2100, 0.08, 0.6); tone(c, t + 0.08, "sine", 1760, 1755, 0.05, 0.9);
     }
     else if (kind === "death") { tone(c, t, "sine", 80, 40, 0.35, 0.35); noiseHit(c, t, "lowpass", 900, 200, 0.6, 0.25, 0.3); }
+    else if (kind === "pincer") { tone(c, t, "sawtooth", 330, 300, 0.1, 0.35); tone(c, t + 0.09, "sawtooth", 330, 300, 0.1, 0.35); tone(c, t, "square", 990, 980, 0.04, 0.2); tone(c, t + 0.09, "square", 990, 980, 0.04, 0.2); }   // pinza: doble aviso
+    else if (kind === "multiPerfect") { for (const [fr, g, d] of [[2350, 0.2, 1.1], [3136, 0.14, 1.0], [3951, 0.1, 0.9], [1175, 0.14, 1.0]]) tone(c, t, "triangle", fr, fr * 0.998, g, d); tone(c, t + 0.06, "sine", 4699, 4690, 0.08, 1.0); noiseHit(c, t, "highpass", 6000, 3500, 0.7, 0.35, 0.08); }
     else if (kind === "rhythm") { tone(c, t, "triangle", 1568, 1568, 0.07, 0.12); tone(c, t + 0.05, "triangle", 2093, 2093, 0.06, 0.16); tone(c, t, "sine", 523, 520, 0.05, 0.1); }   // en ritmo
     else if (kind === "charge2") { tone(c, t, "sawtooth", 220, 440, 0.08, 0.22); tone(c, t + 0.02, "triangle", 1320, 1980, 0.06, 0.3); noiseHit(c, t, "highpass", 3000, 6000, 0.6, 0.08, 0.2); }
     else if (kind === "chargeStart") { tone(c, t, "sine", 110, 180, 0.07, 0.4); noiseHit(c, t, "bandpass", 400, 1200, 3, 0.05, 0.35); }
@@ -8017,6 +8247,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       character.update(gdt, player, ui.theta, ui.thetaT);
       if (W.updateFoes) W.updateFoes(gdt, ui.theta, ui.thetaT);
       if (W.targetUpdate) W.targetUpdate(dt);                    // objetivo fijado (target.js)
+      if (W.groupUpdate) W.groupUpdate(gdt);                     // turnos, pinza, multi-parry, indicador de borde (group.js)
       if (W.afterCharacter) W.afterCharacter(dt, t);
       if (W.combatAfter) W.combatAfter(dt);
       const beat = 0;

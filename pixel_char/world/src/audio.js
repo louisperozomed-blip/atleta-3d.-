@@ -133,6 +133,8 @@
       tone(c, t, "triangle", 2200, 2100, 0.08, 0.6); tone(c, t + 0.08, "sine", 1760, 1755, 0.05, 0.9);
     }
     else if (kind === "death") { tone(c, t, "sine", 80, 40, 0.35, 0.35); noiseHit(c, t, "lowpass", 900, 200, 0.6, 0.25, 0.3); }
+    else if (kind === "pincer") { tone(c, t, "sawtooth", 330, 300, 0.1, 0.35); tone(c, t + 0.09, "sawtooth", 330, 300, 0.1, 0.35); tone(c, t, "square", 990, 980, 0.04, 0.2); tone(c, t + 0.09, "square", 990, 980, 0.04, 0.2); }   // pinza: doble aviso
+    else if (kind === "multiPerfect") { for (const [fr, g, d] of [[2350, 0.2, 1.1], [3136, 0.14, 1.0], [3951, 0.1, 0.9], [1175, 0.14, 1.0]]) tone(c, t, "triangle", fr, fr * 0.998, g, d); tone(c, t + 0.06, "sine", 4699, 4690, 0.08, 1.0); noiseHit(c, t, "highpass", 6000, 3500, 0.7, 0.35, 0.08); }
     else if (kind === "rhythm") { tone(c, t, "triangle", 1568, 1568, 0.07, 0.12); tone(c, t + 0.05, "triangle", 2093, 2093, 0.06, 0.16); tone(c, t, "sine", 523, 520, 0.05, 0.1); }   // en ritmo
     else if (kind === "charge2") { tone(c, t, "sawtooth", 220, 440, 0.08, 0.22); tone(c, t + 0.02, "triangle", 1320, 1980, 0.06, 0.3); noiseHit(c, t, "highpass", 3000, 6000, 0.6, 0.08, 0.2); }
     else if (kind === "chargeStart") { tone(c, t, "sine", 110, 180, 0.07, 0.4); noiseHit(c, t, "bandpass", 400, 1200, 3, 0.05, 0.35); }

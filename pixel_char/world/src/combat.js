@@ -315,7 +315,8 @@
         //  desviar con un perfecto — el intercambio de desvíos —; antes, tras su parry perfecto, salía indefendible)
         if (perfect && !t.rip && t.team === "player") t.counterT = W.ct + W.COMBAT.counterWin;
         if (perfect && t.team === "player" && W.slowmo) W.slowmo(W.DUEL ? W.DUEL.slowmo[0] : 0.12, W.DUEL ? W.DUEL.slowmo[1] : 0.3);
-        t.parries = (t.parries || 0) + 1; t.lastDefT = W.ct;
+        t.parries = (t.parries || 0) + 1; t.lastDefT = W.ct; t.pressDeflected = true;
+        if (W.multiParryNote) W.multiParryNote(t, att, perfect);   // varios impactos en la misma pulsación (group.js)
         if (att.ai && att.ai.onDeflected) att.ai.onDeflected(perfect ? "perfect" : "normal");
         log({ ev: "parry", level: perfect ? "perfect" : "normal", early: Math.round(t.lastEarly * 1000), who: t.name, from: att.name, anim: a.name,
           win: +t.parryWindow().toFixed(3), gain: Math.round(gain), cost, post: Math.round(att.post), broke });

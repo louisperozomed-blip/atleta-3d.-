@@ -199,6 +199,7 @@
       character.update(gdt, player, ui.theta, ui.thetaT);
       if (W.updateFoes) W.updateFoes(gdt, ui.theta, ui.thetaT);
       if (W.targetUpdate) W.targetUpdate(dt);                    // objetivo fijado (target.js)
+      if (W.groupUpdate) W.groupUpdate(gdt);                     // turnos, pinza, multi-parry, indicador de borde (group.js)
       if (W.afterCharacter) W.afterCharacter(dt, t);
       if (W.combatAfter) W.combatAfter(dt);
       const beat = 0;

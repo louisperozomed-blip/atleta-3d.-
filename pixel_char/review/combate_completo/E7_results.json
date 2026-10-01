@@ -1,0 +1,165 @@
+{
+ "results": [
+  {
+   "name": "panel de pruebas: aparecer 3 autómatas alrededor del jugador",
+   "ok": true,
+   "info": {
+    "n": 3,
+    "tipos": [
+     "automaton",
+     "automaton",
+     "automaton"
+    ],
+    "d": [
+     4.6,
+     4.6,
+     4.1
+    ]
+   }
+  },
+  {
+   "name": "turnos: con 3 autómatas como mucho 2 atacan a la vez (todos acaban atacando); el resto rodea a ~3,6 u",
+   "ok": true,
+   "info": {
+    "maxAtk": 2,
+    "atacaron": [
+     0,
+     1,
+     2
+    ],
+    "rodeo_medio": 3.35,
+    "pinzas": 0
+   }
+  },
+  {
+   "name": "pinza: dos autómatas sincronizados (impactos a ≤ 40 ms) con aviso doble (ojos a la vez y sonido propio)",
+   "ok": true,
+   "info": {
+    "pinza": 1,
+    "dt_ms": 20,
+    "ojos_a_la_vez": 35,
+    "sonido": true
+   }
+  },
+  {
+   "name": "multi-parry: una sola pulsación desvía los dos impactos (≤ 150 ms); todos perfectos = DOBLE PERFECTO (cámara lenta, los dos desequilibrados, bonus de postura)",
+   "ok": true,
+   "info": {
+    "parries": [
+     "perfect:40",
+     "perfect:60"
+    ],
+    "multi": {
+     "n": 2,
+     "perfecto": true
+    },
+    "deflected": 2,
+    "post": [
+     39,
+     39
+    ],
+    "slow_ms": 150,
+    "rip": 1,
+    "hits": 0
+   }
+  },
+  {
+   "name": "el riposte tras el multi-parry va al objetivo fijado",
+   "ok": true,
+   "info": {
+    "rip": 1
+   }
+  },
+  {
+   "name": "TRIPLE PERFECTO con tres autómatas",
+   "ok": true,
+   "info": {
+    "parries": [
+     "perfect:35",
+     "perfect:47",
+     "perfect:59"
+    ],
+    "multi": {
+     "n": 3,
+     "perfecto": true
+    },
+    "deflected": 3,
+    "post": [
+     39,
+     39,
+     39
+    ],
+    "slow_ms": 167,
+    "rip": 0,
+    "hits": 0
+   }
+  },
+  {
+   "name": "impactos a 110 ms: la misma pulsación los desvía a los dos, cada uno con su nivel (perfecto y normal)",
+   "ok": true,
+   "info": {
+    "parries": [
+     "perfect:40",
+     "normal:150"
+    ],
+    "multi": {
+     "n": 2,
+     "perfecto": false
+    },
+    "deflected": 1,
+    "post": [
+     24,
+     18
+    ],
+    "slow_ms": 133,
+    "rip": 1,
+    "hits": 0
+   }
+  },
+  {
+   "name": "impactos separados (400 ms): un parry por golpe y sin penalización por spam",
+   "ok": true,
+   "info": {
+    "parries": [
+     "perfect",
+     "perfect"
+    ],
+    "pen": [
+     0,
+     0
+    ],
+    "hits": 0
+   }
+  },
+  {
+   "name": "la guardia cubre 360° (golpe por la espalda desviado) y su aviso sale como flecha junto al personaje",
+   "ok": true,
+   "info": {
+    "res": "parry",
+    "nivel": "perfect",
+    "indicador": "espalda"
+   }
+  },
+  {
+   "name": "ataque fuera de pantalla: flecha en el borde de la pantalla",
+   "ok": true,
+   "info": {
+    "kind": "borde",
+    "tr": "translate(1074px, 355.03px) rotate(0rad)"
+   }
+  },
+  {
+   "name": "2 autómatas + el eco: también como mucho 2 atacando a la vez",
+   "ok": true,
+   "info": {
+    "tipos": [
+     "automaton",
+     "automaton",
+     "echo"
+    ],
+    "maxAtk": 2
+   }
+  }
+ ],
+ "errors": []
+}

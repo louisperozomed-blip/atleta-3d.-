@@ -60,7 +60,8 @@
         this.cool -= dt;
         // de cara al jugador cuando está cerca
         if (d < 3.5) b.heading += norm(toP - b.heading) * Math.min(1, dt * 8);
-        if (this.cool <= 0 && d <= 2.4 && (!p.act || p.act.name !== "death")) {
+        // (en grupo, como mucho 2 atacan a la vez: group.js)
+        if (this.cool <= 0 && d <= 2.4 && (!p.act || p.act.name !== "death") && (!W.groupCanAttack || !W.groupActive() || W.groupCanAttack(f))) {
           // ataque: attack3 (salto) a media distancia o a veces de cerca; attack1 (+ attack2) si no
           b.stop(); b.heading = toP;
           const heavy = d > 1.75 ? this.rand() < 0.7 : this.rand() < 0.25;

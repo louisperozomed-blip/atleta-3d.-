@@ -48,6 +48,12 @@
     return foes;
   };
   W.setEnemyType = function (t) { return W.spawnEnemies(t); };
+  // grupos (group.js): quitar todos y añadir uno de un tipo en un punto
+  W.clearFoes = function () { while (foes.length) removeFoe(foes.pop()); W.foe = null; };
+  W.addFoe = function (type, p) {
+    const def = TYPES[type]; if (!def) return null;
+    const f = def.spawn(p, W.assets); f.type = type; f.zone = p.zone; foes.push(f); if (!W.foe) W.foe = f; return f;
+  };
 
   W.updateFoes = function (dt, theta, thetaT) {
     for (const f of foes) {
@@ -107,6 +113,7 @@
       <label>Parry <input id="dParry" type="range" min="0" max="0.9" step="0.05"><output id="oParry"></output></label>
       <label>Bloqueo <input id="dBlock" type="range" min="0" max="0.9" step="0.05"><output id="oBlock"></output></label>
       <button id="tResp">reaparecer enemigos</button>
+      <div class="tg"><button id="tG2">2 autómatas</button><button id="tG3">3 autómatas</button><button id="tGE">2 + eco</button></div>
       <div id="tInfo" class="ti"></div>`;
     wrap.appendChild(btn); wrap.appendChild(pn);
     const css = document.createElement("style");
@@ -116,7 +123,7 @@
         background:rgba(10,18,26,.92);border:2px solid var(--edge);font-size:8px;line-height:1.5;display:flex;flex-direction:column;gap:8px;z-index:6}
       #tpanel[hidden]{display:none}#tpanel .tt{color:var(--dim)}#tpanel label{display:grid;grid-template-columns:62px 1fr 34px;align-items:center;gap:6px}
       #tpanel select,#tpanel button{font:inherit;font-size:8px;color:var(--ink);background:#0d1a26;border:1px solid var(--edge);min-height:32px}
-      #tpanel select{grid-column:2/4}#tpanel input{width:100%}#tpanel output{text-align:right}#tpanel .ti{color:#ffd9a0;line-height:1.7}`;
+      #tpanel .tg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px}#tpanel select{grid-column:2/4}#tpanel input{width:100%}#tpanel output{text-align:right}#tpanel .ti{color:#ffd9a0;line-height:1.7}`;
     document.head.appendChild(css);
     btn.addEventListener("click", (e) => { e.stopPropagation(); pn.hidden = !pn.hidden; btn.setAttribute("aria-expanded", String(!pn.hidden)); });
     for (const ev of ["pointerdown", "click"]) pn.addEventListener(ev, (e) => e.stopPropagation());
@@ -132,6 +139,10 @@
     bind("dParry", "parry", (v) => Math.round(v * 100) + "%");
     bind("dBlock", "block", (v) => Math.round(v * 100) + "%");
     pn.querySelector("#tResp").addEventListener("click", () => W.respawnAll());
+    // grupos alrededor del jugador (group.js)
+    pn.querySelector("#tG2").addEventListener("click", () => W.spawnGroup(2, false));
+    pn.querySelector("#tG3").addEventListener("click", () => W.spawnGroup(3, false));
+    pn.querySelector("#tGE").addEventListener("click", () => W.spawnGroup(2, true));
     if (W.initCalibUI) W.initCalibUI(pn);           // latencia del parry (calib.js)
     if (W.initTrainingUI) W.initTrainingUI(pn);     // modo entrenamiento (practice.js)
     if (W.initAnimViewerUI) W.initAnimViewerUI(pn); // visor de animaciones (animviewer.js)

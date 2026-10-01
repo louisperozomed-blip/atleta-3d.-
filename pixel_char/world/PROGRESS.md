@@ -1421,3 +1421,31 @@ familiaridad ≤ 0,4 y 0 desvíos en 12; ojo ámbar y ningún desvío sin predic
 reinicio al reaparecer; su HEAVY (1,1 s de preparación, 0,38 s de HOLD, ojo naranja, rompe la guardia); su rama
 «bloqueas» → HEAVY. Regresión: autómata 21/21; parry y duelo con dos comprobaciones puestas al día al nuevo diseño
 (sus cadenas mezclan el HEAVY; «bloqueas» → HEAVY): parry 50/50, duelo 22/22.
+
+## Etapa 7 — Grupos y multi-parry (`src/group.js`)
+- **Turnos de ataque**: como mucho **2 enemigos atacan a la vez**. Un enemigo pide turno cuando está listo para
+  atacar y lo suelta al acabar su cadena (o si en 2,5 s no ha llegado a empezarla); mientras no lo tiene, **rodea**
+  al jugador a ~3,6 u, repartidos por ángulo. Vale también para el eco.
+- **Indicador de borde**: mientras un enemigo prepara un golpe **fuera de pantalla**, una flecha en el borde apunta a
+  él; si viene **por la espalda** (más de 110° respecto a donde miras), la flecha sale junto al personaje. Cian
+  normal, naranja si es fuerte, roja si es peligroso; late.
+- **Pinza** ocasional (35 % cuando dos autómatas libres están cerca y a lados opuestos, como mucho una cada 4 s):
+  atacan **sincronizados** (la retención de sus golpes alinea los impactos: ≤ 40 ms), con un **aviso doble**: los dos
+  ojos destellan a la vez, sonido propio (dos bocinas seguidas) y «¡PINZA!».
+- **MULTI-PARRY**: la guardia ya cubría 360° y su ventana vale para todos los golpes que lleguen dentro, así que una
+  sola pulsación desvía todos los impactos que caigan en ella (≤ 150 ms entre ellos), **cada uno con su nivel**.
+  Todos perfectos = **DOBLE / TRIPLE PERFECTO**: estallido dorado radial, destello, **cámara lenta ~150 ms al 30 %**,
+  todos **DEFLECTED** y **+15 de postura** a cada uno, con su sonido (acorde largo). El **riposte** de después va al
+  **objetivo fijado** (si es uno de los desviados).
+- **Impactos separados**: un parry por golpe **sin penalización por spam** si la pulsación anterior desvió algo
+  (`fighter.js`: antes, dos pulsaciones en 0,7 s encogían la ventana aunque las dos acertaran).
+- **Panel de pruebas**: «2 autómatas», «3 autómatas», «2 + eco» aparecen alrededor del jugador.
+
+**Pruebas** (`tests/cc_e7.mjs`): **11/11**, sin errores JS — 3 autómatas desde el panel; en 25 s de combate nunca
+atacan más de 2 a la vez, los tres acaban atacando y los que esperan rodean a 3,35 u de media; pinza con impactos a
+20 ms y los dos ojos destellando a la vez; DOBLE PERFECTO (los dos desequilibrados, postura 39, cámara lenta) con el
+riposte al objetivo; TRIPLE PERFECTO; a 110 ms la misma pulsación los desvía con su nivel (perfecto y normal);
+impactos a 400 ms: dos parries sin penalización; golpe por la espalda desviado con la flecha junto al personaje;
+golpe fuera de pantalla con la flecha en el borde; «2 + eco» también con máx. 2 atacando. Regresión: autómata 21/21,
+parry 50/50, duelo 22/22, combate con el eco 31/31. Capturas: `review/combate_completo/E7_*.png` (en la del doble
+perfecto se pisan «¡PERFECTO!» y «¡DOBLE PERFECTO!»: lo resuelve el rediseño de avisos de la etapa 8).
