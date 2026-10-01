@@ -237,7 +237,7 @@
       const b = this.body;
       let dir = data && data.dir != null ? data.dir : b.heading + Math.PI;           // sin dirección: hacia atrás
       this.st = Math.max(0, this.st - C.dodgeCost); this.stT = 0;
-      const a = this.start("dodge", { dir, moved: 0 });
+      const a = this.start("dodge", { dir, moved: 0, ct0: W.ct });
       // la hoja pinta un paso atrás: el personaje mira al lado contrario de hacia donde se aparta
       b.heading = dir + Math.PI;
       return a;

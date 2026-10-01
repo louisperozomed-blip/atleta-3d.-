@@ -865,3 +865,61 @@ afectan las mecánicas del jugador, no su IA.
 - **Regresión**: autómata 21/21, eco 31/31.
 - Capturas: `review/parry2/E5_entrenamiento.png` y `E5_barras_contra.png` (barras centrales y ventana de contraataque
   dorada).
+
+## Etapa 6 — Pruebas de justicia y publicación
+**Bot de pruebas con reacción humana** (`tests/parry2.mjs`, STAGES=6). Ve la SUELTA de cada golpe y responde
+250 ms después, con un error de timing de ± 40 ms (normal, σ = 40 ms, recortado a 3σ). Intenta desviarlo todo: los
+golpes normales con la guardia y los peligrosos con su respuesta (saltar el barrido, esquivar hacia la estocada,
+esquivar de lado el agarre). Se juegan 16 veces cada una de 13 combinaciones de cadena y truco (208 cadenas).
+
+| tipo de golpe | antes | después del ajuste (batería completa) |
+|---|---|---|
+| zarpazo (attack1) | 97 % | 99 % (n = 228) |
+| barrido (attack2) | 88 % | 93 % (n = 125) |
+| zarpazo retrasado | 95 % | 97 % (n = 37) |
+| **barrido retrasado** | **71 %** (n = 7) | 100 % (n = 27) |
+| zarpazo / barrido tras finta | 100 / 80 % | 92 / 100 % |
+| barrido bajo (salto) | 100 % | 100 % (n = 16) |
+| estocada (esquiva hacia él) | 93 % | 100 % (n = 16) |
+| **agarre (esquiva de lado)** | **71 %** | 100 % (n = 16) |
+
+**Qué no cumplía y qué se ha ajustado**:
+- **El barrido (attack2)**, sobre todo el retrasado. Su SUELTA duraba 0.40 s: una pulsación a 250 ms caía a 150 ms
+  del impacto, cerca del borde de la ventana de 200 ms, y con −50 ms de error se salía (≈ 11 % de fallos; 2 de 7 en
+  los retrasados). **Suelta: 0.40 → 0.38 s**, que sigue siendo más larga que la del zarpazo (0.36 s): los golpes
+  fuertes siguen avisando antes.
+- **El agarre.** La esquiva lateral solo contaba en sus frames invulnerables (0.10-0.24 s tras pulsar), una ventana
+  más estrecha que el error humano. Los peligrosos tienen ahora una **ventana de esquiva explícita**, como el mikiri
+  de Sekiro: cuenta la esquiva que empezó entre 40 y 340 ms antes del impacto, o que esté en sus frames
+  invulnerables, siempre que vaya en la dirección correcta. La esquiva hacia atrás o hacia delante sigue sin servir
+  contra el agarre, y la de lado sigue sin dar el contraataque de la estocada.
+- (En la primera medición salieron 68 % y 52 % en el zarpazo, pero no era el juego: el generador aleatorio del bot
+  daba con semillas pequeñas un primer número ≈ 0 → error extremo. Se arregló la semilla antes de medir lo de arriba.)
+
+**La lectura** (etapa 4, se repite en la batería completa):
+- el mismo combo con el mismo ritmo → la mayoría de tus golpes desviados (64 %);
+- ritmos variados, retrasos y fintas → falla (13 %).
+
+**Interfaz en escritorio y móvil** (`tests/parry2_ui.mjs`, Chromium 1280×800 con teclado y ratón, y 390×844 táctil
+con toques reales por CDP): **10/10 OK, sin errores JS**. Comprueba:
+- que el parry se mide desde la marca de tiempo del evento: la antelación es lo que faltaba más lo que tardó el
+  evento en llegar al juego, incluidos los ~20 ms de arrancar el audio en la 1.ª pulsación;
+- el golpe retrasado: J mantenida o el dedo sobre el enemigo retienen la carga 450 ms;
+- la finta (K o GUARDIA durante tu preparación);
+- que las barras centrales no tapan GUARDIA, ni los botones, ni el título, ni tus barras, y que no hay scroll
+  horizontal. En el móvil la tuya va encima de los botones a la izquierda de GUARDIA, y la suya bajo el ⚙;
+- el panel (entrenar, latencia, calibrar), que cabe en pantalla.
+
+**Revisión** en `review/parry2/`:
+- capturas E1-E6;
+- `E6_duelo.gif`: guion de cadenas contra un jugador con reacción humana. Desvía (clin-clin), castiga en el
+  resoplido, salta el barrido y contraataca en el aire, pisa la estocada, aturdido y remate;
+- `E6_lectura.gif`: repites el mismo combo → guardia ámbar y «¡DESVÍA!» (hasta romperte la postura); retrasas el
+  2.º golpe → su parry falla, «¡EXPUESTO!» y tu golpe entra;
+- `E6_ui_*`: escritorio y móvil, con duelo, panel y calibración.
+- **Batería completa**:
+  - `tests/parry2.mjs` (etapas 1-6 seguidas): **50/50 OK**, sin errores JS;
+  - `parry2_ui.mjs` (escritorio y móvil): 10/10;
+  - autómata 21/21 y eco 31/31.
+  - recorrido del mundo con `#enemy=none`: `stage5.mjs` 13/13 y `e2e.mjs` 33/33 (escritorio e iPhone).
+- **Publicado** en el mismo enlace (versión 7): https://claude.ai/artifact/ANHrkwwHE8urZjzme74NhG

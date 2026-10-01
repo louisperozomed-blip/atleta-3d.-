@@ -5,7 +5,8 @@ import { chromium } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
 const [html, OUT] = process.argv.slice(2);
-const STAGES = (process.env.STAGES || "1,2,3,4,5").split(",").map(Number);
+const STAGES = (process.env.STAGES || "1,2,3,4,5,6").split(",").map(Number);
+let window_fair = null;
 fs.mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
 const results = [], errors = [];
@@ -47,7 +48,7 @@ await page.evaluate(() => {
   const gauss = () => { let u = 0, v = 0; while (!u) u = brand(); while (!v) v = brand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
   window.Bot = {
     on: false, react: 0.25, jit: 0, mode: "react", seen: null, seenWarn: null, pending: null, out: [], airAttack: true,
-    reset(o) { Object.assign(this, { on: true, seen: null, seenWarn: null, pending: null, out: [] }, o || {});
+    reset(o) { Object.assign(this, { on: true, seen: null, seenWarn: null, pending: null, out: [], answer: null, mode: "react", jit: 0 }, o || {});
       // semilla mezclada (las semillas pequeñas seguidas daban un primer número ~0 → error extremo) y descarte inicial
       bs = (((o && o.seed) || 12345) * 2654435761) % 2147483646 + 1; for (let i = 0; i < 8; i++) brand(); },
     step() {
@@ -617,6 +618,48 @@ if (STAGES.includes(5)) {
     let n = 0, done = false; while (e.act && e.act.name.startsWith("attack") && !e.act.hitDone && n < 400) { const l = e.toImpact(); if (!done && l <= 0.04) { W.pf.input("guardDown"); W.pf.input("guardUp"); done = true; } T(); n++; } T(2); W.skipRender = false; T(1); });
   await page.screenshot({ path: `${OUT}/E5_barras_contra.png` });
   await page.evaluate(() => { W.setTraining(""); W.skipRender = true; });
+}
+
+// =====================================================================================================
+// ETAPA 6 · justicia: bot con reacción humana (250 ms ± 40 ms) que intenta desviarlo todo
+// =====================================================================================================
+if (STAGES.includes(6)) {
+  const fair = await page.evaluate(() => {
+    const stats = {}, add = (k, ok) => { const s = stats[k] || (stats[k] = { n: 0, ok: 0 }); s.n++; if (ok) s.ok++; };
+    const keep = W.AUTOMATON.trick;
+    const runs = [["rrl", null], ["lpr", null], ["dos", null], ["cuatro", null], ["dos", "delay"], ["rrl", "delay"], ["lpr", "delay"], ["cuatro", "delay"], ["dos", "feint"], ["lpr", "feint"], ["barrido", null], ["estocada", null], ["agarre", null]];
+    let seed = 101;
+    for (const [chain, trick] of runs) for (let rep = 0; rep < 16; rep++) {
+      duel(0.6, 2.0, { chain, trick, noTricks: !trick }); Bot.reset({ react: 0.25, jit: 0.04, seed: seed++ });
+      const e = E(); e.post = 0; let n = 0;
+      // cada golpe: tipo (con su truco) y resultado
+      const mine = new Map(); let cur = null;
+      while (n < 60 * 9 && !W.combatLog.some((x) => x.ev === "chainEnd")) {
+        TB(); n++;
+        const a = e.act;
+        if (a && a.plan && a !== cur) { cur = a; mine.set(a, { move: a.move, delayed: a.plan.hold > 0, afterFeint: W.combatLog.some((x) => x.ev === "feint") && !a.plan.feint, feinted: !!a.plan.feint }); }
+      }
+      // resultados en orden de impacto
+      const res = W.combatLog.filter((x) => x.who === "jugador" && ["parry", "block", "hit", "evade", "mikiri"].includes(x.ev) || x.ev === "whiff" && x.who === "autómata");
+      const kinds = [...mine.values()].filter((k) => !k.feinted);
+      kinds.forEach((k, i) => {
+        const r = res[i]; if (!r) return;
+        const peril = ["sweep", "thrust", "grab"].includes(k.move);
+        const key = peril ? k.move : k.move + (k.delayed ? " retrasado" : k.afterFeint ? " tras finta" : "");
+        const ok = peril ? (r.ev === "evade" || r.ev === "mikiri" || r.ev === "whiff") : r.ev === "parry";
+        add(key, ok);
+      });
+    }
+    W.AUTOMATON.trick = keep;
+    const out = {}; for (const k in stats) out[k] = { n: stats[k].n, pct: Math.round(100 * stats[k].ok / stats[k].n) };
+    return out;
+  });
+  window_fair = fair;
+  const normal = Object.entries(fair).filter(([k]) => /^attack/.test(k)), peril = Object.entries(fair).filter(([k]) => !/^attack/.test(k));
+  check("bot humano (reacción 250 ms ± 40 ms): desvía ≥ 75 % de cada tipo de ataque normal (también retrasados y tras finta)",
+    normal.length >= 4 && normal.every(([, v]) => v.n >= 8 && v.pct >= 75), fair);
+  check("bot humano: evita cada ataque peligroso con la respuesta correcta (salto, esquiva hacia él, esquiva de lado) ≥ 75 %",
+    peril.length === 3 && peril.every(([, v]) => v.n >= 8 && v.pct >= 75), Object.fromEntries(peril));
 }
 
 const okN = results.filter((r) => r.ok).length;

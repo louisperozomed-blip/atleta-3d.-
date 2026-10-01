@@ -53,7 +53,7 @@
     // golpes: animación, pose (frames de otras hojas), aviso (1 leve, 2 fuerte, 3 peligroso) y tiempo de SUELTA (s)
     moves: {
       attack1: { anim: "attack1", level: 1, rel: 0.36, want: 1.55 },
-      attack2: { anim: "attack2", level: 2, rel: 0.4, want: 1.75 },
+      attack2: { anim: "attack2", level: 2, rel: 0.38, want: 1.75 },     // 0.40 → 0.38 (prueba de justicia, etapa 6)
       sweep: { anim: "attack2", level: 3, rel: 0.46, want: 1.6, cap: 1.3, track: true, crouch: 0.2 },
       thrust: { anim: "attack1", level: 3, rel: 0.46, want: 0.95, cap: 2.3, seek: 4.4, lungeFrom: "release",
         show: [["dodge", 0], ["dodge", 1], ["dodge", 2], ["dodge", 3], ["dodge", 4], ["attack1", 5]] },

@@ -1,0 +1,171 @@
+{
+ "results": [
+  {
+   "name": "[escritorio] guardia (tecla K): parry medido desde la marca de tiempo del evento (antelación = lo que faltaba + el retraso del evento)",
+   "ok": true,
+   "info": [
+    {
+     "left": 36,
+     "lag": 20,
+     "res": "perfect:57",
+     "esperado": 56
+    },
+    {
+     "left": 120,
+     "lag": 6,
+     "res": "normal:126",
+     "esperado": 126
+    }
+   ]
+  },
+  {
+   "name": "[escritorio] golpe retrasado manteniendo J: la carga se retiene y el impacto llega más tarde",
+   "ok": true,
+   "info": {
+    "anim": "attack1",
+    "retenido_ms": 450,
+    "impacto_ms": 655
+   }
+  },
+  {
+   "name": "[escritorio] finta: K durante la preparación de tu golpe lo cancela y pasa a guardia",
+   "ok": true,
+   "info": {
+    "finta": true,
+    "act": "parry"
+   }
+  },
+  {
+   "name": "[escritorio] barras de postura centrales visibles sin tapar GUARDIA ni la barra de botones, sin scroll horizontal",
+   "ok": true,
+   "info": {
+    "solapa": false,
+    "dentro": true,
+    "duelE": [
+     509,
+     14,
+     771,
+     37
+    ],
+    "scrollX": 0,
+    "duelP": [
+     509,
+     692,
+     771,
+     738
+    ],
+    "guardia": [
+     1156,
+     604,
+     1268,
+     716
+    ],
+    "barra": [
+     8,
+     746,
+     1272,
+     790
+    ]
+   }
+  },
+  {
+   "name": "[escritorio] panel ⚙: entrenar (cadena retrasada), latencia y prueba de ritmo, todo dentro de la pantalla",
+   "ok": true,
+   "info": {
+    "abierto": true,
+    "cabe": true,
+    "entrenando": "dos+delay",
+    "latencia": true,
+    "lectura": "Te lee: aún no",
+    "calibrar": {
+     "visible": true,
+     "cabe": true
+    }
+   }
+  },
+  {
+   "name": "[movil] guardia (toque en GUARDIA): parry medido desde la marca de tiempo del evento (antelación = lo que faltaba + el retraso del evento)",
+   "ok": true,
+   "info": [
+    {
+     "left": 36,
+     "lag": 10,
+     "res": "perfect:46",
+     "esperado": 46
+    },
+    {
+     "left": 120,
+     "lag": 3,
+     "res": "normal:123",
+     "esperado": 123
+    }
+   ]
+  },
+  {
+   "name": "[movil] golpe retrasado manteniendo el dedo sobre el enemigo: la carga se retiene y el impacto llega más tarde",
+   "ok": true,
+   "info": {
+    "anim": "attack1",
+    "retenido_ms": 450,
+    "impacto_ms": 655
+   }
+  },
+  {
+   "name": "[movil] finta: tocar GUARDIA durante la preparación de tu golpe lo cancela y pasa a guardia",
+   "ok": true,
+   "info": {
+    "finta": true,
+    "act": "parry"
+   }
+  },
+  {
+   "name": "[movil] barras de postura centrales visibles sin tapar GUARDIA ni la barra de botones, sin scroll horizontal",
+   "ok": true,
+   "info": {
+    "solapa": false,
+    "dentro": true,
+    "duelE": [
+     196,
+     60,
+     378,
+     83
+    ],
+    "scrollX": 0,
+    "duelP": [
+     76,
+     686,
+     258,
+     732
+    ],
+    "guardia": [
+     266,
+     604,
+     378,
+     716
+    ],
+    "barra": [
+     8,
+     740,
+     382,
+     834
+    ]
+   }
+  },
+  {
+   "name": "[movil] panel ⚙: entrenar (cadena retrasada), latencia y prueba de ritmo, todo dentro de la pantalla",
+   "ok": true,
+   "info": {
+    "abierto": true,
+    "cabe": true,
+    "entrenando": "dos+delay",
+    "latencia": true,
+    "lectura": "Te lee: aún no",
+    "calibrar": {
+     "visible": true,
+     "cabe": true
+    }
+   }
+  }
+ ],
+ "errors": []
+}

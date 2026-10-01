@@ -104,6 +104,23 @@
     if (hud._on !== on) { hud._on = on; hud.top.style.display = hud.bot.style.display = on ? "block" : "none"; }
     if (tmg) { tmgT += dt; if (tmgT > 1.2) tmg.style.opacity = Math.max(0, 1 - (tmgT - 1.2) / 0.4); }
     if (!on) return;
+    // colocación: justo encima de la barra de botones y, si la pantalla es estrecha, a la izquierda de GUARDIA
+    hud.layT = (hud.layT || 0) - dt;
+    if (hud.layT <= 0) {
+      hud.layT = 0.5;
+      const bar = document.querySelector(".bar"), gb = document.getElementById("guard");
+      const bt = bar && bar.offsetParent ? bar.getBoundingClientRect().top : innerHeight - 10;
+      hud.bot.style.bottom = Math.round(innerHeight - bt + 8) + "px";
+      const wB = hud.bot.getBoundingClientRect().width;
+      let cx = innerWidth / 2;
+      if (gb && gb.offsetParent) { const g = gb.getBoundingClientRect(); if (cx + wB / 2 > g.left - 8 && g.top < bt) cx = Math.max(wB / 2 + 8, g.left - 8 - wB / 2); }
+      hud.bot.style.left = Math.round(cx) + "px";
+      // la suya: arriba en el centro; en pantallas estrechas, bajo el botón ⚙ (sin pisar el título ni tus barras)
+      const tb = document.getElementById("tbtn"), narrow = innerWidth < 600;
+      if (narrow && tb && tb.offsetParent) { const r = tb.getBoundingClientRect(), wE = hud.top.getBoundingClientRect().width;
+        hud.top.style.top = Math.round(r.bottom + 8) + "px"; hud.top.style.left = Math.round(innerWidth - 12 - wE / 2) + "px"; }
+      else { hud.top.style.top = ""; hud.top.style.left = ""; }
+    }
     const nm = (e.label || "ECO") + (e.stunned ? " · ATURDIDO" : T.on ? " · ENTRENAMIENTO" : "");
     if (hud.dn.textContent !== nm) hud.dn.textContent = nm;
     setBar(hud.eb, hud.ei, e.post / e.postMax);

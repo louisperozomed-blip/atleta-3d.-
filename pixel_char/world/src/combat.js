@@ -228,7 +228,7 @@
       const inArc = d <= reach + (t.radiusHit || 0.3) && (ang <= arc || d < 0.6 + (t.radiusHit || 0));
       log({ ev: "swing", who: att.name, anim: a.name, d: +d.toFixed(2), ang: Math.round(ang * 180 / Math.PI), inArc });
       // la estocada: quien esquiva HACIA ella cuenta aunque se cuele por su lado
-      if (!inArc && !(AT.perilous === "mikiri" && t.invulnerable && d <= AT.reach + 1.5)) continue;
+      if (!inArc && !(AT.perilous === "mikiri" && t.act && t.act.name === "dodge" && d <= AT.reach + 1.5)) continue;
       any = true;
       const dir = Math.atan2(dz, dx);
       let def = t.defense(a.impactT);
@@ -241,7 +241,7 @@
       if (toPlayer) W.lastFoeImpact = { t: a.impactT != null ? a.impactT : W.ct, open: false };
       if (AT.perilous) {
         // peligroso: guardia y parry no sirven; solo su respuesta
-        const how = perilousAvoid(AT.perilous, t, att);
+        const how = perilousAvoid(AT.perilous, t, att, a.impactT);
         if (toPlayer && W.onDefenseInfo) W.onDefenseInfo({ perilous: AT.perilous, how: how || "hit", move: a.move });
         if (toPlayer && !how) W.lastFoeImpact.open = true;
         if (how === "mikiri") {
@@ -342,10 +342,15 @@
     if (!any) log({ ev: "whiff", who: att.name, anim: a.name });
   }
   // ¿esquiva bien el ataque peligroso? (null = le alcanza)
-  function perilousAvoid(kind, t, att) {
+  // Ventana de esquiva de los peligrosos (explícita y generosa, como el mikiri de Sekiro): cuenta la esquiva que
+  // empezó entre 40 y 340 ms antes del impacto (o que está en sus frames invulnerables), en la dirección correcta
+  const PERIL_DODGE = [0.04, 0.34];
+  function perilousAvoid(kind, t, att, impactT) {
     const b = t.body;
     if (kind === "jump") return b.jump && b.jump.h > 0.12 * W.CHAR_H ? "jump" : null;
-    if (!t.invulnerable) return null;                        // frames invulnerables de la esquiva
+    const da = t.act && t.act.name === "dodge" ? t.act : null;
+    const age = da && da.ct0 != null ? (impactT != null ? impactT : W.ct) - da.ct0 : -1;
+    if (!t.invulnerable && !(age >= PERIL_DODGE[0] && age <= PERIL_DODGE[1])) return null;
     // dirección de la esquiva respecto al golpe (contra su rumbo = hacia él), no respecto a la posición: al
     // esquivar hacia la estocada los dos se cruzan
     const ang = Math.abs(norm(t.act.dir - (att.body.heading + Math.PI)));

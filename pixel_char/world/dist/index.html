@@ -3767,7 +3767,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       const b = this.body;
       let dir = data && data.dir != null ? data.dir : b.heading + Math.PI;           // sin dirección: hacia atrás
       this.st = Math.max(0, this.st - C.dodgeCost); this.stT = 0;
-      const a = this.start("dodge", { dir, moved: 0 });
+      const a = this.start("dodge", { dir, moved: 0, ct0: W.ct });
       // la hoja pinta un paso atrás: el personaje mira al lado contrario de hacia donde se aparta
       b.heading = dir + Math.PI;
       return a;
@@ -4192,7 +4192,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       const inArc = d <= reach + (t.radiusHit || 0.3) && (ang <= arc || d < 0.6 + (t.radiusHit || 0));
       log({ ev: "swing", who: att.name, anim: a.name, d: +d.toFixed(2), ang: Math.round(ang * 180 / Math.PI), inArc });
       // la estocada: quien esquiva HACIA ella cuenta aunque se cuele por su lado
-      if (!inArc && !(AT.perilous === "mikiri" && t.invulnerable && d <= AT.reach + 1.5)) continue;
+      if (!inArc && !(AT.perilous === "mikiri" && t.act && t.act.name === "dodge" && d <= AT.reach + 1.5)) continue;
       any = true;
       const dir = Math.atan2(dz, dx);
       let def = t.defense(a.impactT);
@@ -4205,7 +4205,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       if (toPlayer) W.lastFoeImpact = { t: a.impactT != null ? a.impactT : W.ct, open: false };
       if (AT.perilous) {
         // peligroso: guardia y parry no sirven; solo su respuesta
-        const how = perilousAvoid(AT.perilous, t, att);
+        const how = perilousAvoid(AT.perilous, t, att, a.impactT);
         if (toPlayer && W.onDefenseInfo) W.onDefenseInfo({ perilous: AT.perilous, how: how || "hit", move: a.move });
         if (toPlayer && !how) W.lastFoeImpact.open = true;
         if (how === "mikiri") {
@@ -4306,10 +4306,15 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     if (!any) log({ ev: "whiff", who: att.name, anim: a.name });
   }
   // ¿esquiva bien el ataque peligroso? (null = le alcanza)
-  function perilousAvoid(kind, t, att) {
+  // Ventana de esquiva de los peligrosos (explícita y generosa, como el mikiri de Sekiro): cuenta la esquiva que
+  // empezó entre 40 y 340 ms antes del impacto (o que está en sus frames invulnerables), en la dirección correcta
+  const PERIL_DODGE = [0.04, 0.34];
+  function perilousAvoid(kind, t, att, impactT) {
     const b = t.body;
     if (kind === "jump") return b.jump && b.jump.h > 0.12 * W.CHAR_H ? "jump" : null;
-    if (!t.invulnerable) return null;                        // frames invulnerables de la esquiva
+    const da = t.act && t.act.name === "dodge" ? t.act : null;
+    const age = da && da.ct0 != null ? (impactT != null ? impactT : W.ct) - da.ct0 : -1;
+    if (!t.invulnerable && !(age >= PERIL_DODGE[0] && age <= PERIL_DODGE[1])) return null;
     // dirección de la esquiva respecto al golpe (contra su rumbo = hacia él), no respecto a la posición: al
     // esquivar hacia la estocada los dos se cruzan
     const ang = Math.abs(norm(t.act.dir - (att.body.heading + Math.PI)));
@@ -4856,7 +4861,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     // golpes: animación, pose (frames de otras hojas), aviso (1 leve, 2 fuerte, 3 peligroso) y tiempo de SUELTA (s)
     moves: {
       attack1: { anim: "attack1", level: 1, rel: 0.36, want: 1.55 },
-      attack2: { anim: "attack2", level: 2, rel: 0.4, want: 1.75 },
+      attack2: { anim: "attack2", level: 2, rel: 0.38, want: 1.75 },     // 0.40 → 0.38 (prueba de justicia, etapa 6)
       sweep: { anim: "attack2", level: 3, rel: 0.46, want: 1.6, cap: 1.3, track: true, crouch: 0.2 },
       thrust: { anim: "attack1", level: 3, rel: 0.46, want: 0.95, cap: 2.3, seek: 4.4, lungeFrom: "release",
         show: [["dodge", 0], ["dodge", 1], ["dodge", 2], ["dodge", 3], ["dodge", 4], ["attack1", 5]] },
@@ -5496,6 +5501,23 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     if (hud._on !== on) { hud._on = on; hud.top.style.display = hud.bot.style.display = on ? "block" : "none"; }
     if (tmg) { tmgT += dt; if (tmgT > 1.2) tmg.style.opacity = Math.max(0, 1 - (tmgT - 1.2) / 0.4); }
     if (!on) return;
+    // colocación: justo encima de la barra de botones y, si la pantalla es estrecha, a la izquierda de GUARDIA
+    hud.layT = (hud.layT || 0) - dt;
+    if (hud.layT <= 0) {
+      hud.layT = 0.5;
+      const bar = document.querySelector(".bar"), gb = document.getElementById("guard");
+      const bt = bar && bar.offsetParent ? bar.getBoundingClientRect().top : innerHeight - 10;
+      hud.bot.style.bottom = Math.round(innerHeight - bt + 8) + "px";
+      const wB = hud.bot.getBoundingClientRect().width;
+      let cx = innerWidth / 2;
+      if (gb && gb.offsetParent) { const g = gb.getBoundingClientRect(); if (cx + wB / 2 > g.left - 8 && g.top < bt) cx = Math.max(wB / 2 + 8, g.left - 8 - wB / 2); }
+      hud.bot.style.left = Math.round(cx) + "px";
+      // la suya: arriba en el centro; en pantallas estrechas, bajo el botón ⚙ (sin pisar el título ni tus barras)
+      const tb = document.getElementById("tbtn"), narrow = innerWidth < 600;
+      if (narrow && tb && tb.offsetParent) { const r = tb.getBoundingClientRect(), wE = hud.top.getBoundingClientRect().width;
+        hud.top.style.top = Math.round(r.bottom + 8) + "px"; hud.top.style.left = Math.round(innerWidth - 12 - wE / 2) + "px"; }
+      else { hud.top.style.top = ""; hud.top.style.left = ""; }
+    }
     const nm = (e.label || "ECO") + (e.stunned ? " · ATURDIDO" : T.on ? " · ENTRENAMIENTO" : "");
     if (hud.dn.textContent !== nm) hud.dn.textContent = nm;
     setBar(hud.eb, hud.ei, e.post / e.postMax);
