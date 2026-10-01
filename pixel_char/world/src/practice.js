@@ -9,13 +9,17 @@
   "use strict";
   const W = (window.W = window.W || {});
   const T = (W.TRAINING = { on: false, id: "", reps: 0 });
-  const EXTRA = [["dos+delay", "zarpazo y barrido · retrasado"], ["dos+feint", "zarpazo y barrido · finta"], ["rrl+delay", "rápido-rápido-lento · retrasado"]];
+  const EXTRA = [["dos+delay", "zarpazo y barrido · retrasado"], ["dos+feint", "zarpazo y barrido · finta"], ["rrl+delay", "rápido-rápido-lento · retrasado"],
+    ["riposte", "RIPOSTE · desvía y contraataca (ritmo del 3.º)"]];
   const HINT = { sweep: "BARRIDO → salta", thrust: "ESTOCADA → esquiva hacia él", grab: "AGARRE → esquiva de lado" };
 
   // ---- modo entrenamiento -----------------------------------------------------------------------------
   W.setTraining = function (id) {
     T.on = !!id; T.id = id || ""; T.reps = 0;
-    const [chain, trick] = (id || "").split("+");
+    // riposte: siempre la misma cadena (zarpazo y barrido, sin trucos ni ramas) para practicar el parry perfecto y
+    // el ritmo del riposte; tras el 3.er golpe dice si acertaste el ritmo y por cuántos ms
+    const [chain, trick] = id === "riposte" ? ["dos", null] : (id || "").split("+");
+    T.rip = id === "riposte"; T.ripStats = { ok: 0, n: 0 };
     for (const f of W.foes || []) {
       if (f.type !== "automaton" || !f.ai) continue;
       const ai = f.ai;
@@ -65,6 +69,17 @@
     const r = W.timingText(info); if (r) show(r[0], r[1]);
   };
   W.onLatePress = function (late) { if (T.on) show("TARDE · " + Math.round(late * 1000) + " ms", "#ff6a4a"); };
+  // ritmo del 3.er golpe del riposte (duel.js)
+  W.ripBeatText = function (ok, err) {
+    if (err == null) return ["RITMO · PRONTO (antes del 2.º golpe)", "#ff6a4a"];
+    const ms = Math.round(err * 1000);
+    return ok ? ["RITMO ✓ " + (ms >= 0 ? "+" : "") + ms + " ms", "#ffd34a"] : [(ms < 0 ? "RITMO · PRONTO " : "RITMO · TARDE +") + ms + " ms", "#ff6a4a"];
+  };
+  W.onRipBeat = function (ok, err) {
+    if (!T.on) return;
+    if (T.ripStats) { T.ripStats.n++; if (ok) T.ripStats.ok++; }
+    const r = W.ripBeatText(ok, err); show(r[0] + (T.rip && T.ripStats ? " · " + T.ripStats.ok + "/" + T.ripStats.n : ""), r[1]);
+  };
 
   // ---- HUD del duelo: barras de postura centrales + ventana de contraataque --------------------------------
   let hud = null;

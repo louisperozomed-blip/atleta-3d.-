@@ -1071,3 +1071,21 @@ la cadena decide cómo sigue (`CFG.branch`):
 
 **Pruebas** (`tests/duel3.mjs`, etapa 3): 3/3 — las cuatro ramas con el bot (4 veces cada una), justicia en todas
 (también con truco previo) y el rompeguardias: bloqueado = guardia rota, desviado = parry perfecto.
+
+## Etapa 4 — Sensación y entrenamiento del riposte
+- **Parry perfecto**: tras su hitstop (160 ms congelado), un instante de cámara lenta: 120 ms reales al 30 %
+  (`W.slowmo`, `W.DUEL.slowmo`; el reloj de combate avanza a ese ritmo, así el juego entero se ralentiza);
+  chispas doradas, destello y el sonido metálico agudo de siempre con una chispa aguda más (5,3 kHz).
+- **Riposte**: estelas de brasas a lo largo del tajo, más en cada golpe (con la hoja, que ya pinta su estela
+  naranja, un rastro que crece; con el sustituto, la estela entera); tajo cada vez más agudo, largo y fuerte
+  (riposte1-2-3) y una campanilla en el 3.º.
+- **Deathblow**: destello de pantalla y de luz, chispas doradas y un golpe grave más profundo (sub de 55 Hz + cuerpo
+  de 90 Hz) con un brillo que queda sonando; la cámara se acerca un 16 %.
+- **Entrenamiento → «RIPOSTE · desvía y contraataca (ritmo del 3.º)»** (panel ⚙): el autómata hace siempre la misma
+  cadena (zarpazo y barrido, sin trucos ni ramas), no te lee ni se defiende, nadie muere; tras cada 3.er golpe el
+  indicador dice «RITMO ✓ +30 ms», «RITMO · TARDE +150 ms» o «RITMO · PRONTO −140 ms» y cuántos llevas bien (2/4).
+- Arreglado de paso: tras el remate a un aturdido su postura se quedaba llena y cualquier desvío posterior lo
+  volvía a aturdir al instante; ahora queda al 35 %, como al acabar el aturdido.
+
+**Pruebas** (`tests/duel3.mjs`, etapa 4): 3/3 — cámara lenta medida (133 ms reales, 40 ms de juego), sonidos
+riposte1-2-3 y deathblow, y el entrenamiento (7 cadenas iguales; ✓, TARDE, PRONTO, ✓).

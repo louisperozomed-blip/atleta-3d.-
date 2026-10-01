@@ -34,6 +34,7 @@
     hits: [{ dmg: 8, post: 10, stop: 0.07, shake: 0.05 }, { dmg: 10, post: 14, stop: 0.09, shake: 0.075 }, { dmg: 13, post: 20, stop: 0.13, shake: 0.11 }],
     deathblowDmg: 100, deathblowZoom: 0.16,
     recoverCost: 12,               // postura que te cuesta que desvíe tu 3.er golpe fuera de ritmo
+    slowmo: [0.12, 0.3],           // parry perfecto: tras su hitstop, 120 ms (reales) de cámara lenta al 30 %
   });
   const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
   const now3 = () => (W.U ? +W.U.uTime.value.toFixed(3) : 0);
@@ -320,10 +321,12 @@
         const hx = Math.cos(a.kdir), hz = Math.sin(a.kdir), xp = hx * Math.cos(th) - hz * Math.sin(th);
         a.bounceLean = (xp >= 0 ? 1 : -1) * 0.13 * Math.exp(-a.bt / 0.22) * Math.cos(a.bt * 16);
       }
-      // estela naranja del riposte sustituto (attack1 acelerado)
-      if (a.trail && a.f >= 2 && a.f <= 4 && W.fx) {
+      // estelas del riposte: brasas a lo largo del tajo, más cuanto más avanza la cadena (en el sustituto, la
+      // estela entera; con la hoja, que ya pinta su estela, un rastro de brasas que crece con cada golpe)
+      if (a.name === "riposte" && a.f >= 2 && a.f <= 4 && W.fx) {
         const b = f.body, u = Math.min(1, (a.f - 2 + 0.5) / 3), ang = b.heading + (0.9 - 1.8 * u);
-        for (let k = 0; k < 2; k++) {
+        const nE = a.trail ? 2 : (a.ripN || 1) >= 2 ? (a.ripN === 3 ? 2 : 1) : (Math.random() < 0.5 ? 1 : 0);
+        for (let k = 0; k < nE; k++) {
           const r = 0.75 + Math.random() * 0.35, h = ang + (Math.random() - 0.5) * 0.25;
           W.fx.dust(b.x + Math.cos(h) * r, b.y + W.CHAR_H * (0.5 + 0.15 * Math.random()), b.z + Math.sin(h) * r, 1, { pal: [[1, 0.55, 0.16], [1, 0.75, 0.3], [1, 0.42, 0.1]], spd: 0.15, up: 0.2, life: 0.22 });
         }

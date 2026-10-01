@@ -124,9 +124,14 @@
     out.set(shake.x * k, 0, shake.z * k);
     return out;
   };
+  // cámara lenta (Duelo 3): tras el hitstop del parry perfecto, un instante (~120 ms reales) al 30 %
+  const SLOW = (W.SLOWMO = { t: 0, k: 1, pend: null, acc: 0 });
+  W.slowmo = function (dur, k) { SLOW.pend = { dur, k }; };
   W.combatStep = function (dt) {
     W.ctReal = performance.now();
     if (W.hitstop > 0) { W.hitstop = Math.max(0, W.hitstop - dt); W.hitstopAcc = (W.hitstopAcc || 0) + dt; return 0; }
+    if (SLOW.pend) { SLOW.t = SLOW.pend.dur; SLOW.k = SLOW.pend.k; SLOW.pend = null; }
+    if (SLOW.t > 0) { SLOW.t -= dt; SLOW.acc += dt; dt *= SLOW.k; }
     W.ct += dt;                                      // reloj de combate (fighter.js)
     return dt;
   };
@@ -304,6 +309,7 @@
         const cost = heavy ? L.defPostHeavy : L.defPost;
         if (cost) t.addPosture(cost, { noBreak: true });
         if (perfect && !t.rip) t.counterT = W.ct + W.COMBAT.counterWin;
+        if (perfect && t.team === "player" && W.slowmo) W.slowmo(W.DUEL ? W.DUEL.slowmo[0] : 0.12, W.DUEL ? W.DUEL.slowmo[1] : 0.3);
         t.parries = (t.parries || 0) + 1; t.lastDefT = W.ct;
         if (att.ai && att.ai.onDeflected) att.ai.onDeflected(perfect ? "perfect" : "normal");
         log({ ev: "parry", level: perfect ? "perfect" : "normal", early: Math.round(t.lastEarly * 1000), who: t.name, from: att.name, anim: a.name,
@@ -355,6 +361,9 @@
       if (AT.throw) log({ ev: "grab", who: t.name, from: att.name, anim: a.name, move: a.move });
       const pg = dm * 0.7 * (counter ? W.COMBAT.counterPost : 1) * (exposed ? 1.5 : 1);
       if (!deathblow && t.alive) t.addPosture(pg);
+      // tras el remate su postura queda como al acabar el aturdido (antes se quedaba llena y cualquier desvío
+      // posterior lo volvía a aturdir al instante)
+      if (deathblow && t.alive) t.post = t.postMax * 0.35;
       if (counter) { log({ ev: "counter", who: t.name, from: att.name, anim: a.name, dmg: Math.round(dm) }); W.fx.dust(t.body.x, t.body.y + 1.0, t.body.z, 18, { pal: GOLD, spd: 2.2, up: 1.6, life: 0.4 }); }
       const kind = groundBurst(t.body.x, t.body.z, heavy ? 14 : 9, heavy);
       W.fx.dust(t.body.x - Math.cos(dir) * 0.1, t.body.y + 0.9, t.body.z - Math.sin(dir) * 0.1, heavy ? 16 : 10, { pal: EMBER, spd: 1.8, up: 1.3, life: 0.35 });

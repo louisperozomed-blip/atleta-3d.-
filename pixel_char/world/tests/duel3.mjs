@@ -122,6 +122,29 @@ await page.evaluate(() => {
   };
 });
 
+// bot de riposte (etapas 4 y 5)
+  await page.evaluate(() => {
+    let rs = 777; const rr = () => ((rs = (rs * 16807) % 2147483647) / 2147483647);
+    const gauss = () => { let u = 0, v = 0; while (!u) u = rr(); while (!v) v = rr(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+    window.RipBot = {
+      reset(o) { Object.assign(this, { mode: "ritmo", st: null, out: [] }, o || {}); rs = ((o && o.seed) || 777) * 48271 % 2147483646 + 1; for (let i = 0; i < 6; i++) rr(); },
+      step() {
+        const p = W.pf, e = E(), L = W.combatLog;
+        const last = L[L.length - 1];
+        // un parry perfecto nuevo: empieza el riposte
+        const pp = L.filter((x) => x.ev === "parry" && x.who === "jugador" && x.level === "perfect").length;
+        if (pp > (this.pp || 0)) { this.pp = pp; this.st = { k: 0, at: W.ct + 0.25 + gauss() * 0.04, imp1: null, res: null }; this.out.push(this.st); }
+        const S = this.st; if (!S || S.k >= 9) return;
+        const a = p.act;
+        if (a && a.name === "riposte" && a.impactT != null && a.ripN === 1 && S.imp1 == null) { S.imp1 = a.impactT; S.at2 = W.ct + 0.25 + gauss() * 0.04 - (W.ct - a.impactT); }
+        const R = p.rip;
+        if (S.k === 0 && W.ct >= S.at) { atkAt(S.at); S.k = 1; }
+        else if (S.k === 1 && S.at2 != null && W.ct >= S.at2) { atkAt(S.at2); S.k = 2; }
+        else if (S.k === 2 && R && R.beat != null) { S.at3 = this.mode === "ritmo" ? R.beat + gauss() * 0.04 : this.mode === "fijo" ? R.beat + (this.err3 || 0) : R.beat - 0.17 + rr() * 0.6; S.k = 3; }
+        else if (S.k === 3 && W.ct >= S.at3) { atkAt(S.at3); S.k = 4; }
+      },
+    };
+  });
 // =====================================================================================================
 // ETAPA 1 · recompensa del parry perfecto
 // =====================================================================================================
@@ -436,6 +459,58 @@ if (STAGES.includes(3)) {
   await page.evaluate(() => { pair(0.6, 2.0); const e = E(); e.ai.enabled = true; e.ai.passive = true; e.ai.cool = 99;
     e.ai.chain = { uid: 78, id: "prueba", steps: [{ m: "breaker", r: "s", gap: 0 }], i: 0, readyT: null }; e.ai.strike("breaker", "s", e.ai.chain.steps[0]); T(30); });
   await shot("E3_rompeguardias");
+}
+
+// =====================================================================================================
+// ETAPA 4 · sensación y entrenamiento del riposte
+// =====================================================================================================
+if (STAGES.includes(4)) {
+  const fe = await page.evaluate(() => {
+    const o = {}, A = W.sfx, played = [];
+    const k0 = A.combat; A.combat = function (kind, x) { played.push(kind + (x != null && typeof x === "number" ? x : "")); return k0.apply(this, arguments); };
+    // parry perfecto: hitstop + cámara lenta (~120 ms reales al 30 %) + metal agudo + chispas doradas
+    pair(0.6, 2.0); E().ai.enabled = false; const S = W.SLOWMO; S.acc = 0; let slowSteps = 0, ct0 = null, ctSlow = 0;
+    const e = E(); e.startAttack("attack1", { dir: e.body.heading }); let pressed = false, n = 0;
+    const nd0 = W.fx && W.fx.count ? W.fx.count() : 0;
+    while (n++ < 200) { const l = e.toImpact(); if (!pressed && l != null && l <= 0.04) { W.pf.input("guardDown", { ts: performance.now() + (l - 0.04) * 1000 }); W.pf.input("guardUp"); pressed = true; }
+      const c0 = W.ct, s0 = S.t > 0; T(1); if (S.t > 0 || (s0 && S.t <= 0)) { slowSteps++; ctSlow += W.ct - c0; } if (lastOf("parry") && slowSteps > 12) break; }
+    o.perfecto = { nivel: lastOf("parry") && lastOf("parry").level, lento_real_ms: Math.round(S.acc * 1000), juego_ms: Math.round(ctSlow * 1000), sonidos: played.slice() };
+    // riposte: sonidos de corte crecientes; deathblow: golpe grave y destello
+    played.length = 0; perfectParry(); const e2 = E(); e2.post = 60; ripRun({});
+    o.riposte = played.filter((x) => x.startsWith("riposte")); o.deathblow = played.includes("deathblow");
+    A.combat = k0;
+    return o;
+  });
+  check("parry perfecto: instante de cámara lenta (~120 ms reales al 30 %), sonido metálico agudo y chispas doradas",
+    fe.perfecto.nivel === "perfect" && Math.abs(fe.perfecto.lento_real_ms - 120) <= 20 && Math.abs(fe.perfecto.juego_ms - 36) <= 10 && fe.perfecto.sonidos.includes("parryPerfect"), fe.perfecto);
+  check("riposte con sonido de corte creciente (1, 2, 3) y deathblow con su golpe grave",
+    fe.riposte.join(",") === "riposte1,riposte2,riposte3" && fe.deathblow, { riposte: fe.riposte, deathblow: fe.deathblow });
+
+  // entrenamiento del riposte: siempre la misma cadena y te dice si acertaste el ritmo del 3.er golpe
+  const tr = await page.evaluate(() => {
+    const out = { cadenas: [], textos: [] };
+    const sel = document.getElementById("trainSel"); out.opcion = !!(sel && [...sel.options].some((o) => o.value === "riposte"));
+    pair(0.6, 2.0); W.setTraining("riposte"); const e = E(); e.ai.enabled = true; e.ai.cool = 0.3; e.ai.state = "chase";
+    Bot.reset({ react: 0.31, jit: 0, seed: 5 }); RipBot.reset({ mode: "fijo", seed: 9 });
+    let n = 0, errs = [0.0, 0.15, -0.14, 0.03];
+    let k = 0;
+    while (n++ < 60 * 70 && out.textos.length < 4) {
+      // 3.er golpe: buen ritmo, tarde, pronto, buen ritmo
+      RipBot.mode = "fijo"; RipBot.err3 = errs[k % errs.length];
+      TB(); RipBot.step();
+      const t = W.lastTiming;
+      if (t && t.startsWith("RITMO") && out.textos[out.textos.length - 1] !== t) { out.textos.push(t); k++; }
+    }
+    out.cadenas = W.combatLog.filter((x) => x.ev === "chainStart").map((x) => x.chain);
+    W.setTraining("");
+    return out;
+  });
+  check("entrenamiento RIPOSTE (panel ⚙): siempre la misma cadena y tras el 3.er golpe dice si acertaste el ritmo (✓, PRONTO o TARDE y los ms)",
+    tr.opcion && tr.cadenas.length >= 3 && tr.cadenas.every((c) => c === "dos") && tr.textos.length >= 3 && tr.textos.some((t) => t.includes("✓")) && tr.textos.some((t) => /TARDE|PRONTO/.test(t)), tr);
+  await page.evaluate(() => { pair(0.6, 2.0); W.setTraining("riposte"); });
+  await page.evaluate(() => { W.skipRender = true; perfectParry(); ripRun({ steps: 60 }); const el = document.querySelector("#duelP .tmg"); });
+  await shot("E4_entrenamiento_riposte");
+  await page.evaluate(() => W.setTraining(""));
 }
 
 const okN = results.filter((r) => r.ok).length;

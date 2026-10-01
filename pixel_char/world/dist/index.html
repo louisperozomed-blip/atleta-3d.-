@@ -4121,9 +4121,14 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     out.set(shake.x * k, 0, shake.z * k);
     return out;
   };
+  // cámara lenta (Duelo 3): tras el hitstop del parry perfecto, un instante (~120 ms reales) al 30 %
+  const SLOW = (W.SLOWMO = { t: 0, k: 1, pend: null, acc: 0 });
+  W.slowmo = function (dur, k) { SLOW.pend = { dur, k }; };
   W.combatStep = function (dt) {
     W.ctReal = performance.now();
     if (W.hitstop > 0) { W.hitstop = Math.max(0, W.hitstop - dt); W.hitstopAcc = (W.hitstopAcc || 0) + dt; return 0; }
+    if (SLOW.pend) { SLOW.t = SLOW.pend.dur; SLOW.k = SLOW.pend.k; SLOW.pend = null; }
+    if (SLOW.t > 0) { SLOW.t -= dt; SLOW.acc += dt; dt *= SLOW.k; }
     W.ct += dt;                                      // reloj de combate (fighter.js)
     return dt;
   };
@@ -4301,6 +4306,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         const cost = heavy ? L.defPostHeavy : L.defPost;
         if (cost) t.addPosture(cost, { noBreak: true });
         if (perfect && !t.rip) t.counterT = W.ct + W.COMBAT.counterWin;
+        if (perfect && t.team === "player" && W.slowmo) W.slowmo(W.DUEL ? W.DUEL.slowmo[0] : 0.12, W.DUEL ? W.DUEL.slowmo[1] : 0.3);
         t.parries = (t.parries || 0) + 1; t.lastDefT = W.ct;
         if (att.ai && att.ai.onDeflected) att.ai.onDeflected(perfect ? "perfect" : "normal");
         log({ ev: "parry", level: perfect ? "perfect" : "normal", early: Math.round(t.lastEarly * 1000), who: t.name, from: att.name, anim: a.name,
@@ -4352,6 +4358,9 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       if (AT.throw) log({ ev: "grab", who: t.name, from: att.name, anim: a.name, move: a.move });
       const pg = dm * 0.7 * (counter ? W.COMBAT.counterPost : 1) * (exposed ? 1.5 : 1);
       if (!deathblow && t.alive) t.addPosture(pg);
+      // tras el remate su postura queda como al acabar el aturdido (antes se quedaba llena y cualquier desvío
+      // posterior lo volvía a aturdir al instante)
+      if (deathblow && t.alive) t.post = t.postMax * 0.35;
       if (counter) { log({ ev: "counter", who: t.name, from: att.name, anim: a.name, dmg: Math.round(dm) }); W.fx.dust(t.body.x, t.body.y + 1.0, t.body.z, 18, { pal: GOLD, spd: 2.2, up: 1.6, life: 0.4 }); }
       const kind = groundBurst(t.body.x, t.body.z, heavy ? 14 : 9, heavy);
       W.fx.dust(t.body.x - Math.cos(dir) * 0.1, t.body.y + 0.9, t.body.z - Math.sin(dir) * 0.1, heavy ? 16 : 10, { pal: EMBER, spd: 1.8, up: 1.3, life: 0.35 });
@@ -4542,6 +4551,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     hits: [{ dmg: 8, post: 10, stop: 0.07, shake: 0.05 }, { dmg: 10, post: 14, stop: 0.09, shake: 0.075 }, { dmg: 13, post: 20, stop: 0.13, shake: 0.11 }],
     deathblowDmg: 100, deathblowZoom: 0.16,
     recoverCost: 12,               // postura que te cuesta que desvíe tu 3.er golpe fuera de ritmo
+    slowmo: [0.12, 0.3],           // parry perfecto: tras su hitstop, 120 ms (reales) de cámara lenta al 30 %
   });
   const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
   const now3 = () => (W.U ? +W.U.uTime.value.toFixed(3) : 0);
@@ -4828,10 +4838,12 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         const hx = Math.cos(a.kdir), hz = Math.sin(a.kdir), xp = hx * Math.cos(th) - hz * Math.sin(th);
         a.bounceLean = (xp >= 0 ? 1 : -1) * 0.13 * Math.exp(-a.bt / 0.22) * Math.cos(a.bt * 16);
       }
-      // estela naranja del riposte sustituto (attack1 acelerado)
-      if (a.trail && a.f >= 2 && a.f <= 4 && W.fx) {
+      // estelas del riposte: brasas a lo largo del tajo, más cuanto más avanza la cadena (en el sustituto, la
+      // estela entera; con la hoja, que ya pinta su estela, un rastro de brasas que crece con cada golpe)
+      if (a.name === "riposte" && a.f >= 2 && a.f <= 4 && W.fx) {
         const b = f.body, u = Math.min(1, (a.f - 2 + 0.5) / 3), ang = b.heading + (0.9 - 1.8 * u);
-        for (let k = 0; k < 2; k++) {
+        const nE = a.trail ? 2 : (a.ripN || 1) >= 2 ? (a.ripN === 3 ? 2 : 1) : (Math.random() < 0.5 ? 1 : 0);
+        for (let k = 0; k < nE; k++) {
           const r = 0.75 + Math.random() * 0.35, h = ang + (Math.random() - 0.5) * 0.25;
           W.fx.dust(b.x + Math.cos(h) * r, b.y + W.CHAR_H * (0.5 + 0.15 * Math.random()), b.z + Math.sin(h) * r, 1, { pal: [[1, 0.55, 0.16], [1, 0.75, 0.3], [1, 0.42, 0.1]], spd: 0.15, up: 0.2, life: 0.22 });
         }
@@ -5941,13 +5953,17 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
   "use strict";
   const W = (window.W = window.W || {});
   const T = (W.TRAINING = { on: false, id: "", reps: 0 });
-  const EXTRA = [["dos+delay", "zarpazo y barrido · retrasado"], ["dos+feint", "zarpazo y barrido · finta"], ["rrl+delay", "rápido-rápido-lento · retrasado"]];
+  const EXTRA = [["dos+delay", "zarpazo y barrido · retrasado"], ["dos+feint", "zarpazo y barrido · finta"], ["rrl+delay", "rápido-rápido-lento · retrasado"],
+    ["riposte", "RIPOSTE · desvía y contraataca (ritmo del 3.º)"]];
   const HINT = { sweep: "BARRIDO → salta", thrust: "ESTOCADA → esquiva hacia él", grab: "AGARRE → esquiva de lado" };
 
   // ---- modo entrenamiento -----------------------------------------------------------------------------
   W.setTraining = function (id) {
     T.on = !!id; T.id = id || ""; T.reps = 0;
-    const [chain, trick] = (id || "").split("+");
+    // riposte: siempre la misma cadena (zarpazo y barrido, sin trucos ni ramas) para practicar el parry perfecto y
+    // el ritmo del riposte; tras el 3.er golpe dice si acertaste el ritmo y por cuántos ms
+    const [chain, trick] = id === "riposte" ? ["dos", null] : (id || "").split("+");
+    T.rip = id === "riposte"; T.ripStats = { ok: 0, n: 0 };
     for (const f of W.foes || []) {
       if (f.type !== "automaton" || !f.ai) continue;
       const ai = f.ai;
@@ -5997,6 +6013,17 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     const r = W.timingText(info); if (r) show(r[0], r[1]);
   };
   W.onLatePress = function (late) { if (T.on) show("TARDE · " + Math.round(late * 1000) + " ms", "#ff6a4a"); };
+  // ritmo del 3.er golpe del riposte (duel.js)
+  W.ripBeatText = function (ok, err) {
+    if (err == null) return ["RITMO · PRONTO (antes del 2.º golpe)", "#ff6a4a"];
+    const ms = Math.round(err * 1000);
+    return ok ? ["RITMO ✓ " + (ms >= 0 ? "+" : "") + ms + " ms", "#ffd34a"] : [(ms < 0 ? "RITMO · PRONTO " : "RITMO · TARDE +") + ms + " ms", "#ff6a4a"];
+  };
+  W.onRipBeat = function (ok, err) {
+    if (!T.on) return;
+    if (T.ripStats) { T.ripStats.n++; if (ok) T.ripStats.ok++; }
+    const r = W.ripBeatText(ok, err); show(r[0] + (T.rip && T.ripStats ? " · " + T.ripStats.ok + "/" + T.ripStats.n : ""), r[1]);
+  };
 
   // ---- HUD del duelo: barras de postura centrales + ventana de contraataque --------------------------------
   let hud = null;
@@ -6268,6 +6295,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       for (const [fr, g, d] of [[2350, 0.18, 0.9], [3520, 0.11, 0.7], [4700, 0.07, 0.5], [1175, 0.12, 0.8]]) tone(c, t, "triangle", fr, fr * 0.995, g, d);
       noiseHit(c, t, "highpass", 6000, 3500, 0.7, 0.3, 0.05);
       tone(c, t + 0.05, "sine", 3136, 3130, 0.07, 0.7);
+      tone(c, t, "square", 5270, 5200, 0.025, 0.12);          // chispa metálica muy aguda (Duelo 3)
     } else if (kind === "block") { tone(c, t, "triangle", 620, 560, 0.14, 0.18); noiseHit(c, t, "bandpass", 1600, 900, 2, 0.2, 0.08); }
     else if (kind === "guardBreak") { tone(c, t, "sawtooth", 300, 90, 0.18, 0.3); noiseHit(c, t, "lowpass", 3000, 300, 0.6, 0.35, 0.25); }
     else if (kind === "dodge") noiseHit(c, t, "bandpass", 1800, 500, 0.9, 0.16, 0.2);
@@ -6283,7 +6311,11 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       for (const [fr, g, d] of [[1250, 0.2, 0.6], [1870, 0.12, 0.45], [640, 0.16, 0.5]]) tone(c, t, "triangle", fr, fr * 0.97, g, d);
       noiseHit(c, t, "bandpass", 3500, 1200, 0.8, 0.4, 0.18); tone(c, t, "sine", 110, 50, 0.3, 0.2);
     } else if (kind === "armor") { tone(c, t, "triangle", 420, 380, 0.12, 0.14); noiseHit(c, t, "lowpass", 1600, 500, 0.8, 0.22, 0.1); }
-    else if (kind === "deathblow") { tone(c, t, "sine", 90, 35, 0.6, 0.45); noiseHit(c, t, "lowpass", 3000, 200, 0.7, 0.45, 0.4); tone(c, t, "triangle", 2200, 2100, 0.08, 0.6); }
+    else if (kind === "deathblow") {
+      // remate: golpe grave profundo (sub + cuerpo), ruido que cae y un brillo que queda sonando
+      tone(c, t, "sine", 90, 35, 0.6, 0.45); tone(c, t, "sine", 55, 28, 0.5, 0.7); noiseHit(c, t, "lowpass", 3000, 200, 0.7, 0.45, 0.4);
+      tone(c, t, "triangle", 2200, 2100, 0.08, 0.6); tone(c, t + 0.08, "sine", 1760, 1755, 0.05, 0.9);
+    }
     else if (kind === "death") { tone(c, t, "sine", 80, 40, 0.35, 0.35); noiseHit(c, t, "lowpass", 900, 200, 0.6, 0.25, 0.3); }
     else if (kind === "tick") { tone(c, t, "sine", 1250, 1240, 0.12, 0.05); tone(c, t, "square", 2500, 2480, 0.02, 0.03); }
     else if (kind === "warn") { tone(c, t, "sine", 980, 1480, 0.05, 0.12); }
