@@ -23,7 +23,7 @@ async function open(opts) {
     window.E = () => W.foe;
     window.pair = (a, d) => { const e = E(), p = W.pf; for (const f of W.foes) { f.ai.enabled = false; } p.respawn(); W.respawnAll(); W.hitstop = 0;
       e.body.x = e.home.x; e.body.z = e.home.z; e.body.y = e.body.ground = W.heightAt(e.home.x, e.home.z);
-      W.teleport(e.home.x + Math.cos(a) * d, e.home.z + Math.sin(a) * d); W.player.heading = a + Math.PI; e.body.heading = a; T(8); W.combatLog.length = 0; };
+      W.teleport(e.home.x + Math.cos(a) * d, e.home.z + Math.sin(a) * d); W.player.heading = a + Math.PI; e.body.heading = a; if (W.setTarget) W.setTarget(e); T(8); W.combatLog.length = 0; };   // (objetivo fijado: tocarlo ataca)
     // registro de la marca de tiempo de cada pulsación de guardia (para comprobar que se usa)
     // (en el momento en que llega al juego: lo que tardó desde el evento, incluido arrancar el audio la 1.ª vez)
     window.GT = []; const inp = W.pf.input.bind(W.pf);

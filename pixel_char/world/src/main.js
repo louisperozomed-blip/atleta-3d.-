@@ -198,6 +198,7 @@
       if (Math.abs(ui.thetaT - ui.theta) < 1e-4) ui.theta = ui.thetaT;
       character.update(gdt, player, ui.theta, ui.thetaT);
       if (W.updateFoes) W.updateFoes(gdt, ui.theta, ui.thetaT);
+      if (W.targetUpdate) W.targetUpdate(dt);                    // objetivo fijado (target.js)
       if (W.afterCharacter) W.afterCharacter(dt, t);
       if (W.combatAfter) W.combatAfter(dt);
       const beat = 0;

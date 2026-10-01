@@ -1,0 +1,219 @@
+{
+ "results": [
+  {
+   "name": "[escritorio] tocar un enemigo lo SELECCIONA (anillo y retícula) y no ataca",
+   "ok": true,
+   "info": {
+    "t": "A",
+    "act": null,
+    "ring": true,
+    "ret": "block",
+    "tap": "select"
+   }
+  },
+  {
+   "name": "[escritorio] tocar otro enemigo cambia el objetivo",
+   "ok": true,
+   "info": {
+    "t": "B",
+    "act": null
+   }
+  },
+  {
+   "name": "[escritorio] tocar el objetivo ataca y se gira al instante hacia él (rumbo y sprite)",
+   "ok": true,
+   "info": {
+    "act": "attack1",
+    "err": 0,
+    "sprite": 3,
+    "wanted": 3,
+    "tt": 0.033
+   }
+  },
+  {
+   "name": "[escritorio] al caminar mira hacia donde va; al guardar y al esquivar se gira al instante hacia el objetivo",
+   "ok": true,
+   "info": {
+    "walkErr": 0,
+    "guardia": {
+     "err": 0,
+     "sprite": true,
+     "act": "parry"
+    },
+    "esquiva": {
+     "err": 0,
+     "sprite": true,
+     "act": "dodge"
+    }
+   }
+  },
+  {
+   "name": "[escritorio] cámara con un ligero sesgo hacia el objetivo",
+   "ok": true,
+   "info": {
+    "cam": 0.83,
+    "cos": 1,
+    "dist": 3.78
+   }
+  },
+  {
+   "name": "[escritorio] Tab cambia de objetivo (el más cercano primero)",
+   "ok": true,
+   "info": [
+    "B",
+    "A",
+    "B",
+    "A"
+   ]
+  },
+  {
+   "name": "[escritorio] se suelta al alejarte más de ~9 u",
+   "ok": true,
+   "info": {
+    "t": null,
+    "d": 9.8,
+    "log": {
+     "ev": "targetLost",
+     "why": "lejos",
+     "t": 4.137
+    }
+   }
+  },
+  {
+   "name": "[escritorio] se suelta sin línea de visión más de 1,5 s (a 1 s sigue)",
+   "ok": true,
+   "info": {
+    "found": true,
+    "at1": "A",
+    "at17": null
+   }
+  },
+  {
+   "name": "[escritorio] si el objetivo muere pasa al otro enemigo cercano en combate; si no queda ninguno, se suelta",
+   "ok": true,
+   "info": {
+    "after1": "B",
+    "after2": null,
+    "why": [
+     {
+      "ev": "target",
+      "who": "autómata",
+      "idx": 0,
+      "why": "tap",
+      "t": 5.853
+     },
+     {
+      "ev": "target",
+      "who": "autómata",
+      "idx": 1,
+      "why": "auto",
+      "t": 5.87
+     }
+    ]
+   }
+  },
+  {
+   "name": "[iphone] tocar un enemigo lo SELECCIONA (anillo y retícula) y no ataca",
+   "ok": true,
+   "info": {
+    "t": "A",
+    "act": null,
+    "ring": true,
+    "ret": "block",
+    "tap": "select"
+   }
+  },
+  {
+   "name": "[iphone] tocar otro enemigo cambia el objetivo",
+   "ok": true,
+   "info": {
+    "t": "B",
+    "act": null
+   }
+  },
+  {
+   "name": "[iphone] tocar el objetivo ataca y se gira al instante hacia él (rumbo y sprite)",
+   "ok": true,
+   "info": {
+    "act": "attack1",
+    "err": 0,
+    "sprite": 3,
+    "wanted": 3,
+    "tt": 0.033
+   }
+  },
+  {
+   "name": "[iphone] al caminar mira hacia donde va; al guardar y al esquivar se gira al instante hacia el objetivo",
+   "ok": true,
+   "info": {
+    "walkErr": 0,
+    "guardia": {
+     "err": 0,
+     "sprite": true,
+     "act": "parry"
+    },
+    "esquiva": {
+     "err": 0,
+     "sprite": true,
+     "act": "dodge"
+    }
+   }
+  },
+  {
+   "name": "[iphone] cámara con un ligero sesgo hacia el objetivo",
+   "ok": true,
+   "info": {
+    "cam": 0.83,
+    "cos": 1,
+    "dist": 3.78
+   }
+  },
+  {
+   "name": "[iphone] se suelta al alejarte más de ~9 u",
+   "ok": true,
+   "info": {
+    "t": null,
+    "d": 10.04,
+    "log": {
+     "ev": "targetLost",
+     "why": "lejos",
+     "t": 4.078
+    }
+   }
+  },
+  {
+   "name": "[iphone] se suelta sin línea de visión más de 1,5 s (a 1 s sigue)",
+   "ok": true,
+   "info": {
+    "found": true,
+    "at1": "A",
+    "at17": null
+   }
+  },
+  {
+   "name": "[iphone] si el objetivo muere pasa al otro enemigo cercano en combate; si no queda ninguno, se suelta",
+   "ok": true,
+   "info": {
+    "after1": "B",
+    "after2": null,
+    "why": [
+     {
+      "ev": "target",
+      "who": "autómata",
+      "idx": 0,
+      "why": "tap",
+      "t": 5.795
+     },
+     {
+      "ev": "target",
+      "who": "autómata",
+      "idx": 1,
+      "why": "auto",
+      "t": 5.811
+     }
+    ]
+   }
+  }
+ ],
+ "errors": []
+}

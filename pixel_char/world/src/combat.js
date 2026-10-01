@@ -458,6 +458,7 @@
     let e = null, bd = 1e9;
     for (const f of fighters) { if (f.team === "player" || f.hidden) continue; const d = Math.hypot(f.body.x - p.body.x, f.body.z - p.body.z); if (d < bd) { bd = d; e = f; } }
     if (e && bd > 14) e = null;
+    if (W.getTarget && W.getTarget()) e = W.getTarget();         // con objetivo fijado, sus barras
     if (!e || !W.toScreen) { hud.foe.style.display = "none"; return; }
     const s = W.toScreen(e.body.x, e.body.y + (e.ch.height || W.CHAR_H) * 1.15, e.body.z);
     hud.foe.style.display = "block";

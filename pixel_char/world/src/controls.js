@@ -150,7 +150,9 @@
       // sobre el enemigo no se sigue al dedo: es un ataque (o un deslizamiento); mantenerlo = golpe retrasado
       ptr.timer = setTimeout(() => { if (ptr.down && !ptr.foe) startFollow(); }, TAP_MS);
       ptr.atkHold = false;
-      if (ptr.foe) {
+      // tocar un enemigo que no es el objetivo lo SELECCIONA (target.js); tocar el objetivo, ataca
+      ptr.select = !!ptr.foe && W.getTarget && W.getTarget() !== ptr.foe;
+      if (ptr.foe && !ptr.select) {
         clearTimeout(ptr.holdTimer);
         ptr.holdTimer = setTimeout(() => {
           if (!ptr.down || !ptr.foe || Math.hypot(ptr.x - ptr.x0, ptr.y - ptr.y0) > 14) return;
@@ -183,6 +185,7 @@
       }
       if (ptr.foe && !following) {
         if (e.type === "pointercancel") return;
+        if (ptr.select) { W.setTarget(ptr.foe, "tap"); W.lastFoeTap = "select"; return; }
         W.lastFoeTap = attackFoe(ptr.foe, ptr.t0);
         return;
       }
@@ -216,9 +219,10 @@
       if (W.sfx) W.sfx.unlock();
       if (MOVE[e.code]) { keys[e.code] = true; e.preventDefault(); return; }
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") { keys.shift = true; return; }
+      if (e.code === "Tab") { e.preventDefault(); if (W.cycleTarget) W.cycleTarget(); return; }   // objetivo siguiente
       if (e.code === "KeyJ") {
         e.preventDefault();
-        const f = W.nearestFoe ? W.nearestFoe(W.pf, 3.4, 2.0) : null;
+        const f = (W.getTarget && W.getTarget()) || (W.nearestFoe ? W.nearestFoe(W.pf, 3.4, 2.0) : null);
         W.pf.input("attack", f ? { dir: Math.atan2(f.body.z - W.player.z, f.body.x - W.player.x), hold: true, ts: e.timeStamp } : { dir: kbDir(), hold: true, ts: e.timeStamp });
       } else if (e.code === "KeyK") { e.preventDefault(); W.pf.input("guardDown", { ts: e.timeStamp }); }
       else if (e.code === "Space") {

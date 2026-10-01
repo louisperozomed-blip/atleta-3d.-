@@ -220,6 +220,8 @@
       const b = this.body;
       b.stop(); b.speed = 0; b.following = false;
       this.act = Object.assign({ name, t: 0, f: 0, fPrev: -1, hitDone: false, speed: 1 }, extra || {});
+      // objetivo fijado (target.js): guardar o hacer parry gira al jugador al instante hacia él
+      if ((name === "parry" || name === "block") && W.faceTarget) W.faceTarget(this);
       if (W.onCombatAct) W.onCombatAct(this, this.act);
       return this.act;
     }
@@ -244,7 +246,11 @@
       if (this.counterT && W.ct <= this.counterT && name !== "riposte" && name !== "deathblow") { a.counter = true; this.counterT = 0; }   // contraataque
       // atracción suave hacia el enemigo más cercano (delante, a menos de 3.4 u): gira hacia él y se acerca
       // durante la preparación hasta quedar a distancia de golpe
-      const tgt = W.nearestFoe ? W.nearestFoe(this, (data && data.seek) || 3.4, 2.0) : null;
+      // con objetivo fijado (jugador), va a por él (a ≤ 6 u) y se gira al instante; si no, el más cercano delante
+      const lock = this === W.pf && W.getTarget ? W.getTarget() : null;
+      const lockOk = lock && Math.hypot(lock.body.x - this.body.x, lock.body.z - this.body.z) <= 6;
+      const tgt = lockOk ? lock : W.nearestFoe ? W.nearestFoe(this, (data && data.seek) || 3.4, 2.0) : null;
+      if (lockOk) W.faceTarget(this);
       const b = this.body;
       if (data && data.dir != null && !tgt) b.heading = data.dir;
       if (tgt) {
@@ -263,8 +269,10 @@
       let dir = data && data.dir != null ? data.dir : b.heading + Math.PI;           // sin dirección: hacia atrás
       this.st = Math.max(0, this.st - C.dodgeCost); this.stT = 0;
       const a = this.start("dodge", { dir, moved: 0, ct0: W.ct });
-      // la hoja pinta un paso atrás: el personaje mira al lado contrario de hacia donde se aparta
+      // la hoja pinta un paso atrás: el personaje mira al lado contrario de hacia donde se aparta (con objetivo
+      // fijado, mira al objetivo: se aparta sin dejar de encararlo)
       b.heading = dir + Math.PI;
+      if (W.faceTarget) W.faceTarget(this);
       return a;
     }
     hurt(opts) {

@@ -250,7 +250,7 @@ const wasd = await page.evaluate(() => { W.teleport(C.x, C.z); T(5); return [W.p
 await page.keyboard.down("KeyA"); await page.evaluate(() => T(50)); await page.keyboard.up("KeyA");
 const wmove = await page.evaluate((p0) => { const a = W.toScreen(p0[0], W.player.y, p0[1]), b = W.toScreen(W.player.x, W.player.y, W.player.z); return [Math.round(b[0] - a[0]), Math.round(b[1] - a[1])]; }, wasd);
 check("teclado: A mueve a la izquierda de la pantalla", wmove[0] < -20 && Math.abs(wmove[1]) < Math.abs(wmove[0]), wmove);
-await page.evaluate(() => { pair(0, 1.6); W.skipRender = false; T(2); });
+await page.evaluate(() => { pair(0, 1.6); W.setTarget(W.foe); W.skipRender = false; T(2); });   // (Combate completo: tocar al enemigo lo selecciona; ya fijado, tocarlo ataca)
 const fp = await page.evaluate(() => { const b = W.foe.body; return W.toScreen(b.x, b.y + 0.8, b.z); });
 await page.mouse.click(fp[0], fp[1]);
 const cl = await page.evaluate(() => { const a = W.pf.act && W.pf.act.name; T(40); return [a, W.combatLog.filter((x) => x.ev === "hit").length]; });
@@ -284,7 +284,7 @@ for (const [dx, dy] of [[90, 0], [0, -90], [-90, 0], [0, 90], [64, 64], [-64, -6
   sw.push({ dir: [dx, dy], act: r.a, move: r.m, cos: +cos.toFixed(2) });
 }
 check("móvil: deslizar esquiva hacia allí en las 8 direcciones", sw.every((s) => s.act === "dodge" && s.cos > 0.8), sw);
-await page.evaluate(() => { pair(0, 1.6); W.skipRender = false; T(2); });
+await page.evaluate(() => { pair(0, 1.6); W.setTarget(W.foe); W.skipRender = false; T(2); });   // (Combate completo: tocar al enemigo lo selecciona; ya fijado, tocarlo ataca)
 const tp = await page.evaluate(() => { const b = W.foe.body; return W.toScreen(b.x, b.y + 0.8, b.z); });
 await gesture([[tp[0], tp[1]]]); await page.waitForTimeout(80);
 const t1 = await page.evaluate(() => { const a = W.pf.act && W.pf.act.name; T(16); return a; });

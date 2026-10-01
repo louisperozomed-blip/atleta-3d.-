@@ -347,6 +347,8 @@
           }
           st.lastTheta = th;
           st.dirWanted = this.dirFromHeading(p.heading, th);
+          // objetivo fijado (target.js): al atacar, guardar o esquivar se gira AL INSTANTE (sin intermedias)
+          if (this.snapDir) { st.dir = st.dirWanted; st.lastStep = st.time; this.snapDir = false; }
           // al girar para golpear, pasa por las intermedias pero más deprisa (25 ms)
           if (st.dir !== st.dirWanted && st.time - st.lastStep >= 0.025) {
             const delta = ((st.dirWanted - st.dir) % 8 + 8) % 8;

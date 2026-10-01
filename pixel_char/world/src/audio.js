@@ -133,6 +133,7 @@
       tone(c, t, "triangle", 2200, 2100, 0.08, 0.6); tone(c, t + 0.08, "sine", 1760, 1755, 0.05, 0.9);
     }
     else if (kind === "death") { tone(c, t, "sine", 80, 40, 0.35, 0.35); noiseHit(c, t, "lowpass", 900, 200, 0.6, 0.25, 0.3); }
+    else if (kind === "target") { tone(c, t, "triangle", 880, 1320, 0.06, 0.07); tone(c, t + 0.04, "sine", 1760, 1760, 0.03, 0.09); }   // objetivo fijado
     else if (kind === "tick") { tone(c, t, "sine", 1250, 1240, 0.12, 0.05); tone(c, t, "square", 2500, 2480, 0.02, 0.03); }
     else if (kind === "warn") { tone(c, t, "sine", 980, 1480, 0.05, 0.12); }
     // autómata: zumbido grave mecánico al preparar el ataque (motor que se carga + chirrido de metal)

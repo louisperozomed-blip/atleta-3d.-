@@ -1280,3 +1280,24 @@ animaciones nuevas la página pesa **14,2 MB** (antes 14,83 sin ellas).
 reproducir, cerrar). **Revisión** en `review/combate_completo/`: `E1_heavy.png`, `E1_spin.png`,
 `E1_heavy_automata.png` (antes | después con (a) en naranja y (b) en rosa), `E1_tamano.png`, `E1_emision.png`,
 `E1_visor_*.png` y `E1_revision.json` (`tools/cc_review_e1.py`).
+
+## Etapa 2 — Fijar objetivo (`src/target.js`)
+- **Tocar un enemigo lo SELECCIONA** (ya no ataca): anillo naranja bajo sus pies (late al fijarlo y gira despacio)
+  y retícula de cuatro esquinas alrededor de su sprite, con un «tic» propio. Tocar otro cambia el objetivo.
+  **Tocar el objetivo ataca** (la etapa 3 lo convierte en ligero/fuerte). Teclado: **Tab** pasa al siguiente
+  (de más cercano a más lejano). Las barras del enemigo que se muestran son las del objetivo.
+- Al caminar el personaje mira hacia donde va (como antes). Al **atacar, guardar, hacer parry o esquivar** se
+  gira **al instante** hacia el objetivo: rumbo y sprite (sin pasar por las direcciones intermedias, que es lo que
+  hacía que pareciera patinar); mientras guarda o bloquea sigue encarándolo. En la esquiva se aparta en la
+  dirección pedida sin dejar de mirarlo. Con objetivo, el golpe va a por él (hasta 6 u) en lugar de al más cercano.
+- **Se suelta**: a más de 9 u; sin **línea de visión** más de 1,5 s (el terreno o un obstáculo alto a la altura del
+  pecho —árboles, el titán, arcos, ruinas, muros, cristales, la baliza—; troncos, vallas, raíces, lápidas, rocas y
+  setas son bajos y no la cortan; mientras no lo ve, anillo y retícula se apagan); o si **muere**: entonces pasa al
+  enemigo vivo más cercano en combate (a ≤ 9 u y persiguiéndote, o a ≤ 6 u) o se suelta si no hay ninguno.
+- **Cámara**: se desplaza hacia el objetivo un 22 % de la distancia (como mucho 2 u), con suavidad.
+
+**Pruebas** (`tests/cc_e2.mjs`, escritorio con ratón y teclado e iPhone con toques reales): **17/17**, sin errores
+JS — seleccionar, cambiar, atacar al objetivo girándose al instante (error 0 rad, sprite en su dirección),
+caminar/guardar/esquivar, sesgo de cámara, Tab, soltar por distancia, por visión (a 1 s sigue, a 1,7 s no) y por
+muerte (pasa al otro; sin otro, se suelta). Las pruebas antiguas que atacaban tocando al enemigo lo fijan antes
+(`combat.mjs` 31/31 con el eco, `parry2_ui.mjs` 10/10). Capturas: `review/combate_completo/E2_objetivo_*.png`.
