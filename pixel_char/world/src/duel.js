@@ -55,9 +55,9 @@
 
   // ---- desequilibrado ----------------------------------------------------------------------------------
   // dir: rumbo del golpe desviado (del atacante hacia quien desvía); retrocede en sentido contrario
-  W.duelDeflect = function (t, dir) {
+  W.duelDeflect = function (t, dir, T) {
     const R = W.duelSheet(t, "deflected");
-    const sp = dur(t.M(), R.sheet) / D.deflectT;
+    const sp = dur(t.M(), R.sheet) / (T || D.deflectT);
     t.act = null; t.guardHeld = false;
     t.body.heading = dir + Math.PI;
     const a = t.start("deflected", { sheet: R.sheet, speed: sp, fb: R.fb, bounce: R.bounce, kb: 0.38 * (t.kbK || 1), kdir: dir + Math.PI, moved: 0, exposed: true, ct0: W.ct });
@@ -80,8 +80,27 @@
 
   // ---- parry: abre el riposte ---------------------------------------------------------------------------
   // t: quien desvía, att: el desviado, dir: rumbo del golpe. true = ya se encargó de la reacción del atacante
-  W.duelOnParry = function (t, att, perfect, dir) {
+  W.duelOnParry = function (t, att, perfect, dir, a) {
     if (t.team !== "player") return false;
+    // intercambio de desvíos (clin-clin): desviaste su COUNTER. Si es perfecto, él puede volver a contraatacar
+    // (cada vez más deprisa y con más probabilidad de fallar); pierde quien falla primero
+    if (a && a.xchg && att.ai && att.ai.onExchange) {
+      const r = att.ai.onExchange(perfect, a);
+      if (r === "again") {
+        att.act = null; att.start("hit", { kb: 0.18, kdir: dir + Math.PI, moved: 0, speed: 1.7, recoil: true, xchgRecoil: true });
+        t.rip = null; t.counterT = 0;
+        pend.push({ ev: "xchg", n: a.xchg, result: "again" });
+        return true;
+      }
+      pend.push({ ev: "xchg", n: a.xchg, result: perfect ? "foeFails" : "end" });
+      if (perfect) {
+        // falla él: más desequilibrado que nunca → riposte
+        t.rip = { target: att, until: W.ct + D.ripWin.perfect + 0.2, max: 3, n: 0, level: "perfect", beat: null, bad: false, t0: W.ct };
+        pend.push({ ev: "ripOpen", level: "perfect", max: 3, win: D.ripWin.perfect + 0.2, xchg: true });
+        W.duelDeflect(att, dir, D.deflectT + 0.2);
+        return true;
+      }
+    }
     const k = perfect ? "perfect" : "normal";
     t.rip = { target: att, until: W.ct + D.ripWin[k], max: D.ripMax[k], n: 0, level: k, beat: null, bad: false, t0: W.ct };
     pend.push({ ev: "ripOpen", level: k, max: t.rip.max, win: D.ripWin[k] });      // tras el «parry» (combat.js)
@@ -213,6 +232,31 @@
     screenFlash(0.9);
     if (W.sfx) W.sfx.combat("deathblow");
     FX.log({ ev: "deathblow", who: t.name, from: att.name, anim: "deathblow", dmg: dm, hp: Math.round(t.hp), sheet: a.sheet, fb: !!a.fb });
+    return true;
+  };
+
+  // ---- choque: los dos golpes llegan a la vez -----------------------------------------------------------
+  // a la vez = el del otro impacta a menos de 80 ms del tuyo, los dos os miráis y ninguno es peligroso ni de duelo
+  const CLASH = 0.08;
+  function peril(f, a) { const T = f.attacks || W.combatAttacks; const x = T && T[a.move || a.name]; return !!(x && x.perilous); }
+  W.duelClash = function (att, a, t, AT, c) {
+    const ta = t.act;
+    if (!ta || !W.isAtk(ta) || AT.perilous || peril(t, ta) || a.counter || ta.counter) return false;
+    if (["riposte", "deathblow"].includes(a.name) || ["riposte", "deathblow"].includes(ta.name) || t.body.jump || att.body.jump) return false;
+    const tl = t.toImpact(), ti = a.impactT != null ? a.impactT : W.ct;
+    const sync = (ta.f < 3 && tl != null && tl <= CLASH) || (ta.f >= 3 && ta.impactT != null && Math.abs(ta.impactT - ti) <= CLASH);
+    if (!sync) return false;
+    const face = Math.abs(norm(Math.atan2(att.body.z - t.body.z, att.body.x - t.body.x) - t.body.heading));
+    if (face > 1.6) return false;
+    const FX = W.combatFx;
+    for (const [f, d] of [[att, c.dir + Math.PI], [t, c.dir]]) { f.act = null; f.start("hit", { kb: 0.5 * (f.kbK || 1) + 0.15, kdir: d, moved: 0, speed: 1.3, recoil: true, clash: true }); f.lastDefT = W.ct; }
+    W.fx.dust(c.cx, c.cy - 0.3, c.cz, 56, { pal: FX.SPARK, spd: 3.6, up: 2.8, life: 0.55 });
+    W.fx.dust(c.cx, c.cy - 0.3, c.cz, 20, { pal: FX.GOLD, spd: 2.4, up: 2.0, life: 0.5 });
+    FX.star(c.cx, c.cy - 0.1, c.cz, 2.0, 0xfff4d0, 0.3); FX.flash(c.cx, c.cy, c.cz, 0xffe8c0, 7);
+    FX.stop(0.13); W.shakeCam(c.dx, c.dz, 0.09, 0.3);
+    if (W.sfx) W.sfx.combat("clash");
+    FX.log({ ev: "clash", who: t.name, from: att.name, anim: a.name, other: ta.name, dt: Math.round(((ta.impactT != null ? ta.impactT : W.ct + (tl || 0)) - ti) * 1000) });
+    for (const f of [att, t]) if (f.ai && f.ai.onClash) f.ai.onClash();
     return true;
   };
 

@@ -431,28 +431,40 @@ if (STAGES.includes(4)) {
     const prev = W.onCombatAct;
     W.onCombatAct = function (actor, act) { if (actor === W.pf && act.name.startsWith("attack")) W.combatLog.push({ ev: "pStart", ct: +W.ct.toFixed(3), anim: act.name }); if (prev) prev(actor, act); };
     // guion de combos del jugador contra el autómata pasivo (no ataca: así se mide solo su defensa)
-    window.combos = (mode, n, seed) => {
+    window.combos = (mode0, n, seed, extra) => {
       const e = E(), p = W.pf; pair(0, 1.9); e.ai.enabled = true; e.ai.passive = true; e.ai.state = "chase"; p.hpMax = p.hp = 1e6; e.hpMax = e.hp = 1e6; W.combatLog.length = 0;
       let s = seed || 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
       const per = [];
       for (let k = 0; k < n; k++) {
         const toE = () => Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x), n0 = W.combatLog.length;
         let plan, dur;
-        if (mode === "repite") { plan = [[0, "a"], [0.25, "a"], [0.5, "a"]]; dur = 1.6; }
+        // extra: los últimos combos, con el 1.er golpe RETRASADO (mantenido 0,6 s) para engañar su lectura
+        const mode = extra && k >= n - extra ? "retrasa" : mode0;
+        // (Duelo 3: la apertura la bloquea; el que desvía es el 2.º, así que se retrasa ese)
+        if (mode === "retrasa") { plan = [[0, "a"], [0.25, "h"]]; dur = 1.8; }
+        else if (mode === "repite") { plan = [[0, "a"], [0.25, "a"], [0.5, "a"]]; dur = 1.6; }
         else {
           const L = 1 + Math.floor(rnd() * 3); plan = [[0, rnd() < 0.35 ? "h" : "a"]];
           for (let i = 1; i < L; i++) plan.push([0.25 * i, "a"]);
           if (rnd() < 0.25) plan = [[0, "a"], [0.08, "F"], [0.4 + rnd() * 0.3, "a"]];      // finta y golpe
           dur = 1.0 + rnd() * 1.3;
         }
-        const t0 = W.ct; let i = 0, held = false, rel = 0.1 + rnd() * 0.35;
+        // (Duelo 3) si te desvía, te cubres de su counter (guardia mantenida) y dejas el combo, como haría una persona
+        let nn = 0; while (p.act && nn++ < 120) T();
+        // (Duelo 3) ahora también bloquea aperturas: sin reponer postura y stamina acabaría aturdido o sin guardia
+        // y se mediría eso en vez de la lectura
+        if (!e.stunned) { e.post = 0; e.st = e.stMax; }
+        const t0 = W.ct; let i = 0, held = false, rel = mode === "retrasa" ? 0.75 : 0.1 + rnd() * 0.35, guardT = 0;
         while (W.ct - t0 < dur) {
           const now = W.ct - t0;
+          if (!guardT && W.combatLog.slice(n0).some((x) => x.ev === "foeParriedYou")) { guardT = W.ct; i = plan.length; held = false; p.input("attackUp"); p.input("guardDown"); }
+          if (guardT > 0 && W.ct - guardT > 0.9) { p.input("guardUp"); guardT = -1; }
           while (i < plan.length && plan[i][0] <= now) { const a = plan[i][1];
             if (a === "h") { p.input("attack", { dir: toE(), hold: true }); held = true; } else if (a === "F") { p.input("guardDown"); p.input("guardUp"); } else p.input("attack", { dir: toE() }); i++; }
           if (held && now > 0.15 + rel) { p.input("attackUp"); held = false; }
           T();
         }
+        if (guardT > 0) p.input("guardUp");
         per.push(W.combatLog.slice(n0));
         W.teleport(e.body.x + 1.9, e.body.z);
       }
@@ -462,7 +474,10 @@ if (STAGES.includes(4)) {
   });
   const sp = await page.evaluate(() => { const per = combos("repite", 14); const o = outcome(per, 4);
     return { ...o, desviados: +(o.parry / (o.parry + o.block + o.hit)).toFixed(2), lecturas: per.flat().filter((x) => x.ev === "foeRead").length }; });
-  check("te lee si te repites: el mismo combo con el mismo ritmo → la mayoría de tus golpes desviados", sp.desviados > 0.5, sp);
+  // (Duelo 3: la apertura del combo ahora la BLOQUEA y desvía el 2.º/3.º; además, tras desviarte, contraataca)
+  // (tras desviarte contraataca y resopla; en ese resoplido no se defiende, por justicia, y tu apertura entra)
+  check("te lee si te repites: el mismo combo con el mismo ritmo → la mayoría de tus golpes defendidos (aperturas bloqueadas, ≥ 30 % desviados)",
+    (sp.parry + sp.block) / (sp.parry + sp.block + sp.hit) >= 0.5 && sp.desviados >= 0.3, sp);
   const va = await page.evaluate(() => { const per = combos("varia", 18, 11); const o = outcome(per, 4); const L = per.flat();
     return { ...o, desviados: +(o.parry / (o.parry + o.block + o.hit)).toFixed(2), fallos_de_su_parry: L.filter((x) => x.ev === "foeParryWhiff").length, fintas: L.filter((x) => x.ev === "feint" && x.who === "jugador").length }; });
   check("si varías el ritmo, retrasas o fintas, falla: pocos golpes desviados", va.desviados <= 0.25 && va.desviados < sp.desviados - 0.3, va);
@@ -504,16 +519,9 @@ if (STAGES.includes(4)) {
   check("su parry se ve venir: alza la guardia (ojo ámbar) ≥ 150 ms antes de intentarlo", vis.intentos >= 3 && vis.min >= 150 && eye.frames_en_guardia > 5 && eye.ojo_ambar === eye.frames_en_guardia, { ...vis, ...eye });
   const ex = await page.evaluate(() => {
     // le enseñas un ritmo y luego lo cambias (retrasas el golpe): su parry se queda en el aire
-    const e = E(), p = W.pf; combos("repite", 7); const toE = () => Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x);
-    W.combatLog.length = 0; e.post = 0; const t0 = W.ct; let pressed = false, released = false, gain = null, exp = false;
-    while (W.ct - t0 < 1.6) { const now = W.ct - t0;
-      if (!pressed) { p.input("attack", { dir: toE(), hold: true }); pressed = true; }
-      if (!released && now > 0.55) { p.input("attackUp"); released = true; }
-      const before = e.post, wasExp = !!(e.act && e.act.exposed), nh = W.combatLog.filter((x) => x.ev === "hit").length;
-      T();
-      if (gain == null && W.combatLog.filter((x) => x.ev === "hit").length > nh) { gain = e.post - before; exp = wasExp; window._dbgHit = W.combatLog.filter((x) => x.ev === "hit").pop(); } }
-    const L = W.combatLog;
-    return { secuencia: L.filter((x) => /^foe|^hit$|^parry$/.test(x.ev)).map((x) => x.ev), golpe_con_expuesto: exp, postura: gain == null ? null : +gain.toFixed(1), golpe: window._dbgHit };
+    const per = combos("repite", 9, 7, 1), L = per[per.length - 1];
+    const w = L.findIndex((x) => x.ev === "foeParryWhiff"), h = L.slice(Math.max(0, w)).find((x) => x.ev === "hit" && x.from === "jugador");
+    return { secuencia: L.filter((x) => /^foe|^hit$|^parry$|^block$/.test(x.ev)).map((x) => x.ev), golpe_con_expuesto: !!(h && h.exp), postura: h ? h.pg : null };
   });
   check("si lo engañas (retrasas el golpe que esperaba), su parry falla y queda EXPUESTO: tu golpe entra con más postura",
     ex.secuencia.includes("foeParryWhiff") && ex.golpe_con_expuesto && ex.postura >= 10.4, ex);

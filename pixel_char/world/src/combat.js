@@ -236,7 +236,10 @@
       any = true;
       const dir = Math.atan2(dz, dx);
       // Duelo 3: riposte (con su ritmo) y remate los resuelve duel.js
-      if (W.duelResolve && W.duelResolve(att, a, t, AT, { dir, dx, dz, cx: (b.x + t.body.x) / 2, cz: (b.z + t.body.z) / 2, cy: Math.max(b.y, t.body.y) + 1.05 })) continue;
+      const dctx = { dir, dx, dz, cx: (b.x + t.body.x) / 2, cz: (b.z + t.body.z) / 2, cy: Math.max(b.y, t.body.y) + 1.05 };
+      if (W.duelResolve && W.duelResolve(att, a, t, AT, dctx)) continue;
+      // choque: los dos golpeáis a la vez → chispas grandes y ambos retrocedéis sin daño (duel.js)
+      if (W.duelClash && W.duelClash(att, a, t, AT, dctx)) continue;
       let def = t.defense(a.impactT);
       if (a.counter && def !== "evade") def = "open";        // el contraataque no se puede defender
       if (def === "partial") def = "block";                     // parry parcial = bloqueo
@@ -289,8 +292,10 @@
         const gain = (W.parryPostGain ? W.parryPostGain(att, t, AT, def) : (AT.post || (heavy ? 48 : 38)) * L.atkPost);
         const broke = att.addPosture(gain);
         // Duelo 3: tras tu parry perfecto queda DESEQUILIBRADO (~0,7 s) y se abre la ventana de riposte (duel.js)
-        const handled = !broke && W.duelOnParry ? W.duelOnParry(t, att, perfect, dir) : false;
-        if (!broke && !handled) att.start("hit", { kb: 0.3, kdir: dir + Math.PI, moved: 0, speed: 1.35, recoil: true });
+        const handled = !broke && W.duelOnParry ? W.duelOnParry(t, att, perfect, dir, a) : false;
+        // si quien desvía es el enemigo, tú quedas desequilibrado (tus frames de hit, más largos) y él contraataca
+        const foeDefl = t.team !== "player" && att.team === "player";
+        if (!broke && !handled) att.start("hit", { kb: 0.3, kdir: dir + Math.PI, moved: 0, speed: foeDefl ? 1.0 : 1.35, recoil: true, unbalanced: foeDefl });
         // quien desvía: un parry nunca le rompe la postura
         const cost = heavy ? L.defPostHeavy : L.defPost;
         if (cost) t.addPosture(cost, { noBreak: true });
@@ -300,6 +305,7 @@
         log({ ev: "parry", level: perfect ? "perfect" : "normal", early: Math.round(t.lastEarly * 1000), who: t.name, from: att.name, anim: a.name,
           win: +t.parryWindow().toFixed(3), gain: Math.round(gain), cost, post: Math.round(att.post), broke });
         if (W.duelFlushLog) W.duelFlushLog();
+        if (foeDefl && !broke && t.ai && t.ai.onParriedYou) t.ai.onParriedYou(att, perfect);
         continue;
       }
       if (def === "block") {
@@ -335,9 +341,15 @@
       const deathblow = t.stunned;
       const counter = !!a.counter && !deathblow;
       const dm = deathblow ? Math.max(40, dmg * 3) : counter ? dmg * W.COMBAT.counterDmg : dmg;
-      const res = t.hurt({ dmg: dm, dir, kb: AT.kb || (heavy ? 0.6 : 0.35), guardBreak: !!AT.throw });
+      const res = t.hurt({ dmg: dm, dir, kb: AT.kb || (heavy ? 0.6 : 0.35), guardBreak: !!AT.throw, heavy: heavy || counter || deathblow });
+      if (res === "armor") {
+        // aguanta el golpe sin interrumpir el suyo: chispas de metal y un golpe sordo
+        W.fx.dust(t.body.x - Math.cos(dir) * 0.2, t.body.y + 1.0, t.body.z - Math.sin(dir) * 0.2, 12, { pal: SPARK, spd: 1.6, up: 1.2, life: 0.3 });
+        if (W.sfx) W.sfx.combat("armor");
+      }
       if (AT.throw) log({ ev: "grab", who: t.name, from: att.name, anim: a.name, move: a.move });
-      if (!deathblow && t.alive) t.addPosture(dm * 0.7 * (counter ? W.COMBAT.counterPost : 1) * (exposed ? 1.5 : 1));
+      const pg = dm * 0.7 * (counter ? W.COMBAT.counterPost : 1) * (exposed ? 1.5 : 1);
+      if (!deathblow && t.alive) t.addPosture(pg);
       if (counter) { log({ ev: "counter", who: t.name, from: att.name, anim: a.name, dmg: Math.round(dm) }); W.fx.dust(t.body.x, t.body.y + 1.0, t.body.z, 18, { pal: GOLD, spd: 2.2, up: 1.6, life: 0.4 }); }
       const kind = groundBurst(t.body.x, t.body.z, heavy ? 14 : 9, heavy);
       W.fx.dust(t.body.x - Math.cos(dir) * 0.1, t.body.y + 0.9, t.body.z - Math.sin(dir) * 0.1, heavy ? 16 : 10, { pal: EMBER, spd: 1.8, up: 1.3, life: 0.35 });
@@ -346,7 +358,7 @@
       stop(deathblow ? STOP.deathblow : AT.stop);
       W.shakeCam(dx, dz, deathblow ? 0.14 : heavy ? 0.11 : 0.06, heavy || deathblow ? 0.32 : 0.22);
       if (W.sfx) W.sfx.combat(deathblow ? "deathblow" : heavy ? "hitHeavy" : "hit", kind);
-      log({ ev: deathblow ? "deathblow" : "hit", who: t.name, from: att.name, anim: a.name, dmg: Math.round(dm), hp: Math.round(t.hp), res, surface: kind });
+      log({ ev: deathblow ? "deathblow" : "hit", who: t.name, from: att.name, anim: a.name, dmg: Math.round(dm), hp: Math.round(t.hp), res, surface: kind, exp: exposed, pg: +pg.toFixed(1) });
     }
     if (!any) log({ ev: "whiff", who: att.name, anim: a.name });
   }

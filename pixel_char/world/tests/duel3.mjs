@@ -214,6 +214,164 @@ if (STAGES.includes(1)) {
   await shot("E1_deflected");
 }
 
+// =====================================================================================================
+// ETAPA 2 · el enemigo reacciona mejor a tus golpes
+// =====================================================================================================
+if (STAGES.includes(2)) {
+  await page.evaluate(() => {
+    // tu golpe al autómata quieto (sin IA): reacción y cuánto dura / cuánto retrocede
+    window.hitFoe = (an) => {
+      pair(0.6, 1.6); const e = E(), p = W.pf; e.ai.enabled = false; const x0 = e.body.x, z0 = e.body.z;
+      p.startAttack(an, { dir: Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x) });
+      let t0 = null, n = 0, frames = new Set();
+      while (n++ < 200) { T(1); if (e.act && e.act.name === "hit") { if (t0 == null) t0 = W.ct; frames.add(e.act.f); } else if (t0 != null) break; }
+      return { dur: t0 == null ? 0 : +(W.ct - t0).toFixed(2), frames: [...frames], kb: +Math.hypot(e.body.x - x0, e.body.z - z0).toFixed(2), res: lastOf("hit") && lastOf("hit").res };
+    };
+  });
+  const wt = await page.evaluate(() => ({ ligero: hitFoe("attack1"), ligero2: hitFoe("attack2"), pesado: hitFoe("attack3") }));
+  check("reacción según el peso: golpe ligero = respingo corto (1-2 frames de hit); pesado = tambaleo con retroceso",
+    wt.ligero.res === "flinch" && wt.ligero.dur <= 0.2 && wt.ligero.frames.every((f) => f <= 1) && wt.ligero2.res === "flinch" &&
+    wt.pesado.res === "hit" && wt.pesado.dur >= 0.45 && wt.pesado.kb > wt.ligero.kb * 2, wt);
+  // hyper armor: en su barrido amplio (nivel 2) recibe el daño pero no se interrumpe; en el zarpazo, sí
+  const ha = await page.evaluate(() => {
+    const o = {};
+    for (const m of ["attack2", "attack1"]) {
+      pair(0.6, 1.7); const e = E(), p = W.pf; e.ai.enabled = true; e.ai.passive = true; e.ai.cool = 99; p.hpMax = p.hp = 1e6;
+      e.ai.chain = { uid: 999, id: "prueba", steps: [{ m, r: "s", gap: 0 }], i: 0, readyT: null }; e.ai.strike(m, "s", e.ai.chain.steps[0]);
+      const hp0 = e.hp; let hitAt = null;
+      for (let n = 0; n < 160; n++) {
+        if (hitAt == null && e.act && e.act.plan && e.act.plan.t > 0.15) { hitAt = W.ct; p.startAttack("attack1", { dir: Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x) }); }
+        T(1);
+      }
+      const L = W.combatLog;
+      o[m] = { armadura: L.some((x) => x.ev === "hit" && x.who === "autómata" && x.res === "armor"), dano: Math.round(hp0 - e.hp), suGolpe: L.some((x) => x.from === "autómata" && ["hit", "block", "parry"].includes(x.ev)) };
+    }
+    return o;
+  });
+  check("hyper armor: durante sus golpes pesados aguanta sin interrumpirse (pero recibe el daño); el zarpazo ligero sí se interrumpe",
+    ha.attack2.armadura && ha.attack2.dano > 0 && ha.attack2.suGolpe && !ha.attack1.armadura && !ha.attack1.suGolpe, ha);
+
+  // lee el combo completo: bloquea el 1.º y desvía el 2.º/3.º si el ritmo es predecible
+  await page.evaluate(() => {
+    window.combo3 = (mode, n, seed) => {
+      const e = E(), p = W.pf; pair(0, 1.9); e.ai.enabled = true; e.ai.passive = true; e.ai.state = "chase"; e.ai.resetModel(); p.hpMax = p.hp = 1e6; e.hpMax = e.hp = 1e6; W.combatLog.length = 0;
+      let s = seed || 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+      const pos = { 1: [], 2: [], 3: [] }, seq = [];
+      for (let k = 0; k < n; k++) {
+        if (e.stunned) e.act = null; e.post = 0; p.post = 0; e.st = e.stMax; p.st = p.stMax;
+        const toE = () => Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x), n0 = W.combatLog.length;
+        const plan = mode === "repite" ? [0, 0.25, 0.5] : [0, 0.25 + rnd() * 0.25, 0.6 + rnd() * 0.5].slice(0, 1 + Math.floor(rnd() * 3));
+        const dur = mode === "repite" ? 1.7 : 1.4 + rnd() * 1.2;
+        // abre el combo un rato después de quedar libre: siempre 0,45 s si repite; de 0,15 a 1,1 s si varía
+        // (fuera de su ventana de castigo: en su resoplido no se defiende, por justicia)
+        const wait = mode === "repite" ? 0.45 : 0.15 + rnd() * 0.95;
+        let w0 = W.ct, nn = 0; while ((p.act || e.ai.vent > 0 || (e.act && W.isAtk(e.act)) || W.ct - w0 < wait) && nn++ < 300) { if (p.act || e.ai.vent > 0 || (e.act && W.isAtk(e.act))) w0 = W.ct; T(); }
+        const t0 = W.ct; let i = 0;
+        let guardT = 0;
+        while (W.ct - t0 < dur) {
+          while (i < plan.length && plan[i] <= W.ct - t0 && !guardT) { p.input("attack", { dir: toE() }); i++; }
+          // te ha desviado: te cubres de su counter (guardia mantenida) y dejas el combo
+          if (!guardT && W.combatLog.slice(n0).some((x) => x.ev === "foeParriedYou")) { guardT = W.ct; i = plan.length; p.input("guardDown"); }
+          if (guardT && W.ct - guardT > 0.9) { p.input("guardUp"); guardT = -1; }
+          T();
+        }
+        if (guardT > 0) p.input("guardUp");
+        const res = W.combatLog.slice(n0).filter((x) => x.from === "jugador" && ["parry", "block", "hit"].includes(x.ev)).map((x) => x.ev);
+        seq.push(W.combatLog.slice(n0).filter((x) => /^foe|^parry$|^block$|^hit$|^counter$/.test(x.ev)).map((x) => x.ev + (x.kind ? ":" + x.kind : "") + (x.from ? "<" + x.from[0] : "")).join(" "));
+        res.forEach((r, j) => { if (pos[j + 1]) pos[j + 1].push(r); });
+        W.teleport(e.body.x + 1.9, e.body.z);
+      }
+      const pct = (L, ev) => L.length ? Math.round(100 * L.filter((x) => x === ev).length / L.length) : 0;
+      return { "1": { bloquea: pct(pos[1].slice(4), "block"), desvia: pct(pos[1].slice(4), "parry"), n: pos[1].length }, "2-3": { desvia: pct(pos[2].slice(4).concat(pos[3].slice(4)), "parry"), n: pos[2].length + pos[3].length }, seq: seq.slice(4, 9) };
+    };
+  });
+  const rd = await page.evaluate(() => ({ repite: combo3("repite", 14), varia: combo3("varia", 14, 5) }));
+  check("lee tu combo completo: repitiendo el ritmo (y fuera de su resoplido), bloquea tus aperturas y desvía el 2.º/3.º (≥ 50 %); variándolo, mucho menos",
+    rd.repite["1"].bloquea + rd.repite["1"].desvia >= 50 && rd.repite["2-3"].desvia >= 50 && rd.varia["2-3"].desvia <= rd.repite["2-3"].desvia - 25, rd);
+
+  // si te desvía: quedas desequilibrado (tus frames de hit) y lanza su COUNTER (hoja counter), con aviso ≥ 350 ms
+  await page.evaluate(() => {
+    // el autómata desvía tu zarpazo (pulsa su guardia 90 ms antes de tu impacto)
+    window.foeParriesYou = () => {
+      pair(0.6, 1.8); const e = E(), p = W.pf; e.ai.enabled = true; e.ai.passive = true; e.ai.cool = 99; e.ai.state = "chase"; p.hpMax = p.hp = 1e6; W.combatLog.length = 0;
+      p.startAttack("attack1", { dir: Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x) });
+      let pressed = false;
+      for (let n = 0; n < 40 && !lastOf("parry"); n++) { const l = p.toImpact(); if (!pressed && l != null && l <= 0.09) { e.input("guardDown"); e.input("guardUp"); pressed = true; } T(1); }
+      return lastOf("parry");
+    };
+    // sigue hasta su counter; fn(left) en cada paso
+    window.untilCounter = (fn) => { const e = E(); let n = 0, start = null, warn = null;
+      while (n++ < 120) { const a = e.act; if (a && a.move === "counter") { if (start == null) start = W.ct; if (fn) fn(e.toImpact() == null ? 0 : e.toImpact()); if (a.hitDone) break; } T(1); }
+      return start; };
+  });
+  const ctr = await page.evaluate(() => {
+    const o = {};
+    for (const mode of ["auto", "sustituto"]) {
+      W.DUEL.sheets.counter = mode;
+      const pr = foeParriesYou(), p = W.pf, e = E(); const me = p.act && p.act.name, unb = !!(p.act && p.act.unbalanced);
+      let sheet = null, prep = null; const t0 = W.ct;
+      const st = untilCounter(() => { sheet = e.act.sheet; });
+      const w = W.combatLog.find((x) => x.ev === "warn" && x.move === "counter");
+      o[mode] = { desvia: pr && pr.who, yo: me, desequilibrado: unb, counter: st != null, empieza_ms: st == null ? null : Math.round((st - t0) * 1000), sheet, prep: w && w.prep,
+        resultado: (W.combatLog.filter((x) => x.from === "autómata" && ["hit", "block", "parry"].includes(x.ev)).pop() || {}).ev };
+    }
+    W.DUEL.sheets.counter = "auto";
+    return o;
+  });
+  check("si te hace parry: quedas desequilibrado (tus frames de hit) y lanza su COUNTER (hoja counter; sin hoja, attack1 rápido) con preparación visible ≥ 350 ms",
+    ctr.auto.desvia === "autómata" && ctr.auto.yo === "hit" && ctr.auto.desequilibrado && ctr.auto.counter && ctr.auto.sheet === "counter" && ctr.auto.prep >= 0.35 &&
+    ctr.sustituto.counter && ctr.sustituto.sheet === "attack1", ctr);
+
+  // intercambio de desvíos: desvías su counter con un perfecto → otro counter... pierde quien falla primero
+  const xc = await page.evaluate(() => {
+    const out = { largos: [], ganas: 0, pierdes: 0, riposte: 0 };
+    for (let k = 0; k < 12; k++) {
+      foeParriesYou(); const e = E(), p = W.pf;
+      let n = 0, done = false, seen = null;
+      while (n++ < 600 && !done) {
+        const a = e.act;
+        if (a && a.move === "counter" && a !== seen && a.plan && a.plan.released) { seen = a; }
+        if (a && a.move === "counter" && !a.hitDone) { const l = e.toImpact(); if (l != null && l <= 0.04 && !a._pressed) { a._pressed = true; p.input("guardDown", { ts: performance.now() + (l - 0.04) * 1000 }); p.input("guardUp"); } }
+        if (W.combatLog.some((x) => x.ev === "xchg" && x.result !== "again")) done = true;
+        T(1);
+      }
+      const xs = W.combatLog.filter((x) => x.ev === "xchg");
+      out.largos.push(xs.length);
+      // falla él: no aguanta el intercambio (queda desequilibrado) o se le rompe la postura
+      const stun = W.combatLog.some((x) => x.ev === "stun");
+      if (stun) { out.ganas++; out.riposte++; out.postura = (out.postura || 0) + 1; }
+      else if (xs.length && xs[xs.length - 1].result === "foeFails") { out.ganas++; for (let i = 0; i < 20; i++) T(1); if (E().act && E().act.name === "deflected") out.riposte++; }
+    }
+    // si no pulsas en el counter: te alcanza y el intercambio se acaba
+    foeParriesYou(); untilCounter(); for (let i = 0; i < 10; i++) T(1);
+    out.sin_pulsar = (W.combatLog.filter((x) => x.from === "autómata" && x.ev === "hit").length);
+    return out;
+  });
+  check("intercambio de desvíos (clin-clin): cada counter desviado con un perfecto puede traer otro; pierde quien falla primero (si falla él, queda desequilibrado y te toca el riposte)",
+    xc.largos.every((n) => n >= 1) && Math.max(...xc.largos) >= 2 && xc.ganas === 12 && xc.riposte === 12 && xc.sin_pulsar === 1, xc);
+
+  // choque: los dos golpeáis a la vez → chispas grandes, ambos retrocedéis, sin daño
+  const cl = await page.evaluate(() => {
+    const o = {};
+    for (const [k, off] of [["a_la_vez", 0.0], ["40ms", 0.04], ["150ms", 0.15]]) {
+      pair(0.6, 1.9); const e = E(), p = W.pf; e.ai.enabled = false; p.hpMax = p.hp = 100; const hp0 = e.hp;
+      e.startAttack("attack1", { dir: e.body.heading });
+      let started = false;
+      for (let n = 0; n < 120; n++) { const l = e.toImpact(); if (!started && l != null && l <= 0.205 + off) { p.startAttack("attack1", { dir: Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x) }); started = true; } T(1); }
+      o[k] = { choque: !!lastOf("clash"), danoEl: Math.round(hp0 - e.hp), danoTu: Math.round(100 - p.hp), el: e.act && e.act.name, yo: p.act && p.act.name };
+    }
+    return o;
+  });
+  check("choque: si los dos golpeáis a la vez (±80 ms) chispas grandes y ambos retrocedéis sin daño; con 150 ms de diferencia, no",
+    cl.a_la_vez.choque && cl.a_la_vez.danoEl === 0 && cl.a_la_vez.danoTu === 0 && cl["40ms"].choque && !cl["150ms"].choque, cl);
+  await page.evaluate(() => { pair(0.6, 1.9); const e = E(), p = W.pf; e.ai.enabled = false; e.startAttack("attack1", { dir: e.body.heading });
+    let st = false; for (let n = 0; n < 120 && !lastOf("clash"); n++) { const l = e.toImpact(); if (!st && l != null && l <= 0.205) { p.startAttack("attack1", { dir: Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x) }); st = true; } T(1); } T(2); });
+  await shot("E2_choque");
+  await page.evaluate(() => { foeParriesYou(); untilCounter((l) => {}); });
+  await page.evaluate(() => { foeParriesYou(); const e = E(); for (let n = 0; n < 60 && !(e.act && e.act.move === "counter" && e.act.f >= 3); n++) T(1); });
+  await shot("E2_counter");
+}
+
 const okN = results.filter((r) => r.ok).length;
 console.log(`\n${okN}/${results.length} OK`, errors.length ? `, ${errors.length} errores JS` : ", sin errores JS");
 fs.writeFileSync(`${OUT}/results.json`, JSON.stringify({ results, errors }, null, 1));

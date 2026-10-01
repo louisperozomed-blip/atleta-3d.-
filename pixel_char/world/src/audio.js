@@ -121,7 +121,12 @@
       noiseHit(c, t, "bandpass", 1400 + 500 * n, 4200 + 700 * n, 1.4, 0.2 + 0.07 * n, 0.12 + 0.03 * n);
       tone(c, t, "sine", 150 + 20 * n, 50, 0.3 + 0.08 * n, 0.12 + 0.03 * n);
       if (n === 3) tone(c, t + 0.01, "triangle", 2600, 2550, 0.08, 0.35);
-    } else if (kind === "deathblow") { tone(c, t, "sine", 90, 35, 0.6, 0.45); noiseHit(c, t, "lowpass", 3000, 200, 0.7, 0.45, 0.4); tone(c, t, "triangle", 2200, 2100, 0.08, 0.6); }
+    } else if (kind === "clash") {
+      // choque de dos golpes: metal contra metal, grave y largo, con ruido
+      for (const [fr, g, d] of [[1250, 0.2, 0.6], [1870, 0.12, 0.45], [640, 0.16, 0.5]]) tone(c, t, "triangle", fr, fr * 0.97, g, d);
+      noiseHit(c, t, "bandpass", 3500, 1200, 0.8, 0.4, 0.18); tone(c, t, "sine", 110, 50, 0.3, 0.2);
+    } else if (kind === "armor") { tone(c, t, "triangle", 420, 380, 0.12, 0.14); noiseHit(c, t, "lowpass", 1600, 500, 0.8, 0.22, 0.1); }
+    else if (kind === "deathblow") { tone(c, t, "sine", 90, 35, 0.6, 0.45); noiseHit(c, t, "lowpass", 3000, 200, 0.7, 0.45, 0.4); tone(c, t, "triangle", 2200, 2100, 0.08, 0.6); }
     else if (kind === "death") { tone(c, t, "sine", 80, 40, 0.35, 0.35); noiseHit(c, t, "lowpass", 900, 200, 0.6, 0.25, 0.3); }
     else if (kind === "tick") { tone(c, t, "sine", 1250, 1240, 0.12, 0.05); tone(c, t, "square", 2500, 2480, 0.02, 0.03); }
     else if (kind === "warn") { tone(c, t, "sine", 980, 1480, 0.05, 0.12); }

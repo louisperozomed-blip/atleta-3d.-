@@ -1008,3 +1008,47 @@ y de luz, chispas doradas y golpe grave. Fuera del riposte, el enemigo aturdido 
 rebote por código), riposte de 3 golpes con todo creciente, 3.er golpe pronto/tarde/machacando desviado y dentro
 de ±80 ms aceptado, parry normal de 1 golpe, sustituto del riposte que también encadena 3, y deathblow directo
 (con hoja y con attack3) con zoom y destello.
+
+## Etapa 2 — El enemigo reacciona mejor a tus golpes
+**Peso del golpe** (`fighter.js: hurt`, solo enemigos):
+- golpe ligero (attack1, attack2) = respingo corto: IMPACT y RECOIL de hit (~150 ms) y casi sin retroceso; le
+  corta su golpe si es ligero;
+- golpe pesado (attack3, contraataques) = tambaleo completo (~0,6 s) con retroceso (×1,25);
+- **hyper armor**: durante sus golpes de nivel ≥ 2 (barrido amplio y los peligrosos) aguanta sin interrumpirse
+  (recibe el daño y la postura, chispas de metal y un golpe sordo) y su golpe sigue.
+
+**Lee tu combo completo** (`automaton.js`):
+- la apertura de tu combo (el golpe que prevé tras el fin de su cadena o tras una pausa de más de 0,8 s) la
+  BLOQUEA; los golpes encadenados (2.º, 3.º) los DESVÍA si tu ritmo se repite;
+- además mide cuánto tardas en abrir el combo desde que quedas libre; si ese tiempo se repite (las 3 últimas
+  aperturas con menos de 0,15 s de diferencia), prevé la siguiente y alza la guardia;
+- arreglado: tras bloquear el 1.º, el compromiso de desviar el 2.º se daba por cumplido con ese mismo bloqueo;
+  ahora solo cuenta una defensa posterior al compromiso.
+
+**Su parry y su COUNTER**: si te desvía, quedas desequilibrado (tus frames de hit, más largos que en un desvío
+normal) y a los 120 ms lanza su COUNTER (hoja counter; sin hoja, attack1 ×1,35 con el plan estirado para que avise
+igual): carga 0,1 s + suelta 0,34 s = preparación visible de 0,44 s, se puede desviar. Tras el counter también
+resopla (ventana de castigo), más corta que tras una cadena: 0,5 s.
+
+**Intercambio de desvíos (clin-clin)**: si desvías su counter con un PERFECTO, puede volver a contraatacar,
+cada vez más deprisa (suelta 0,34 → 0,31 → 0,28 → 0,26 s) y con más probabilidad de fallar (30 %, 50 %, 75 %,
+100 %). Pierde quien falla primero: si fallas tú (no llegas, bloqueo o parry normal), te alcanza o se acaba; si
+falla él, queda desequilibrado 0,9 s y se abre tu riposte (o se le rompe la postura por la racha de desvíos).
+
+**Choque**: si los dos golpes impactan a menos de 80 ms y os miráis (ni peligrosos ni de duelo), chispas grandes
+blancas y doradas, destello, hitstop de 130 ms, sonido de metal grave y ambos retrocedéis sin daño; su cadena sigue.
+
+**Pruebas** (`tests/duel3.mjs`, etapa 2): 6/6 — respingo 150 ms frente a tambaleo 0,62 s; hyper armor en el
+barrido (su golpe sigue y entra) y no en el zarpazo; lectura: repitiendo el combo (fuera de su resoplido)
+bloquea el 90 % de tus aperturas y desvía el 91 % de tus 2.º/3.º golpes, variándolo 0 %; counter con hoja y con sustituto (preparación 0,44 s); 12 intercambios
+de desvíos de 1 a 3 golpes ganados con perfectos (2 por postura rota) y sin pulsar te alcanza; choque a la vez y
+con 40 ms sí, con 150 ms no.
+
+**Justicia**: si al llegar el momento de alzar la guardia ya no quedan ≥ 150 ms hasta su parry (estaba ocupado),
+solo bloquea; así su parry siempre se ve venir (lo detectó la prueba antigua de parry2).
+
+**Pruebas antiguas ajustadas al nuevo diseño** (`tests/parry2.mjs`, etapa 4): el jugador de prueba ahora se cubre
+de su counter tras ser desviado (como una persona) y se repone su postura y stamina entre combos (si no, de tanto
+bloquear aperturas acaba aturdido y se mide eso); «te lee si te repites» pasa a ≥ 50 % de golpes defendidos y
+≥ 30 % desviados (tras su counter resopla y, por justicia, en ese rato tus aperturas entran); y «si lo engañas» se
+hace retrasando el 2.º golpe, que es el que ahora desvía (la apertura la bloquea).

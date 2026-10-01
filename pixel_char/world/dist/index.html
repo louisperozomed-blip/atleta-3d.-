@@ -3799,8 +3799,20 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       this.flash = 1;
       const b = this.body;
       if (this.hp <= 0) { b.heading = opts.dir + Math.PI; this.start("death", { kb: (opts.kb || 0.4) * 0.8 * this.kbK, kdir: opts.dir, moved: 0 }); return "death"; }
+      // Duelo 3 · reacción según el peso (enemigos): durante sus golpes pesados aguanta sin interrumpirse (hyper
+      // armor: recibe el daño y destella); golpe ligero = respingo corto (IMPACT y RECOIL de hit, ~160 ms, casi sin
+      // retroceso); golpe pesado = tambaleo completo con retroceso
+      if (this.team !== "player" && !opts.guardBreak) {
+        const a = this.act;
+        if (a && isAtk(a) && a.armor && a.f < 4) { this.armorT = 0.2; return "armor"; }
+        if (!opts.heavy) {
+          b.heading = opts.dir + Math.PI;
+          this.start("hit", { kb: (opts.kb || 0.35) * 0.3 * this.kbK, kdir: opts.dir, moved: 0, flinch: true, flinchEnd: 2 });
+          return "flinch";
+        }
+      }
       b.heading = opts.dir + Math.PI;                   // mira a quien le golpea
-      this.start("hit", { kb: (opts.kb || 0.35) * this.kbK, kdir: opts.dir, moved: 0, gb: !!opts.guardBreak, speed: opts.guardBreak ? 0.62 : 1 });
+      this.start("hit", { kb: (opts.kb || 0.35) * this.kbK * (opts.heavy && this.team !== "player" ? 1.25 : 1), kdir: opts.dir, moved: 0, gb: !!opts.guardBreak, speed: opts.guardBreak ? 0.62 : 1 });
       return "hit";
     }
     addPosture(v, o) {
@@ -4221,7 +4233,10 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       any = true;
       const dir = Math.atan2(dz, dx);
       // Duelo 3: riposte (con su ritmo) y remate los resuelve duel.js
-      if (W.duelResolve && W.duelResolve(att, a, t, AT, { dir, dx, dz, cx: (b.x + t.body.x) / 2, cz: (b.z + t.body.z) / 2, cy: Math.max(b.y, t.body.y) + 1.05 })) continue;
+      const dctx = { dir, dx, dz, cx: (b.x + t.body.x) / 2, cz: (b.z + t.body.z) / 2, cy: Math.max(b.y, t.body.y) + 1.05 };
+      if (W.duelResolve && W.duelResolve(att, a, t, AT, dctx)) continue;
+      // choque: los dos golpeáis a la vez → chispas grandes y ambos retrocedéis sin daño (duel.js)
+      if (W.duelClash && W.duelClash(att, a, t, AT, dctx)) continue;
       let def = t.defense(a.impactT);
       if (a.counter && def !== "evade") def = "open";        // el contraataque no se puede defender
       if (def === "partial") def = "block";                     // parry parcial = bloqueo
@@ -4274,8 +4289,10 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         const gain = (W.parryPostGain ? W.parryPostGain(att, t, AT, def) : (AT.post || (heavy ? 48 : 38)) * L.atkPost);
         const broke = att.addPosture(gain);
         // Duelo 3: tras tu parry perfecto queda DESEQUILIBRADO (~0,7 s) y se abre la ventana de riposte (duel.js)
-        const handled = !broke && W.duelOnParry ? W.duelOnParry(t, att, perfect, dir) : false;
-        if (!broke && !handled) att.start("hit", { kb: 0.3, kdir: dir + Math.PI, moved: 0, speed: 1.35, recoil: true });
+        const handled = !broke && W.duelOnParry ? W.duelOnParry(t, att, perfect, dir, a) : false;
+        // si quien desvía es el enemigo, tú quedas desequilibrado (tus frames de hit, más largos) y él contraataca
+        const foeDefl = t.team !== "player" && att.team === "player";
+        if (!broke && !handled) att.start("hit", { kb: 0.3, kdir: dir + Math.PI, moved: 0, speed: foeDefl ? 1.0 : 1.35, recoil: true, unbalanced: foeDefl });
         // quien desvía: un parry nunca le rompe la postura
         const cost = heavy ? L.defPostHeavy : L.defPost;
         if (cost) t.addPosture(cost, { noBreak: true });
@@ -4285,6 +4302,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         log({ ev: "parry", level: perfect ? "perfect" : "normal", early: Math.round(t.lastEarly * 1000), who: t.name, from: att.name, anim: a.name,
           win: +t.parryWindow().toFixed(3), gain: Math.round(gain), cost, post: Math.round(att.post), broke });
         if (W.duelFlushLog) W.duelFlushLog();
+        if (foeDefl && !broke && t.ai && t.ai.onParriedYou) t.ai.onParriedYou(att, perfect);
         continue;
       }
       if (def === "block") {
@@ -4320,9 +4338,15 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       const deathblow = t.stunned;
       const counter = !!a.counter && !deathblow;
       const dm = deathblow ? Math.max(40, dmg * 3) : counter ? dmg * W.COMBAT.counterDmg : dmg;
-      const res = t.hurt({ dmg: dm, dir, kb: AT.kb || (heavy ? 0.6 : 0.35), guardBreak: !!AT.throw });
+      const res = t.hurt({ dmg: dm, dir, kb: AT.kb || (heavy ? 0.6 : 0.35), guardBreak: !!AT.throw, heavy: heavy || counter || deathblow });
+      if (res === "armor") {
+        // aguanta el golpe sin interrumpir el suyo: chispas de metal y un golpe sordo
+        W.fx.dust(t.body.x - Math.cos(dir) * 0.2, t.body.y + 1.0, t.body.z - Math.sin(dir) * 0.2, 12, { pal: SPARK, spd: 1.6, up: 1.2, life: 0.3 });
+        if (W.sfx) W.sfx.combat("armor");
+      }
       if (AT.throw) log({ ev: "grab", who: t.name, from: att.name, anim: a.name, move: a.move });
-      if (!deathblow && t.alive) t.addPosture(dm * 0.7 * (counter ? W.COMBAT.counterPost : 1) * (exposed ? 1.5 : 1));
+      const pg = dm * 0.7 * (counter ? W.COMBAT.counterPost : 1) * (exposed ? 1.5 : 1);
+      if (!deathblow && t.alive) t.addPosture(pg);
       if (counter) { log({ ev: "counter", who: t.name, from: att.name, anim: a.name, dmg: Math.round(dm) }); W.fx.dust(t.body.x, t.body.y + 1.0, t.body.z, 18, { pal: GOLD, spd: 2.2, up: 1.6, life: 0.4 }); }
       const kind = groundBurst(t.body.x, t.body.z, heavy ? 14 : 9, heavy);
       W.fx.dust(t.body.x - Math.cos(dir) * 0.1, t.body.y + 0.9, t.body.z - Math.sin(dir) * 0.1, heavy ? 16 : 10, { pal: EMBER, spd: 1.8, up: 1.3, life: 0.35 });
@@ -4331,7 +4355,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       stop(deathblow ? STOP.deathblow : AT.stop);
       W.shakeCam(dx, dz, deathblow ? 0.14 : heavy ? 0.11 : 0.06, heavy || deathblow ? 0.32 : 0.22);
       if (W.sfx) W.sfx.combat(deathblow ? "deathblow" : heavy ? "hitHeavy" : "hit", kind);
-      log({ ev: deathblow ? "deathblow" : "hit", who: t.name, from: att.name, anim: a.name, dmg: Math.round(dm), hp: Math.round(t.hp), res, surface: kind });
+      log({ ev: deathblow ? "deathblow" : "hit", who: t.name, from: att.name, anim: a.name, dmg: Math.round(dm), hp: Math.round(t.hp), res, surface: kind, exp: exposed, pg: +pg.toFixed(1) });
     }
     if (!any) log({ ev: "whiff", who: att.name, anim: a.name });
   }
@@ -4534,9 +4558,9 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
 
   // ---- desequilibrado ----------------------------------------------------------------------------------
   // dir: rumbo del golpe desviado (del atacante hacia quien desvía); retrocede en sentido contrario
-  W.duelDeflect = function (t, dir) {
+  W.duelDeflect = function (t, dir, T) {
     const R = W.duelSheet(t, "deflected");
-    const sp = dur(t.M(), R.sheet) / D.deflectT;
+    const sp = dur(t.M(), R.sheet) / (T || D.deflectT);
     t.act = null; t.guardHeld = false;
     t.body.heading = dir + Math.PI;
     const a = t.start("deflected", { sheet: R.sheet, speed: sp, fb: R.fb, bounce: R.bounce, kb: 0.38 * (t.kbK || 1), kdir: dir + Math.PI, moved: 0, exposed: true, ct0: W.ct });
@@ -4559,8 +4583,27 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
 
   // ---- parry: abre el riposte ---------------------------------------------------------------------------
   // t: quien desvía, att: el desviado, dir: rumbo del golpe. true = ya se encargó de la reacción del atacante
-  W.duelOnParry = function (t, att, perfect, dir) {
+  W.duelOnParry = function (t, att, perfect, dir, a) {
     if (t.team !== "player") return false;
+    // intercambio de desvíos (clin-clin): desviaste su COUNTER. Si es perfecto, él puede volver a contraatacar
+    // (cada vez más deprisa y con más probabilidad de fallar); pierde quien falla primero
+    if (a && a.xchg && att.ai && att.ai.onExchange) {
+      const r = att.ai.onExchange(perfect, a);
+      if (r === "again") {
+        att.act = null; att.start("hit", { kb: 0.18, kdir: dir + Math.PI, moved: 0, speed: 1.7, recoil: true, xchgRecoil: true });
+        t.rip = null; t.counterT = 0;
+        pend.push({ ev: "xchg", n: a.xchg, result: "again" });
+        return true;
+      }
+      pend.push({ ev: "xchg", n: a.xchg, result: perfect ? "foeFails" : "end" });
+      if (perfect) {
+        // falla él: más desequilibrado que nunca → riposte
+        t.rip = { target: att, until: W.ct + D.ripWin.perfect + 0.2, max: 3, n: 0, level: "perfect", beat: null, bad: false, t0: W.ct };
+        pend.push({ ev: "ripOpen", level: "perfect", max: 3, win: D.ripWin.perfect + 0.2, xchg: true });
+        W.duelDeflect(att, dir, D.deflectT + 0.2);
+        return true;
+      }
+    }
     const k = perfect ? "perfect" : "normal";
     t.rip = { target: att, until: W.ct + D.ripWin[k], max: D.ripMax[k], n: 0, level: k, beat: null, bad: false, t0: W.ct };
     pend.push({ ev: "ripOpen", level: k, max: t.rip.max, win: D.ripWin[k] });      // tras el «parry» (combat.js)
@@ -4692,6 +4735,31 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     screenFlash(0.9);
     if (W.sfx) W.sfx.combat("deathblow");
     FX.log({ ev: "deathblow", who: t.name, from: att.name, anim: "deathblow", dmg: dm, hp: Math.round(t.hp), sheet: a.sheet, fb: !!a.fb });
+    return true;
+  };
+
+  // ---- choque: los dos golpes llegan a la vez -----------------------------------------------------------
+  // a la vez = el del otro impacta a menos de 80 ms del tuyo, los dos os miráis y ninguno es peligroso ni de duelo
+  const CLASH = 0.08;
+  function peril(f, a) { const T = f.attacks || W.combatAttacks; const x = T && T[a.move || a.name]; return !!(x && x.perilous); }
+  W.duelClash = function (att, a, t, AT, c) {
+    const ta = t.act;
+    if (!ta || !W.isAtk(ta) || AT.perilous || peril(t, ta) || a.counter || ta.counter) return false;
+    if (["riposte", "deathblow"].includes(a.name) || ["riposte", "deathblow"].includes(ta.name) || t.body.jump || att.body.jump) return false;
+    const tl = t.toImpact(), ti = a.impactT != null ? a.impactT : W.ct;
+    const sync = (ta.f < 3 && tl != null && tl <= CLASH) || (ta.f >= 3 && ta.impactT != null && Math.abs(ta.impactT - ti) <= CLASH);
+    if (!sync) return false;
+    const face = Math.abs(norm(Math.atan2(att.body.z - t.body.z, att.body.x - t.body.x) - t.body.heading));
+    if (face > 1.6) return false;
+    const FX = W.combatFx;
+    for (const [f, d] of [[att, c.dir + Math.PI], [t, c.dir]]) { f.act = null; f.start("hit", { kb: 0.5 * (f.kbK || 1) + 0.15, kdir: d, moved: 0, speed: 1.3, recoil: true, clash: true }); f.lastDefT = W.ct; }
+    W.fx.dust(c.cx, c.cy - 0.3, c.cz, 56, { pal: FX.SPARK, spd: 3.6, up: 2.8, life: 0.55 });
+    W.fx.dust(c.cx, c.cy - 0.3, c.cz, 20, { pal: FX.GOLD, spd: 2.4, up: 2.0, life: 0.5 });
+    FX.star(c.cx, c.cy - 0.1, c.cz, 2.0, 0xfff4d0, 0.3); FX.flash(c.cx, c.cy, c.cz, 0xffe8c0, 7);
+    FX.stop(0.13); W.shakeCam(c.dx, c.dz, 0.09, 0.3);
+    if (W.sfx) W.sfx.combat("clash");
+    FX.log({ ev: "clash", who: t.name, from: att.name, anim: a.name, other: ta.name, dt: Math.round(((ta.impactT != null ? ta.impactT : W.ct + (tl || 0)) - ti) * 1000) });
+    for (const f of [att, t]) if (f.ai && f.ai.onClash) f.ai.onClash();
     return true;
   };
 
@@ -5200,6 +5268,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       sweep: { dmg: 24, reach: 2.7, arc: 150, stop: 0.12, kb: 0.8, heavy: true, perilous: "jump", post: 0 },
       thrust: { dmg: 26, reach: 1.75, arc: 35, stop: 0.13, kb: 0.9, heavy: true, perilous: "mikiri", mikiriPost: 42, post: 0 },
       grab: { dmg: 30, reach: 2.15, arc: 70, stop: 0.15, kb: 1.3, heavy: true, perilous: "side", throw: true, post: 0 },
+      // Duelo 3: su contraataque tras desviarte (hoja counter o attack1 rápido); se puede desviar
+      counter: { dmg: 16, reach: 2.25, arc: 85, stop: 0.09, kb: 0.45, post: 20 },
     },
     // golpes: animación, pose (frames de otras hojas), aviso (1 leve, 2 fuerte, 3 peligroso) y tiempo de SUELTA (s)
     moves: {
@@ -5210,8 +5280,13 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         show: [["dodge", 0], ["dodge", 1], ["dodge", 2], ["dodge", 3], ["dodge", 4], ["attack1", 5]] },
       grab: { anim: "attack1", level: 3, rel: 0.46, want: 1.2, cap: 2.4, track: true, seek: 4.4,
         show: [["block", 0], ["block", 1], ["parry", 1], ["attack1", 3], ["attack1", 4], ["attack1", 5]] },
+      counter: { anim: "counter", level: 1, rel: 0.34, want: 1.5 },
     },
-    wind: { f: 0.12, n: 0.32, s: 0.55, feint: 0.16 },   // carga según el ritmo (rápido, normal, lento)
+    wind: { f: 0.12, n: 0.32, s: 0.55, feint: 0.16, c: 0.1 },   // carga según el ritmo (rápido, normal, lento; c = counter)
+    // Duelo 3: counter tras desviarte (empieza a los 120 ms; carga 0,1 s + suelta 0,34 s: se puede desviar) e
+    // intercambio de desvíos: cada desvío perfecto tuyo, otro counter más rápido; su probabilidad de fallar crece
+    counter: { delay: 0.12, vent: 0.5, xchgDelay: 0.06, xchgRel: [0.34, 0.31, 0.28, 0.26], fail: [0.3, 0.5, 0.75, 1] },
+    armorLevel: 2,               // hyper armor en sus golpes de nivel ≥ 2 (barrido amplio y peligrosos)
     hold: [0.32, 0.5],                                  // retención de un golpe retrasado
     // cadenas: [golpe, ritmo, pausa desde la recuperación del anterior (s)]
     chains: [
@@ -5324,8 +5399,10 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
           else if (pl.act !== a) this.pAtks.splice(i, 1);
         }
         // defensa: compromiso por lectura y reacción humana
-        if (!this.training) { this.defendStep(); this.reactStep(); }   // en entrenamiento no te lee ni se defiende
+        if (!this.training) { this.openerWatch(); this.openerStep(); this.defendStep(); this.reactStep(); }   // en entrenamiento no te lee ni se defiende
         if (this.stanceUntil && W.ct > this.stanceUntil) { this.stanceUntil = 0; if (f.act && f.act.name === "block") f.guardHeld = false; }
+        // counter tras desviarte (o el siguiente del intercambio de desvíos)
+        if (this.ctr && W.ct >= this.ctr.at) this.counterStep();
         // cadena en curso: el siguiente golpe sale en la recuperación del anterior (con su pausa)
         if (this.chain) this.runChain(dt);
         if (f.act || this.chain) return;
@@ -5409,7 +5486,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         this.chain = null;
         this.addToken("E", W.ct);                     // para el modelo: «terminó su cadena»
         // ventana de castigo: resopla (ni ataca ni se defiende) y luego una pausa antes de la siguiente cadena
-        if (clean && f.alive) this.vent = CFG.vent;
+        // (su counter es un solo golpe: resopla menos, pero también hay ventana de castigo)
+        if (clean && f.alive) this.vent = C.id === "counter" || C.id === "intercambio" ? CFG.counter.vent : CFG.vent;
         this.cool = this.training ? 1.1 : (CFG.pause[0] + rand() * (CFG.pause[1] - CFG.pause[0])) * this.pauseK();
         W.combatLog.push({ ev: "chainEnd", who: f.name, chain: C.id, uid: C.uid, clean, t: +W.U.uTime.value.toFixed(3) });
       },
@@ -5442,13 +5520,18 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         this.strike(nx.m, nx.r, nx);
       },
       // un golpe con su plan: CARGA (ojo parpadeando) → RETENCIÓN (si va retrasado) → SUELTA → impacto
-      strike(m, rhythm, step, afterFeint) {
+      strike(m, rhythm, step, afterFeint, rel) {
         const mv = CFG.moves[m], pl = W.pf, b = f.body;
         const toP = Math.atan2(pl.body.z - b.z, pl.body.x - b.x);
         b.stop(); b.heading = toP;
-        const plan = { wind: CFG.wind[rhythm] || CFG.wind.n, hold: step && step.delay && !afterFeint ? step.delay : 0, rel: mv.rel, feint: !!(step && step.feint && !afterFeint) };
+        const plan = { wind: CFG.wind[rhythm] || CFG.wind.n, hold: step && step.delay && !afterFeint ? step.delay : 0, rel: rel || mv.rel, feint: !!(step && step.feint && !afterFeint) };
         f.startAttack(mv.anim, { dir: toP, plan, move: m, show: mv.show, crouch: mv.crouch, want: mv.want, cap: mv.cap, seek: mv.seek, lungeFrom: mv.lungeFrom, track: mv.track });
+        // sustituto acelerado (counter sin hoja = attack1 ×1,35): el plan avanza ×speed, así que se estira igual
+        // para que la suelta siga avisando con el mismo tiempo
+        if (f.act && f.act.plan && f.act.speed && f.act.speed !== 1) { f.act.plan.wind *= f.act.speed; f.act.plan.rel *= f.act.speed; f.act.plan.hold *= f.act.speed; }
         const a = f.act; a.level = mv.level; a.chainId = this.chain ? this.chain.uid : null;
+        a.armor = mv.level >= CFG.armorLevel;          // hyper armor: no se interrumpe (Duelo 3)
+        if (step && step.xchg) a.xchg = step.xchg;
         this.warnT = 0; this.warnKind = m;
         // aviso: más evidente cuanto más fuerte es el golpe (rojo en los peligrosos)
         const e = eyeWorld(f), red = mv.level >= 3;
@@ -5458,6 +5541,35 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         W.combatLog.push({ ev: "warn", who: f.name, anim: mv.anim, move: m, level: mv.level, chain: this.chain ? this.chain.id : null,
           step: this.chain ? this.chain.i : 0, wind: plan.wind, hold: +plan.hold.toFixed(3), rel: plan.rel, prep: +(plan.wind + plan.hold + plan.rel).toFixed(3), t: +W.U.uTime.value.toFixed(3) });
       },
+      // ---- Duelo 3: counter e intercambio de desvíos --------------------------------------------------------
+      // te ha desviado: tú quedas desequilibrado y él contraataca
+      onParriedYou(p, perfect) {
+        if (!f.alive || this.training) return;
+        if (this.chain) this.endChain(false);
+        this.ctr = { at: W.ct + CFG.counter.delay, n: 1 };
+        W.combatLog.push({ ev: "foeParriedYou", who: f.name, perfect, t: +W.U.uTime.value.toFixed(3) });
+      },
+      counterStep() {
+        const q = this.ctr; this.ctr = null;
+        const a = f.act;
+        if (!f.alive || f.stunned || !W.pf.alive || (a && (a.name === "deflected" || a.name === "death" || (a.name === "hit" && !a.xchgRecoil)))) return;
+        f.act = null; f.guardHeld = false; this.commit = null;
+        const C = CFG.counter, k = Math.min(q.n, C.xchgRel.length) - 1;
+        this.chain = { uid: ++this.chainN, id: q.n > 1 ? "intercambio" : "counter", steps: [{ m: "counter", r: "c", gap: 0, xchg: q.n }], i: 0, readyT: null, t0: this.t };
+        W.combatLog.push({ ev: "chainStart", who: f.name, chain: this.chain.id, uid: this.chain.uid, steps: ["counter"], n: q.n, t: +W.U.uTime.value.toFixed(3) });
+        this.strike("counter", "c", this.chain.steps[0], false, C.xchgRel[k]);
+      },
+      // desviaste su counter: "again" = vuelve a contraatacar; "fail" = falla él (queda desequilibrado)
+      onExchange(perfect, a) {
+        const n = a.xchg || 1, C = CFG.counter;
+        if (this.chain) { const c = this.chain; this.chain = null; W.combatLog.push({ ev: "chainEnd", who: f.name, chain: c.id, uid: c.uid, clean: false, t: +W.U.uTime.value.toFixed(3) }); }
+        if (!perfect) return "end";
+        const pf = C.fail[Math.min(n, C.fail.length) - 1];
+        if (rand() < pf) return "fail";
+        this.ctr = { at: W.ct + C.xchgDelay, n: n + 1 };
+        return "again";
+      },
+      onClash() { if (this.chain) this.chain.readyT = this.t; },
       // un golpe suelto (pruebas y compatibilidad)
       attack(name, dir) { this.chain = { uid: ++this.chainN, id: "suelto", steps: [{ m: name, r: "n", gap: 0 }], i: 0, readyT: null }; this.strike(name, "n", null); },
       // ---- defensa: te LEE (modelo del jugador), no tira dados -----------------------------------------
@@ -5471,7 +5583,35 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       // retenidos) y solo bloqueando.
       tokens: [], grams: {}, predict: null, commit: null, exposed: 0, react1: 0,
       bucket(g) { return g < 0.45 ? "q" : g < 1.0 ? "m" : "s"; },
-      resetModel() { this.tokens = []; this.grams = {}; this.predict = null; this.commit = null; },
+      resetModel() { this.tokens = []; this.grams = {}; this.predict = null; this.commit = null; this.openers = []; this.openerAt = null; this.lastAtkT = -9; this.pIdle = null; },
+      // Duelo 3 · lee el combo entero: mide cuánto tardas en abrir tu combo desde que quedas libre (acabas tu golpe,
+      // tu guardia o tu tambaleo). Si ese ritmo se repite (las 3 últimas aperturas no varían más de 0,15 s), al
+      // quedar libre otra vez prevé la apertura y alza la guardia para BLOQUEARLA; el 2.º y el 3.º los desvía con
+      // los trigramas de siempre
+      openers: [], openerAt: null, pIdle: null, pWasBusy: false,
+      noteOpener(t) {
+        if (this.pIdle == null || t - this.pIdle > 3) return;
+        const O = this.openers; O.push(t - this.pIdle); if (O.length > 4) O.shift();
+      },
+      openerWatch() {
+        const pl = W.pf, busy = !!pl.act;
+        if (this.pWasBusy && !busy) {
+          this.pIdle = W.ct;
+          const O = this.openers.slice(-3);
+          this.openerAt = null;
+          if (O.length >= 3 && Math.max(...O) - Math.min(...O) < 0.15 && W.ENEMY_DIFF.block > 0) this.openerAt = W.ct + O.reduce((x, y) => x + y, 0) / O.length;
+        }
+        this.pWasBusy = busy;
+      },
+      openerStep() {
+        const at = this.openerAt, now = W.ct;
+        if (at == null) return;
+        if (now > at + 0.2) { this.openerAt = null; return; }
+        if (this.commit || at - now > 0.36 || at - now < 0.17 || !this.freeToDefend() || this.chain) return;
+        this.openerAt = null;
+        this.commit = { kind: "block", at, stance: now, press: 0, conf: 0.8, opener: true, done: false };
+        W.combatLog.push({ ev: "foeReadOpener", ct: +now.toFixed(3), who: f.name, in: +(at - now).toFixed(2), t: +W.U.uTime.value.toFixed(3) });
+      },
       // nueva ficha (instante en el reloj de combate)
       addToken(kind, t) {
         const T = this.tokens, last = T[T.length - 1];
@@ -5491,6 +5631,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
           g.n = 0; for (const k in g.next) g.n += g.next[k].n;
         }
         T.push({ kind, key, t }); if (T.length > 40) T.shift();
+        // aperturas de tus combos (Duelo 3): el 1.er golpe tras ≥ 0,8 s sin golpear
+        if (/^a/.test(kind)) { if (t - (this.lastAtkT || -9) > 0.8) this.noteOpener(t); this.lastAtkT = t; }
         // ¿un compromiso pendiente para este instante? (si la ficha llega, ya se ha resuelto o ha fallado)
         this.forecast(t);
       },
@@ -5507,10 +5649,12 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         this.predict = { key: best, conf, at: now + nx.gap, n: nx.n, ctx };
         const D = W.ENEMY_DIFF, parryConf = 1 - 0.5 * D.parry, blockConf = 0.9 - 0.6 * D.block;
         if (!/^a/.test(best) || nx.seen < 2 || conf < Math.min(parryConf, blockConf)) return;
-        const kind = conf >= parryConf ? "parry" : "block";
+        // la apertura de tu combo (tras una pausa: ritmo «s») la bloquea; los golpes encadenados, los desvía
+        const lastK = T[T.length - 1].key, opener = lastK === "E" || lastK === "·" || /s$/.test(best) || nx.gap > 0.8;
+        const kind = conf >= parryConf && !opener ? "parry" : "block";
         // guardia visible 280-340 ms antes del impacto previsto (≥ 190 ms antes de su parry); el parry, 90 ms antes
         const lead = 0.28 + rand() * 0.06;
-        this.commit = { kind, at: this.predict.at, stance: this.predict.at - lead, press: this.predict.at - 0.09, conf, key: best, done: false };
+        this.commit = { kind, at: this.predict.at, stance: this.predict.at - lead, press: this.predict.at - 0.09, conf, key: best, done: false, t0: W.ct };
         W.combatLog.push({ ev: "foeRead", ct: +W.ct.toFixed(3), who: f.name, key: best, conf: +conf.toFixed(2), kind, in: +(this.predict.at - now).toFixed(2), t: +W.U.uTime.value.toFixed(3) });
       },
       // libre para defenderse: sin acción (o en guardia), no atacando, no resoplando
@@ -5530,6 +5674,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         // te ve tambaleándote (le has dado a su guardia o te ha desviado): no va a llegar ese golpe
         if (!c.stanceOn && now >= c.stance && pl.act && (pl.act.name === "hit" || pl.act.name === "death")) { this.commit = null; return; }
         if (!c.stanceOn && now >= c.stance) {
+          // justicia: si ya no da tiempo a enseñar la guardia ≥ 150 ms antes de su parry, solo bloquea
+          if (c.kind === "parry" && now > c.press - 0.15) c.kind = "block";
           // se ve venir: alza la guardia (ojo ámbar)
           c.stanceOn = true; b.stop(); b.heading = Math.atan2(pl.body.z - b.z, pl.body.x - b.x);
           f.guardHeld = true; if (!f.act || f.act.name !== "block") { f.act = null; f.start("block"); f.act.tt = 0.07; }
@@ -5537,7 +5683,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
           W.combatLog.push({ ev: "foeGuard", ct: +W.ct.toFixed(3), who: f.name, kind: c.kind, t: +W.U.uTime.value.toFixed(3) });
         }
         // ya defendió (parry o bloqueo): compromiso cumplido
-        if ((c.pressed || c.stanceOn) && f.lastDefT != null && f.lastDefT >= (c.pressT || c.stance) - 1e-6) { this.commit = null; return; }
+        // (solo cuenta una defensa posterior al compromiso: el bloqueo del golpe anterior no es la de este)
+        if ((c.pressed || c.stanceOn) && f.lastDefT != null && f.lastDefT >= Math.max(c.pressT || c.stance, c.t0 != null ? c.t0 + 1e-3 : -9) - 1e-6) { this.commit = null; return; }
         if (c.kind === "parry" && c.stanceOn && !c.pressed && now >= c.press) {
           c.pressed = true; c.pressT = now;
           f.guardHeld = false; f.input("guardDown"); f.input("guardUp");
@@ -5693,7 +5840,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     f.deadT = 0; f.fade = 1; f.hidden = false; f.ch.uniforms.uFade.value = 1;
     const ch = f.ch; ch.mesh.visible = ch.caster.visible = ch.blob.visible = ch.ghost.visible = true;
     if (f.ai) {
-      const ai = f.ai; Object.assign(ai, { state: "patrol", cool: 1.2, warnT: -1, chain: null, vent: 0, lastTrick: false, stanceUntil: 0, react1: null, exposed: 0, pAtks: [] });
+      const ai = f.ai; Object.assign(ai, { state: "patrol", cool: 1.2, warnT: -1, chain: null, vent: 0, lastTrick: false, stanceUntil: 0, react1: null, exposed: 0, pAtks: [], ctr: null });
       ai.resetModel();                               // su conocimiento de tus hábitos se reinicia al reaparecer
       if (!W.pf || W.pf.alive) ai.deaths = 0;        // (las muertes seguidas cuentan aunque reaparezca)
     }
@@ -6087,7 +6234,12 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       noiseHit(c, t, "bandpass", 1400 + 500 * n, 4200 + 700 * n, 1.4, 0.2 + 0.07 * n, 0.12 + 0.03 * n);
       tone(c, t, "sine", 150 + 20 * n, 50, 0.3 + 0.08 * n, 0.12 + 0.03 * n);
       if (n === 3) tone(c, t + 0.01, "triangle", 2600, 2550, 0.08, 0.35);
-    } else if (kind === "deathblow") { tone(c, t, "sine", 90, 35, 0.6, 0.45); noiseHit(c, t, "lowpass", 3000, 200, 0.7, 0.45, 0.4); tone(c, t, "triangle", 2200, 2100, 0.08, 0.6); }
+    } else if (kind === "clash") {
+      // choque de dos golpes: metal contra metal, grave y largo, con ruido
+      for (const [fr, g, d] of [[1250, 0.2, 0.6], [1870, 0.12, 0.45], [640, 0.16, 0.5]]) tone(c, t, "triangle", fr, fr * 0.97, g, d);
+      noiseHit(c, t, "bandpass", 3500, 1200, 0.8, 0.4, 0.18); tone(c, t, "sine", 110, 50, 0.3, 0.2);
+    } else if (kind === "armor") { tone(c, t, "triangle", 420, 380, 0.12, 0.14); noiseHit(c, t, "lowpass", 1600, 500, 0.8, 0.22, 0.1); }
+    else if (kind === "deathblow") { tone(c, t, "sine", 90, 35, 0.6, 0.45); noiseHit(c, t, "lowpass", 3000, 200, 0.7, 0.45, 0.4); tone(c, t, "triangle", 2200, 2100, 0.08, 0.6); }
     else if (kind === "death") { tone(c, t, "sine", 80, 40, 0.35, 0.35); noiseHit(c, t, "lowpass", 900, 200, 0.6, 0.25, 0.3); }
     else if (kind === "tick") { tone(c, t, "sine", 1250, 1240, 0.12, 0.05); tone(c, t, "square", 2500, 2480, 0.02, 0.03); }
     else if (kind === "warn") { tone(c, t, "sine", 980, 1480, 0.05, 0.12); }

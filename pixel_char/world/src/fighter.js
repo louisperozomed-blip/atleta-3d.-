@@ -266,8 +266,20 @@
       this.flash = 1;
       const b = this.body;
       if (this.hp <= 0) { b.heading = opts.dir + Math.PI; this.start("death", { kb: (opts.kb || 0.4) * 0.8 * this.kbK, kdir: opts.dir, moved: 0 }); return "death"; }
+      // Duelo 3 · reacción según el peso (enemigos): durante sus golpes pesados aguanta sin interrumpirse (hyper
+      // armor: recibe el daño y destella); golpe ligero = respingo corto (IMPACT y RECOIL de hit, ~160 ms, casi sin
+      // retroceso); golpe pesado = tambaleo completo con retroceso
+      if (this.team !== "player" && !opts.guardBreak) {
+        const a = this.act;
+        if (a && isAtk(a) && a.armor && a.f < 4) { this.armorT = 0.2; return "armor"; }
+        if (!opts.heavy) {
+          b.heading = opts.dir + Math.PI;
+          this.start("hit", { kb: (opts.kb || 0.35) * 0.3 * this.kbK, kdir: opts.dir, moved: 0, flinch: true, flinchEnd: 2 });
+          return "flinch";
+        }
+      }
       b.heading = opts.dir + Math.PI;                   // mira a quien le golpea
-      this.start("hit", { kb: (opts.kb || 0.35) * this.kbK, kdir: opts.dir, moved: 0, gb: !!opts.guardBreak, speed: opts.guardBreak ? 0.62 : 1 });
+      this.start("hit", { kb: (opts.kb || 0.35) * this.kbK * (opts.heavy && this.team !== "player" ? 1.25 : 1), kdir: opts.dir, moved: 0, gb: !!opts.guardBreak, speed: opts.guardBreak ? 0.62 : 1 });
       return "hit";
     }
     addPosture(v, o) {
