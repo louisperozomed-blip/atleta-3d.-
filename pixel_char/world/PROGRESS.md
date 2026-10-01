@@ -1181,3 +1181,42 @@ por CDP, paso fijo): **15/15, sin errores JS**.
 baja otro, toca una zona de 2 u → marcador rojo, y el autómata rodeando el desnivel para alcanzarte), capturas de
 escritorio y iPhone (`*_01_subiendo`, `*_02_aterriza`, `*_03_bajando`, `*_04_marcador_rojo`),
 `autómata_rodea.png` y `results.json`.
+
+---
+
+# Sistema de combate completo (fijar objetivo, ligeros y fuertes, combos rítmicos, grupos, interfaz móvil)
+El eco sigue en `src/enemies/echo/` y nada de lo anterior se borra: lo que cambia queda detrás de los datos nuevos
+y lo que se sustituye se documenta aquí.
+
+## Etapa 0 — Revisión: qué conservo y qué cambio
+
+**Hojas encontradas** (llegaron en un .zip de 5 JPEG; copiadas a `ref/` en PNG con el nombre del pipeline):
+
+| hoja | contenido | direcciones |
+|---|---|---|
+| `sheets_combate/heavy_1.png`, `heavy_2.png` | HEAVY del personaje: CROUCH, CHARGE, CHARGE MAX, RELEASE, IMPACT, RECOVERY | las 8 |
+| `sheets_combate/spin_1.png`, `spin_2.png` | SPIN del personaje: WIND UP, TWIST, SPIN, SPIN, SLASH END, RECOVERY | las 8 |
+| `sheets_enemigo/heavy_2.png` | HEAVY del autómata: WIND UP, RAISE, HOLD, SLAM, IMPACT, RECOVERY | solo S, SW, W, NW |
+
+Ya estaban (procesadas en el Duelo 3): `riposte` y `deathblow` del personaje, `deflected` y `counter` del autómata.
+Del HEAVY del autómata falta la mitad norte/este: E, SE y NE saldrán por espejo de W, SW y NW (a); N no se
+puede deducir de ninguna (b: hay que regenerarla; mientras, se usa NW).
+
+| sistema actual | dónde | conservo | cambio |
+|---|---|---|---|
+| **combo** attack1→2→3 (`next` del atlas, pulsar en IMPACT..RECOVERY, el siguiente sale en FOLLOW THROUGH) | `fighter.js` | la máquina de estados, los tiempos por frame del atlas y las ventanas de cancelación | el encadenado pasa a una **tabla de combos en datos** (secuencias L/H: L·L·L, L·H, L·L·H, H·L, H·H) con ventana, pulso, daño, postura, stamina y recuperación por golpe |
+| **búfer** de 180 ms (una sola entrada) | `fighter.js` | la duración y que se mide con la marca de tiempo del evento | pasa a una **cola de 2 entradas** (L/H) para que en un combo rápido no se pierda ningún toque |
+| **finta** (guardia durante la preparación de tu golpe: lo cancela, gasta stamina) | `fighter.js` | igual, y además cancela la **carga** del fuerte | — |
+| **«retraso»** (mantener el ataque deja la preparación en pose de carga hasta 0,6 s) | `fighter.js`, `controls.js` | — | **lo sustituye la carga del fuerte**: mantener ≥ 0,4 s = H, hasta 1,2 s = nivel 2; soltar lanza el golpe |
+| **defensa**: parry por niveles (perfecto ≤ 70 ms, normal, bloqueo), parcial (+120 ms = bloqueo), spam (+45 ms de penalización por pulsación, se recupera), calibración de latencia | `fighter.js`, `combat.js` | todo, con sus números | **multi-parry**: una pulsación resuelve todos los impactos que caigan en su ventana (cada uno con su nivel); el spam no penaliza si cada pulsación desvía algo; la guardia cubre 360° |
+| **postura** Sekiro (recuperación con guardia alta y según la vida), aturdido, remate ×3 | `fighter.js` | todo | el fuerte y los combos aportan su propia postura |
+| **Duelo 3**: deflected, riposte ×3 con el 3.º en ritmo (±80 ms), deathblow, counter del enemigo, intercambio de desvíos, choque (80 ms), hyper armor, reacción por peso | `duel.js` | todo (ya cumple lo pedido en la etapa 5) | el riposte tras un multi-parry va al **objetivo fijado**; la reacción por peso se aplica a L/H del jugador |
+| **ataque al tocar al enemigo** (cerca = golpe; lejos = va y golpea; mantener = retraso) e imán al más cercano (3,4 u, ±115°) | `controls.js`, `fighter.js` | ir hacia él si está lejos | **tocar = seleccionar** (anillo y retícula); con objetivo, tocarlo = L y mantener = H; el imán se sustituye por el objetivo (sin objetivo, el más cercano como antes) |
+| **salto contextual**, botón SALTAR y L | `nav.js`, `player.js` | todo, sin cambios | — |
+| **IA del autómata**: trigramas de tus golpes (a1/a2/a3 + ritmo q/m/s), lectura de aperturas, compromiso visible (ojo ámbar), reacción humana 200-260 ms, expuesto si falla, cadenas con un truco como mucho y ventana de castigo, ramas (desvías→retrasado, esquivas→estocada, bloqueas→rompeguardias), peligrosos (barrido/estocada/agarre), adaptativa | `automaton.js` | todo eso | fichas **L/H** en vez de a1/a2/a3; **familiaridad por combo** (secuencia + ritmo) que sube al repetir y baja al variar o con el tiempo; el rompeguardias pasa a ser su **HEAVY** (hoja nueva, HOLD largo como aviso); en grupo, **turnos** (máx. 2 atacando) y aprendizaje compartido al 50 % |
+| **grupos**: 3 autómatas en puntos separados, cada uno a lo suyo | `enemies/core.js` | los puntos y la reaparición | turnos, pinza, indicador de borde, aparecer 2-3 juntos desde el panel |
+| **interfaz**: GUARDIA de 112 px abajo a la derecha, barras arriba a la izquierda, barras del enemigo más cercano | `combat.js`, `template.html` | GUARDIA (tocar parry / mantener bloqueo) | rediseño en la etapa 8 (con maqueta antes) |
+
+**Presupuesto de la página**: hoy pesa 14,83 MB de los 16 permitidos y 14,3 MB son atlas en base64 (el del
+autómata, 7,2 MB). Tres animaciones más (≈ +1,6 MB) no caben tal cual: en la etapa 1 hay que ganar sitio (se
+mide qué resolución del atlas llega de verdad a la pantalla y se ajusta la compresión).
