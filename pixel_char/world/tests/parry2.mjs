@@ -24,7 +24,7 @@ await page.evaluate(() => {
   window.pair = (a, d) => {
     const e = E(), p = W.pf; d = d || 2.0;
     for (const f of W.foes) { f.ai.enabled = false; if (f !== e) f.respawn(f.home.x, f.home.z); }
-    p.respawn(); W.respawnAll(); W.hitstop = 0; W.COMBAT.calib = 0;
+    p.respawn(); W.respawnAll(); W.hitstop = 0; W.COMBAT.calib = 0; if (W.SLOWMO) { W.SLOWMO.t = 0; W.SLOWMO.pend = null; }
     e.body.x = e.home.x; e.body.z = e.home.z; e.body.y = e.body.ground = W.heightAt(e.home.x, e.home.z);
     W.teleport(e.home.x + Math.cos(a) * d, e.home.z + Math.sin(a) * d);
     W.player.heading = a + Math.PI; e.body.heading = a;

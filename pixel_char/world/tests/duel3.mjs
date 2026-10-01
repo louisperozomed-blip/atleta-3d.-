@@ -24,7 +24,7 @@ await page.evaluate(() => {
   window.pair = (a, d) => {
     const e = E(), p = W.pf; d = d || 2.0;
     for (const f of W.foes) { f.ai.enabled = false; if (f !== e) f.respawn(f.home.x, f.home.z); }
-    p.respawn(); W.respawnAll(); W.hitstop = 0; W.COMBAT.calib = 0;
+    p.respawn(); W.respawnAll(); W.hitstop = 0; W.COMBAT.calib = 0; if (W.SLOWMO) { W.SLOWMO.t = 0; W.SLOWMO.pend = null; }
     e.body.x = e.home.x; e.body.z = e.home.z; e.body.y = e.body.ground = W.heightAt(e.home.x, e.home.z);
     W.teleport(e.home.x + Math.cos(a) * d, e.home.z + Math.sin(a) * d);
     W.player.heading = a + Math.PI; e.body.heading = a;
@@ -127,7 +127,7 @@ await page.evaluate(() => {
     let rs = 777; const rr = () => ((rs = (rs * 16807) % 2147483647) / 2147483647);
     const gauss = () => { let u = 0, v = 0; while (!u) u = rr(); while (!v) v = rr(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
     window.RipBot = {
-      reset(o) { Object.assign(this, { mode: "ritmo", st: null, out: [] }, o || {}); rs = ((o && o.seed) || 777) * 48271 % 2147483646 + 1; for (let i = 0; i < 6; i++) rr(); },
+      reset(o) { Object.assign(this, { mode: "ritmo", st: null, out: [], pp: 0 }, o || {}); rs = ((o && o.seed) || 777) * 48271 % 2147483646 + 1; for (let i = 0; i < 6; i++) rr(); },
       step() {
         const p = W.pf, e = E(), L = W.combatLog;
         const last = L[L.length - 1];
@@ -511,6 +511,66 @@ if (STAGES.includes(4)) {
   await page.evaluate(() => { W.skipRender = true; perfectParry(); ripRun({ steps: 60 }); const el = document.querySelector("#duelP .tmg"); });
   await shot("E4_entrenamiento_riposte");
   await page.evaluate(() => W.setTraining(""));
+}
+
+// =====================================================================================================
+// ETAPA 5 · bot con reacción humana, ramas, intercambio, choque y deathblow en 8 direcciones
+// =====================================================================================================
+if (STAGES.includes(5)) {
+  // bot de riposte: desvía con reacción humana (250 ms ± 40 ms desde la suelta) y, tras un PERFECTO, lanza el
+  // riposte: 1.ª pulsación a su reacción al desvío, 2.ª a su reacción al impacto del 1.º y la 3.ª «con buen
+  // ritmo» (el momento ideal ± su error de ritmo humano, 40 ms) o «al azar» (en cualquier momento de 0 a 0,6 s)
+  const rb = await page.evaluate(() => {
+    const out = {};
+    for (const mode of ["ritmo", "azar"]) {
+      let perfect = 0, full = 0, third = 0, tries3 = 0, seed = 300;
+      for (let rep = 0; rep < 90; rep++) {
+        duel(0.6, 2.0, { chain: "dos", noTricks: true }); Bot.reset({ react: 0.25, jit: 0.04, seed: seed++ }); RipBot.reset({ mode, seed: seed * 7 });
+        const e = E(); e.post = 0; e.hp = e.hpMax = 1e6;
+        let n = 0; const L = W.combatLog;
+        while (n++ < 60 * 6) {
+          TB(1 / 1); RipBot.step();
+          if (L.some((x) => x.ev === "chainEnd") && !(W.pf.act && W.pf.act.name === "riposte") && !(E().act && E().act.name === "deflected") && n > 60) break;
+        }
+        // por cada parry perfecto: cuántos golpes de riposte siguieron
+        const evs = L.filter((x) => (x.ev === "parry" && x.who === "jugador") || x.ev === "riposte" || x.ev === "ripDeflected" || x.ev === "ripBeat");
+        let cur = null;
+        for (const x of evs) {
+          if (x.ev === "parry") { if (x.level === "perfect") { perfect++; cur = { hits: 0 }; } else cur = null; continue; }
+          if (!cur) continue;
+          if (x.ev === "riposte") { cur.hits = x.n; if (x.n === 3) { full++; third++; cur = null; } }
+          if (x.ev === "ripBeat") tries3++;
+        }
+      }
+      out[mode] = { perfectos: perfect, completos: full, pct_completo: perfect ? Math.round(100 * full / perfect) : 0, intentos_3: tries3, pct_3: tries3 ? Math.round(100 * third / tries3) : 0 };
+    }
+    return out;
+  });
+  check("bot humano (reacción 250 ± 40 ms): con buen ritmo encadena el riposte completo en ≥ 60 % de sus parries perfectos",
+    rb.ritmo.perfectos >= 15 && rb.ritmo.pct_completo >= 60, rb.ritmo);
+  check("pulsando el 3.er golpe al azar, la mayoría falla (≤ 40 % entra) y siempre peor que con ritmo",
+    rb.azar.intentos_3 >= 10 && rb.azar.pct_3 <= 40 && rb.azar.pct_3 < rb.ritmo.pct_3 - 30, rb.azar);
+
+  // deathblow en las 8 direcciones (con su hoja), capturas
+  const dirs = await page.evaluate(() => {
+    const D = ["S", "SW", "W", "NW", "N", "NE", "E", "SE"], out = [];
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4;
+      pair(a, 2.0); E().ai.enabled = false; foeAttack("attack1", pressAt(0.04)); E().post = 75;
+      let dir = null, sheet = null, frames = new Set();
+      ripRun({ onStep() { const p = W.pf; if (p.act && p.act.name === "deathblow") { sheet = p.act.sheet; frames.add(p.act.f); dir = W.character.st.dir; } } });
+      out.push({ ang: k * 45, dir: dir == null ? null : D[dir], sheet, frames: frames.size, deathblow: !!lastOf("deathblow") });
+    }
+    return out;
+  });
+  check("deathblow en las 8 direcciones: cada una con su fila de la hoja (8 direcciones distintas) y el remate entra",
+    dirs.every((d) => d.deathblow && d.sheet === "deathblow" && d.frames >= 5) && new Set(dirs.map((d) => d.dir)).size === 8, dirs);
+  for (let k = 0; k < 8; k++) {
+    await page.evaluate((k) => { const a = k * Math.PI / 4; pair(a, 2.0); E().ai.enabled = false; foeAttack("attack1", pressAt(0.04)); E().post = 75;
+      const p = W.pf; ripRun({ steps: 400, stop: () => p.act && p.act.name === "deathblow" && p.act.f >= 3 }); }, k);
+    await page.evaluate(() => { const p = W.pf; for (let i = 0; i < 80 && !(p.act && p.act.name === "deathblow" && p.act.f >= 3); i++) T(1); });
+    await shot("E5_deathblow_" + ["S", "SW", "W", "NW", "N", "NE", "E", "SE"][k]);
+  }
 }
 
 const okN = results.filter((r) => r.ok).length;

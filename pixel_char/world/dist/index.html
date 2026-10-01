@@ -3582,7 +3582,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     let t = W.ct;
     if (ts != null && isFinite(ts)) {
       const ref = W.manual ? performance.now() : (W.ctReal || performance.now());
-      t += Math.max(-0.12, Math.min(0.05, (ts - ref) / 1000));
+      // (en cámara lenta, los ms reales valen menos tiempo de combate)
+      t += Math.max(-0.12, Math.min(0.05, (ts - ref) / 1000)) * (W.SLOWMO && W.SLOWMO.t > 0 ? W.SLOWMO.k : 1);
     }
     return human ? t - (C.calib || 0) / 1000 : t;   // la calibración, solo para el jugador
   };
