@@ -7,14 +7,22 @@ from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORDER = ["core.js", "terrain.js", "props.js", "modules.js", "zones.js", "effects.js", "look.js", "player.js", "walk.js", "feet.js", "character.js",
-         "fighter.js", "combat.js", "duel.js", "calib.js", "enemies/core.js", "enemies/echo/echo.js", "enemies/automaton/automaton.js", "practice.js", "interact.js", "audio.js", "feel.js", "nav.js", "controls.js", "main.js"]
+         "fighter.js", "combat.js", "duel.js", "calib.js", "enemies/core.js", "enemies/echo/echo.js", "enemies/automaton/automaton.js", "practice.js", "animviewer.js", "interact.js", "audio.js", "feel.js", "nav.js", "controls.js", "main.js"]
 
 
-def webp(path, **kw):
+def webp(path, scale=1.0, **kw):
     im = Image.open(path)
     if im.mode == "L": im = im.convert("RGB")
+    if scale != 1.0: im = im.resize((round(im.width * scale), round(im.height * scale)), Image.LANCZOS)
     b = io.BytesIO(); im.save(b, "WEBP", method=6, **kw)
     return "data:image/webp;base64," + base64.b64encode(b.getvalue()).decode()
+
+
+# Combate completo: los mapas de normales de los atlas de combate y del autómata van a media resolución (el
+# shader los muestrea por UV con filtrado lineal, así que no cambia nada más). La luz por píxel apenas varía (ver
+# PROGRESS) y la página gana ~2 MB para las animaciones nuevas (heavy, spin y el heavy del autómata) sin pasar
+# de 16 MB.
+NSCALE = 0.5
 
 
 def main():
@@ -34,13 +42,13 @@ def main():
         # (Duelo 3: con riposte y deathblow el atlas crece un 25 %; normales y especular a 80 y el color a 87 para
         #  que la página siga bien por debajo de 16 MB)
         assets["ccolor"] = webp(os.path.join(A, "combat_color.png"), quality=87, alpha_quality=96)
-        assets["cnormal"] = webp(os.path.join(A, "combat_normal.png"), quality=80)
+        assets["cnormal"] = webp(os.path.join(A, "combat_normal.png"), NSCALE, quality=85)
         assets["cspec"] = webp(os.path.join(A, "combat_spec.png"), quality=80)
         assets["cmeta"] = json.load(open(os.path.join(A, "combat_atlas.json")))
     # el Autómata del bosque (pixel_char/tools/enemy_maps.py)
     if os.path.exists(os.path.join(A, "enemy_atlas.json")):
         assets["ecolor"] = webp(os.path.join(A, "enemy_color.png"), quality=84, alpha_quality=92)
-        assets["enormal"] = webp(os.path.join(A, "enemy_normal.png"), quality=75)
+        assets["enormal"] = webp(os.path.join(A, "enemy_normal.png"), NSCALE, quality=85)
         assets["espec"] = webp(os.path.join(A, "enemy_spec.png"), quality=78)
         em = json.load(open(os.path.join(A, "enemy_atlas.json")))
         em["anims"] = em.get("anims")

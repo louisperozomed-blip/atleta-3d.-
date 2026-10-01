@@ -44,6 +44,8 @@ def row_separators(a):
         else:
             groups.append([y])
     seps = [int(np.mean(g)) for g in groups]
+    # heavy/spin: las rayas del título (arriba del todo) no son separadores de banda
+    if len(seps) > 5: seps = [s for s in seps if s > 50]
     assert len(seps) in (4, 5), seps
     return seps
 
@@ -86,7 +88,23 @@ def classify_adaptive(a, c):
     return sat, bglike
 
 
-def number_glyphs(a, y0, y1):
+# heavy/spin (zip «Animaciones_HEAVY_SPIN»): cada frame va en una tarjeta con el número en su esquina superior
+# izquierda (no centrado encima): las columnas salen de los bordes oscuros de las tarjetas
+CARD_SHEETS = ("heavy", "spin")
+CARD_EDGES = [116, 299, 478, 657, 858, 1046, 1216]
+
+
+def card_columns(a, y0, y1):
+    lum = a[y0 + 30:y1 - 30].mean(2)
+    prof = np.median(lum, axis=0)
+    edges = []
+    for e in CARD_EDGES:
+        lo, hi = max(0, e - 14), min(len(prof), e + 15)
+        edges.append(lo + int(np.argmin(prof[lo:hi])))
+    return [(edges[i] + edges[i + 1]) / 2 for i in range(6)], edges
+
+
+def number_glyphs(a, y0, y1, xmin=150):
     """Números 1..6 de la cabecera de cada banda: crema claro y plano (en las hojas
     turquesa tienen poca saturación, así que se buscan por brillo)."""
     import cv2
@@ -96,7 +114,7 @@ def number_glyphs(a, y0, y1):
     g = []
     for i in range(1, n):
         x, y, w, h, ar = st[i]
-        if 10 <= h <= 34 and w <= 30 and x > 150 and ar > 30:
+        if 10 <= h <= 34 and w <= 30 and x > xmin and ar > 30:
             px = band[y:y + h, x:x + w][lab[y:y + h, x:x + w] == i]
             g.append((x, y + y0, w, h, px.std(0).mean()))
     if g:
@@ -214,10 +232,14 @@ def run(only=None):
         prev_cols = None
         for r, (by0, by1) in enumerate(bands):
             d = rows_of(sheet)[r]
-            glyphs = number_glyphs(a, by0, by0 + 45)
+            card = anim in CARD_SHEETS
+            glyphs = number_glyphs(a, by0, by0 + 45, 120 if card else 150)
             for (gx, gy, gw, gh) in glyphs:
                 glyph_mask[gy - 1:gy + gh + 1, gx - 1:gx + gw + 1] = True
-            cols = X.cluster_columns(glyphs)
+            cols, cedges = card_columns(a, by0, by1) if card else (X.cluster_columns(glyphs), None)
+            if card:
+                # el número de la esquina: su caja (no se busca columna por él)
+                glyphs = []
             if len(cols) != NFRAMES:
                 fixed = []
                 # rejilla común de las hojas (algún número queda tapado por la cuchilla)
@@ -244,6 +266,10 @@ def run(only=None):
                 xl, xr = max(xl, 0), min(xr, W)
                 MARGIN = 60
                 bxl, bxr = max(xl - MARGIN, 0), min(xr + MARGIN, W)
+                if card:
+                    # la figura y sus efectos caben en su tarjeta: se recorta por dentro de sus bordes oscuros
+                    xl, xr = cedges[i] + 5, cedges[i + 1] - 4
+                    bxl, bxr = xl, xr
                 box = (bxl, by0, bxr, min(by1, lab_y0 + 4))
                 col, alpha, fg, tfit = extract_cell(a, sat, bglike, box, glyph_mask, (xl - bxl, xr - bxl))
                 ys, xs = np.nonzero(alpha > 0.5)

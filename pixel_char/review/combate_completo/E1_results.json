@@ -1,0 +1,104 @@
+{
+ "results": [
+  {
+   "name": "atlas del personaje: heavy y spin con sus fases (heavy: carga 1-2, impacto 4; spin: activos 2-3 en 360°)",
+   "ok": true,
+   "info": {
+    "heavy": [
+     "prep",
+     "carga",
+     "carga",
+     "prep",
+     "activo",
+     "rec"
+    ],
+    "spin": [
+     "prep",
+     "prep",
+     "activo",
+     "activo",
+     "rec",
+     "rec"
+    ],
+    "hf": {
+     "heavy": 4,
+     "spin": 2,
+     "attack1": 3,
+     "eheavy": 4
+    }
+   }
+  },
+  {
+   "name": "atlas del autómata: heavy con HOLD (aviso largo) e impacto en IMPACT",
+   "ok": true,
+   "info": {
+    "fase": [
+     "prep",
+     "prep",
+     "hold",
+     "prep",
+     "activo",
+     "rec"
+    ],
+    "ms": [
+     170,
+     180,
+     260,
+     70,
+     130,
+     270
+    ]
+   }
+  },
+  {
+   "name": "visor: se abre desde el panel y pinta la animación, dirección y frame elegidos",
+   "ok": true,
+   "info": {
+    "anim": "heavy",
+    "dir": 6,
+    "frame": 5,
+    "who": "autómata"
+   }
+  },
+  {
+   "name": "visor: con y sin luz",
+   "ok": true,
+   "info": {
+    "unlit": 1,
+    "lit": 0
+   }
+  },
+  {
+   "name": "visor: reproducir avanza los frames con sus tiempos",
+   "ok": true,
+   "info": {
+    "f0": 5,
+    "f1": 2
+   }
+  },
+  {
+   "name": "visor: al cerrar, todo vuelve (sin vista fija, IA activa)",
+   "ok": true,
+   "info": {
+    "on": false,
+    "view": false,
+    "ai": true
+   }
+  },
+  {
+   "name": "móvil: el visor cabe en la pantalla",
+   "ok": true,
+   "info": {
+    "a": [
+     12,
+     421,
+     336,
+     652
+    ],
+    "w": 390,
+    "h": 664
+   }
+  }
+ ],
+ "errors": []
+}

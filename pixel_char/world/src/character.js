@@ -42,6 +42,7 @@
       uPal: { value: (W.PALETTE || [[0, 0, 0]]).map((c) => new THREE.Vector3(c[0], c[1], c[2])) },
       uQuant: { value: 0 }, uOutline: { value: 0 },
       uEmit: { value: opts.emit || 0 }, uFlash: { value: 0 }, uEcho: { value: opts.echo ? 1 : 0 }, uWarn: { value: 0 },
+      uUnlit: { value: 0 },                                  // visor de animaciones: color plano, sin luz
       uFade: { value: 1 }, uEyeCol: { value: new THREE.Vector3().fromArray(opts.emitCol || (opts.echo ? [0.45, 0.95, 1.0] : [1.0, 0.55, 0.18])) }, uEyeK: { value: 1 },
     }]);
     uniforms.uColor.value = tex.color; uniforms.uNormal.value = tex.normal; uniforms.uSpec.value = tex.spec;
@@ -100,7 +101,7 @@
         float wh = exp(-pow((q.x - F.x) / uFootR.x, 2.0));
         return F.zw * wv * wh;
       }
-      uniform float uNormalAmt, uGrade, uGain, uVisor, uTime; uniform vec2 uCovC; uniform vec3 uUp, uWarm;
+      uniform float uNormalAmt, uGrade, uGain, uVisor, uTime, uUnlit; uniform vec2 uCovC; uniform vec3 uUp, uWarm;
       uniform float uEmit, uFlash, uEcho, uWarn, uFade, uEyeK; uniform vec3 uEyeCol;
       varying vec2 vUv; varying vec2 vQ; varying vec3 vViewPos;
       void main() {
@@ -210,6 +211,8 @@
         // eco: brillo del visor (siempre) y destello de aviso antes de su golpe
         if (uEcho > 0.5) col += vec3(0.35, 0.95, 1.0) * vis * (0.9 + 0.5 * uWarn) + vec3(0.6, 0.95, 1.0) * uWarn * 0.25 * (0.6 + 0.4 * n.z);
         if (uQuant > 0.0) col = mix(col, quantize(clamp(col, 0.0, 1.0)), uQuant);
+        // visor de animaciones «sin luz»: el color de la hoja tal cual (más la emisión)
+        col = mix(col, c.rgb + c.rgb * 1.5 * em, uUnlit);
         // destello blanco al recibir un golpe
         col = mix(col, vec3(1.0, 0.98, 0.94), uFlash * 0.85);
         gl_FragColor = vec4(col, 1.0);
@@ -303,6 +306,7 @@
     const ch = {
       mesh, mat, uniforms, st, meta, cmeta, unitsV, unitsH, feet: opts.feet || null, locoFps: opts.locoFps || 12, height: opts.height || W.CHAR_H, caster, blob, boots, sticker, ghost, integrated: true,
       isCombat(anim) { return CANIMS.indexOf(anim) >= 0; },
+      animList: ANIMS.concat(CANIMS),                    // todas las que sabe pintar (visor de animaciones)
       frameRect(anim, dir, f) {
         if (CANIMS.indexOf(anim) >= 0) {
           const S = SETS.combat, k = (CANIMS.indexOf(anim) * 8 + dir) * NF + f;
@@ -330,6 +334,8 @@
       },
       update(dt, p, camTheta, camThetaTarget) {
         st.time += dt; st.dt = dt;
+        // visor de animaciones (animviewer.js): animación, dirección y frame fijados a mano
+        if (this.view) { const v = this.view; st.dir = v.dir; st.anim = v.anim; st.frame = v.f; st.settle = null; st.fi = null; this.place(p, camTheta, v.anim, v.f); return; }
         const H = W.CHAR_H, walkV = p.walkV;
         // --- acciones de combate (fighter.js): la animación y el frame los decide la máquina de estados ---
         const act = p.fighter && p.fighter.act;

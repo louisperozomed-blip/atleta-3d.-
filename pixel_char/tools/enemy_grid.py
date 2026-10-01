@@ -133,6 +133,29 @@ def grid_b(a):
             "text_boxes": [list(map(int, b)) for b in boxes]}
 
 
+def grid_c(a):
+    """HEAVY del autómata (zip «Animaciones_HEAVY_SPIN»): maquetación b (fase «1. WIND UP» bajo cada figura),
+    pero sin números grises (lo que grid_b tomaba por números eran el ojo, el musgo y las rayas del SLAM) y
+    con las garras levantadas de RAISE/HOLD subiendo hasta la altura del título: solo se quita el texto real
+    (título, rótulos de la izquierda y líneas de fase) y la primera fila empieza arriba del todo."""
+    g = grid_b(a)
+    tm = text_mask(a)
+    cs = [c for c in comps(tm) if c[4] > 6]
+    # rótulos de la izquierda: lo que acaba antes de la primera columna (las garras de WIND UP asoman a x≈170)
+    left = [c for c in cs if c[0] + c[2] <= g["cols"][0] + 2 and c[1] > 90]
+    title = [c for c in cs if c[1] < 60 and c[3] > 20 and c[0] < 400]
+    tb = (0, 0, max(c[0] + c[2] for c in title) + 8, max(c[1] + c[3] for c in title) + 8)
+    boxes = [tb] + [(c[0] - 3, c[1] - 3, c[0] + c[2] + 3, c[1] + c[3] + 3) for c in left]
+    # las palabras de las líneas de fase (de grid_b: las cajas con la altura de una línea de texto)
+    for b in g["text_boxes"]:
+        if 7 <= b[3] - b[1] - 6 <= 24 and b[2] - b[0] > 40 and b[0] > g["cols"][0]:
+            boxes.append(tuple(b))
+    g["text_boxes"] = [list(map(int, b)) for b in boxes]
+    g["rows"][0] = 0
+    g["layout"] = "b"
+    return g
+
+
 if __name__ == "__main__":
     import glob, json, os, sys
     from PIL import ImageDraw

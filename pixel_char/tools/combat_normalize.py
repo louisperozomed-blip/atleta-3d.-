@@ -40,7 +40,7 @@ PIVOT = (128, 264)
 
 COLOR = os.path.join(CBUILD, "color")
 NORM = os.path.join(BUILD, "norm")
-ANIMS = ["attack1", "attack2", "attack3", "parry", "block", "dodge", "hit", "death", "riposte", "deathblow"]
+ANIMS = ["attack1", "attack2", "attack3", "parry", "block", "dodge", "hit", "death", "riposte", "deathblow", "heavy", "spin"]
 
 
 def load(d, n):

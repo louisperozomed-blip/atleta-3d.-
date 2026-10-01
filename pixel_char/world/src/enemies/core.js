@@ -134,5 +134,6 @@
     pn.querySelector("#tResp").addEventListener("click", () => W.respawnAll());
     if (W.initCalibUI) W.initCalibUI(pn);           // latencia del parry (calib.js)
     if (W.initTrainingUI) W.initTrainingUI(pn);     // modo entrenamiento (practice.js)
+    if (W.initAnimViewerUI) W.initAnimViewerUI(pn); // visor de animaciones (animviewer.js)
   };
 })();

@@ -209,7 +209,7 @@
   }
   W.combatAttacks = PLAYER_ATTACKS;
   W.onCombatFrame = function (f, a) {
-    if (W.isAtk(a) && a.f >= 3 && !a.hitDone) {
+    if (W.isAtk(a) && a.f >= W.hitF(a) && !a.hitDone) {
       a.hitDone = true;
       // con calibración positiva (tus pulsaciones llegan tarde) el golpe que te lanzan se resuelve esos ms después
       // del impacto, para que una pulsación "tarde" llegue a contar
@@ -217,7 +217,7 @@
       if (cal > 0 && f.team !== "player") { a.resolveAt = (a.impactT != null ? a.impactT : W.ct) + cal; pendingHits.push({ f, a }); }
       else resolve(f, a);
     }
-    if (W.isAtk(a) && a.f === 2 && W.sfx) W.sfx.combat(a.name === "attack3" || a.name === "deathblow" ? "swingHeavy" : "swing");
+    if (W.isAtk(a) && a.f === W.hitF(a) - 1 && W.sfx) W.sfx.combat(a.name === "attack3" || a.name === "deathblow" ? "swingHeavy" : "swing");
     if (a.name === "attack3" && a.f === 3) {
       // el golpe contra el suelo levanta tierra aunque no alcance a nadie
       const b = f.body, x = b.x + Math.cos(b.heading) * 0.9, z = b.z + Math.sin(b.heading) * 0.9;

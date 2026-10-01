@@ -892,6 +892,174 @@
     "PULL OUT",
     "RECOVER"
    ]
+  },
+  "heavy": {
+   "frames": [
+    {
+     "frame": 0,
+     "etiqueta": "CROUCH",
+     "fase": "preparación",
+     "ms": 120,
+     "t0_ms": 0,
+     "activo": false,
+     "cancelable": []
+    },
+    {
+     "frame": 1,
+     "etiqueta": "CHARGE",
+     "fase": "carga (bucle)",
+     "ms": 130,
+     "t0_ms": 120,
+     "activo": false,
+     "cancelable": []
+    },
+    {
+     "frame": 2,
+     "etiqueta": "CHARGE MAX",
+     "fase": "carga (bucle)",
+     "ms": 130,
+     "t0_ms": 250,
+     "activo": false,
+     "cancelable": []
+    },
+    {
+     "frame": 3,
+     "etiqueta": "RELEASE",
+     "fase": "preparación",
+     "ms": 60,
+     "t0_ms": 380,
+     "activo": false,
+     "cancelable": []
+    },
+    {
+     "frame": 4,
+     "etiqueta": "IMPACT",
+     "fase": "activo",
+     "ms": 120,
+     "t0_ms": 440,
+     "activo": true,
+     "cancelable": [
+      "chain"
+     ]
+    },
+    {
+     "frame": 5,
+     "etiqueta": "RECOVERY",
+     "fase": "recuperación",
+     "ms": 210,
+     "t0_ms": 560,
+     "activo": false,
+     "cancelable": [
+      "chain",
+      "dodge"
+     ]
+    }
+   ],
+   "total_ms": 770,
+   "loop": false,
+   "activo": [
+    4
+   ],
+   "ventanas_cancelacion": {
+    "dodge": [
+     5
+    ],
+    "chain": [
+     4,
+     5
+    ]
+   },
+   "siguiente_combo": null,
+   "etiquetas": [
+    "CROUCH",
+    "CHARGE",
+    "CHARGE MAX",
+    "RELEASE",
+    "IMPACT",
+    "RECOVERY"
+   ],
+   "carga": [
+    1,
+    2
+   ]
+  },
+  "spin": {
+   "frames": [
+    {
+     "frame": 0,
+     "etiqueta": "WIND UP",
+     "fase": "preparación",
+     "ms": 80,
+     "t0_ms": 0,
+     "activo": false,
+     "cancelable": []
+    },
+    {
+     "frame": 1,
+     "etiqueta": "TWIST",
+     "fase": "preparación",
+     "ms": 70,
+     "t0_ms": 80,
+     "activo": false,
+     "cancelable": []
+    },
+    {
+     "frame": 2,
+     "etiqueta": "SPIN",
+     "fase": "activo",
+     "ms": 70,
+     "t0_ms": 150,
+     "activo": true,
+     "cancelable": []
+    },
+    {
+     "frame": 3,
+     "etiqueta": "SPIN",
+     "fase": "activo",
+     "ms": 70,
+     "t0_ms": 220,
+     "activo": true,
+     "cancelable": []
+    },
+    {
+     "frame": 4,
+     "etiqueta": "SLASH END",
+     "fase": "recuperación",
+     "ms": 90,
+     "t0_ms": 290,
+     "activo": false,
+     "cancelable": []
+    },
+    {
+     "frame": 5,
+     "etiqueta": "RECOVERY",
+     "fase": "recuperación",
+     "ms": 240,
+     "t0_ms": 380,
+     "activo": false,
+     "cancelable": []
+    }
+   ],
+   "total_ms": 620,
+   "loop": false,
+   "activo": [
+    2,
+    3
+   ],
+   "ventanas_cancelacion": {},
+   "siguiente_combo": null,
+   "etiquetas": [
+    "WIND UP",
+    "TWIST",
+    "SPIN",
+    "SPIN",
+    "SLASH END",
+    "RECOVERY"
+   ],
+   "giro360": [
+    2,
+    3
+   ]
   }
  },
  "root_motion_px": {
@@ -1534,6 +1702,134 @@
    49.7,
    -37.2,
    -26.1
+  ],
+  "heavy_S": [
+   25.5,
+   -6.8,
+   -7.8,
+   -1.7,
+   -0.8,
+   20.6
+  ],
+  "heavy_SW": [
+   22.3,
+   -40.2,
+   -25.3,
+   -30.9,
+   -24.2,
+   18.9
+  ],
+  "heavy_W": [
+   46.3,
+   25.3,
+   21.7,
+   7.5,
+   -29.4,
+   28.9
+  ],
+  "heavy_NW": [
+   35.9,
+   -32.0,
+   -23.0,
+   -6.5,
+   2.1,
+   -21.7
+  ],
+  "heavy_N": [
+   19.3,
+   20.8,
+   19.9,
+   -9.2,
+   8.5,
+   28.5
+  ],
+  "heavy_NE": [
+   19.1,
+   11.5,
+   10.7,
+   16.6,
+   1.3,
+   9.9
+  ],
+  "heavy_E": [
+   -21.3,
+   -16.8,
+   -15.8,
+   3.5,
+   5.6,
+   -11.4
+  ],
+  "heavy_SE": [
+   -10.5,
+   -29.6,
+   -27.2,
+   37.9,
+   -3.1,
+   -10.4
+  ],
+  "spin_S": [
+   37.2,
+   20.0,
+   -8.6,
+   -17.8,
+   2.7,
+   30.6
+  ],
+  "spin_SW": [
+   24.6,
+   7.3,
+   -16.6,
+   -18.6,
+   -4.7,
+   23.9
+  ],
+  "spin_W": [
+   -1.1,
+   8.5,
+   1.3,
+   10.8,
+   -1.4,
+   -9.1
+  ],
+  "spin_NW": [
+   20.9,
+   19.5,
+   1.2,
+   -6.0,
+   9.3,
+   -28.4
+  ],
+  "spin_N": [
+   34.7,
+   20.7,
+   -27.0,
+   -16.8,
+   4.0,
+   34.7
+  ],
+  "spin_NE": [
+   -8.1,
+   2.8,
+   -0.5,
+   -10.4,
+   -22.7,
+   17.0
+  ],
+  "spin_E": [
+   -33.0,
+   9.9,
+   1.1,
+   13.2,
+   -16.6,
+   -11.5
+  ],
+  "spin_SE": [
+   47.0,
+   -17.2,
+   -3.2,
+   1.6,
+   -0.2,
+   -27.3
   ]
  },
  "root_motion_nota": "x medio de los pies respecto al pivote por frame (px de la hoja completa): desplazamiento pintado de la estocada/retroceso",

@@ -23,7 +23,7 @@ def sm(e0, e1, x):
     return t * t * (3 - 2 * t)
 
 
-def emission(rgba, big_ok=True):
+def emission(rgba, big_ok=True, arcs=False):
     al = rgba[..., 3].astype(np.float32) / 255
     lab = cv2.cvtColor(rgba[..., :3], cv2.COLOR_RGB2LAB).astype(np.float32)
     L, A, B = lab[..., 0], lab[..., 1] - 128, lab[..., 2] - 128
@@ -60,7 +60,29 @@ def emission(rgba, big_ok=True):
     if n2 and big_ok:
         sz = ndi.sum(np.ones_like(al), lb2, range(1, n2 + 1))
         m |= np.concatenate([[False], sz >= 500])[lb2]
+    # 3) arcos de luz y cuchilla cargada (heavy, spin: arcs=True): amarillo-naranja más claro y de tono más alto
+    #    (54-95°) que la cuchilla de los ataques; la crema de las placas tiene ese tono pero croma < 35
+    if arcs:
+        yel = sm(40, 48, C) * sm(10, 18, H) * sm(102, 94, H) * sm(110, 130, L) * (al > 0.3)
+        ym = ndi.binary_closing(yel > 0.5, np.ones((3, 3))) & (al > 0.3)
+        lb3, n3 = ndi.label(ym)
+        if n3:
+            sz = ndi.sum(np.ones_like(al), lb3, range(1, n3 + 1))
+            dmx = ndi.maximum(depth, lb3, range(1, n3 + 1))
+            # las flores del bordado de la túnica al vuelo (spin) también sobresalen, pero son más oscuras
+            mL = np.asarray(ndi.mean(L, lb3, range(1, n3 + 1)))
+            keep = (np.asarray(sz) >= 250) | ((np.asarray(dmx) >= 6) & (mL >= 165))
+            mk = np.concatenate([[False], keep])[lb3]
+            m |= mk
+            hot = np.maximum(hot, yel * mk)
     hot = np.maximum(hot, warm * m)
+    if arcs:
+        # heavy/spin: el bordado naranja de la túnica (tabardo de frente, falda al vuelo) sobresale y tiene el
+        # croma de la cuchilla, pero nunca tiene núcleo claro (L95 <= 172; cuchilla y arcos >= 214)
+        lb4, n4 = ndi.label(ndi.binary_dilation(m))
+        if n4:
+            l95 = np.array([np.percentile(L[(lb4 == i) & m], 95) if ((lb4 == i) & m).any() else 0 for i in range(1, n4 + 1)])
+            m &= np.concatenate([[False], l95 >= 190])[lb4]
     # núcleo blanco-caliente pegado a lo que ya brilla
     core = (L > 185) & (C < 40) & solid & ndi.binary_dilation(m, iterations=3)
     m = m | core

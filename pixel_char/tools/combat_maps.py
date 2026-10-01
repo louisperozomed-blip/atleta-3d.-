@@ -26,7 +26,7 @@ from combat_emission import emission
 from common import DIRS, NFRAMES, OUT, ROOT, frame_name
 from normals import height_map, normal_from_height, specular_map
 
-ANIMS = ["attack1", "attack2", "attack3", "parry", "block", "dodge", "hit", "death", "riposte", "deathblow"]
+ANIMS = ["attack1", "attack2", "attack3", "parry", "block", "dodge", "hit", "death", "riposte", "deathblow", "heavy", "spin"]
 COUT = os.path.join(OUT, "combat")
 WASSETS = os.path.join(ROOT, "world", "assets")
 MAPS = os.path.join(CBUILD, "maps")
@@ -47,7 +47,14 @@ DUR = {
     # Duelo 3: contraataque rápido tras el parry (encadenable hasta 3 veces) y remate con la cuchilla clavada
     "riposte":   [40, 45, 50, 60, 80, 110],
     "deathblow": [110, 140, 90, 170, 150, 190],
+    # Combate completo: HEAVY = CROUCH (preparación) → CHARGE / CHARGE MAX (carga en bucle mientras se mantiene;
+    # el brillo crece por código) → RELEASE (suelta, rápida) → IMPACT (golpe) → RECOVERY (larga)
+    # SPIN (remate giratorio): WIND UP, TWIST → SPIN ×2 (activos en 360°) → SLASH END → RECOVERY larga y castigable
+    "heavy":     [120, 130, 130, 60, 120, 210],
+    "spin":      [80, 70, 70, 70, 90, 240],
 }
+# frames con emisión grande (arcos de luz, carga de la cuchilla): la regla de «piezas que sobresalen» la admite
+BIGEMIT = {"heavy": [1, 2, 3, 4], "spin": [2, 3, 4]}
 # Fases por frame: prep = preparación, activo, rec = recuperación. "cancel" = frames en los que se
 # puede cancelar (esquiva, o encadenar el siguiente ataque del combo), "chain" = ventana de encadenado.
 PHASES = {
@@ -71,9 +78,13 @@ PHASES = {
                 "cancel": {"dodge": [4, 5], "chain": [3, 4, 5]}, "next": "riposte"},
     "deathblow": {"fase": ["prep", "prep", "prep", "activo", "rec", "rec"], "activo": [3],
                   "cancel": {}, "next": None},
+    "heavy": {"fase": ["prep", "carga", "carga", "prep", "activo", "rec"], "activo": [4], "carga": [1, 2],
+              "cancel": {"dodge": [5], "chain": [4, 5]}, "next": None},
+    "spin": {"fase": ["prep", "prep", "activo", "activo", "rec", "rec"], "activo": [2, 3], "giro360": [2, 3],
+             "cancel": {}, "next": None},
 }
 LOOP = {"block": True}
-NAMES = {"prep": "preparación", "activo": "activo", "rec": "recuperación"}
+NAMES = {"prep": "preparación", "carga": "carga (bucle)", "activo": "activo", "rec": "recuperación"}
 
 
 def main():
@@ -101,7 +112,7 @@ def main():
                 h, alpha = height_map(rgba)
                 nrm = normal_from_height(h, alpha)
                 spec = specular_map(rgba)
-                em = emission(rgba, big_ok=i in PHASES[an]["activo"] or an == "attack3")
+                em = emission(rgba, big_ok=i in PHASES[an]["activo"] or an == "attack3" or i in BIGEMIT.get(an, []), arcs=an in BIGEMIT)
                 # lo que brilla no tiene brillo especular propio (ya emite)
                 spec = spec * (1 - em)
                 y, x = di * FH, i * FW
@@ -158,7 +169,7 @@ def main():
         a = {"frames": frames, "total_ms": t, "loop": LOOP.get(an, False), "activo": ph["activo"],
              "ventanas_cancelacion": ph["cancel"], "siguiente_combo": ph["next"],
              "etiquetas": lab}
-        for k in ("loop", "reaccion", "invulnerable", "hold_last"):
+        for k in ("loop", "reaccion", "invulnerable", "hold_last", "carga", "giro360"):
             if k in ph and k != "loop":
                 a[k] = ph[k]
         if "loop" in ph:
@@ -191,6 +202,8 @@ def main():
                               **({"loop_frames": PHASES[an]["loop"]} if "loop" in PHASES[an] else {}),
                               **({"invulnerable": PHASES[an]["invulnerable"]} if "invulnerable" in PHASES[an] else {}),
                               **({"reaccion": PHASES[an]["reaccion"]} if "reaccion" in PHASES[an] else {}),
+                              **({"carga": PHASES[an]["carga"]} if "carga" in PHASES[an] else {}),
+                              **({"giro360": PHASES[an]["giro360"]} if "giro360" in PHASES[an] else {}),
                               "next": PHASES[an]["next"], "etiquetas": L["animations"][an]} for an in ANIMS},
           "root_motion_px": {k: [round(v * SC, 1) for v in vals] for k, vals in root.items()}}
     json.dump(wm, open(os.path.join(WASSETS, "combat_atlas.json"), "w"), ensure_ascii=False)

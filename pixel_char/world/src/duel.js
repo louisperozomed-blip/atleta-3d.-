@@ -17,12 +17,17 @@
   "use strict";
   const W = (window.W = window.W || {});
   const D = (W.DUEL = {
-    sheets: { riposte: "auto", deathblow: "auto", deflected: "auto", counter: "auto" },
+    sheets: { riposte: "auto", deathblow: "auto", deflected: "auto", counter: "auto", heavy: "auto", spin: "auto" },
     fallback: {
       riposte: { sheet: "attack1", speed: 1.4, trail: 0xff8a2a },        // attack1 acelerado con estela naranja
       deathblow: { sheet: "attack3", speed: 1.0, fx: true },             // attack3 con destello y estallido
       deflected: { sheet: "hit", bounce: true },                          // RECOIL/STAGGER + rebote por código
       counter: { sheet: "attack1", speed: 1.35 },                         // attack1 rápido
+      // Combate completo: el fuerte = attack3 con la pose de carga mantenida y el brillo de la carga por código; el
+      // remate giratorio = attack2 algo más rápido con el golpe en 360°; el HEAVY del autómata = su barrido amplio
+      // (attack2) con la retención larga del plan
+      heavy: { sheet: "attack3", speed: 1.0, glow: true, foe: { sheet: "attack2", speed: 1.0 } },
+      spin: { sheet: "attack2", speed: 1.15, spin360: true },
     },
     deflectT: 0.7,                 // desequilibrado tras tu parry perfecto (s)
     ripWin: { perfect: 0.7, normal: 0.32 },   // ventana para empezar el riposte
@@ -49,8 +54,9 @@
     if (!(name in D.sheets)) return null;
     const M = f.M();
     if (D.sheets[name] !== "sustituto" && M.animations[name]) return { sheet: name, speed: 1, fb: false, noChain: true };
-    const F = D.fallback[name];
-    return { sheet: F.sheet, speed: F.speed || 1, fb: true, trail: F.trail, bounce: !!F.bounce, fx: !!F.fx, noChain: true };
+    let F = D.fallback[name];
+    if (F.foe && f.team !== "player") F = F.foe;              // sustituto propio del enemigo (no tiene attack3)
+    return { sheet: F.sheet, speed: F.speed || 1, fb: true, trail: F.trail, bounce: !!F.bounce, fx: !!F.fx, glow: !!F.glow, spin360: !!F.spin360, noChain: true };
   };
   W.duelUsesSheet = function (f, name) { const R = W.duelSheet(f, name); return !!R && !R.fb; };
 
@@ -146,7 +152,7 @@
       ring.hit = R.bad ? "bad" : "ok"; ring.hitT = 0;
     }
     R.n = n;
-    if (inRip && a.f < 4) { a.chain = true; a.chainName = "riposte"; a.chainData = data; return "queued"; }
+    if (inRip && a.f < W.hitF(a) + 1) { a.chain = true; a.chainName = "riposte"; a.chainData = data; return "queued"; }
     return "riposte";
   };
   W.duelStarted = function (f, a) {
@@ -245,7 +251,7 @@
     if (!ta || !W.isAtk(ta) || AT.perilous || peril(t, ta) || a.counter || ta.counter) return false;
     if (["riposte", "deathblow"].includes(a.name) || ["riposte", "deathblow"].includes(ta.name) || t.body.jump || att.body.jump) return false;
     const tl = t.toImpact(), ti = a.impactT != null ? a.impactT : W.ct;
-    const sync = (ta.f < 3 && tl != null && tl <= CLASH) || (ta.f >= 3 && ta.impactT != null && Math.abs(ta.impactT - ti) <= CLASH);
+    const sync = (ta.f < W.hitF(ta) && tl != null && tl <= CLASH) || (ta.f >= W.hitF(ta) && ta.impactT != null && Math.abs(ta.impactT - ti) <= CLASH);
     if (!sync) return false;
     const face = Math.abs(norm(Math.atan2(att.body.z - t.body.z, att.body.x - t.body.x) - t.body.heading));
     if (face > 1.6) return false;

@@ -299,7 +299,7 @@
             this.strike(st.feint, "feint", st, true);
             return;
           }
-          if (a.f < 4) return;
+          if (a.f < W.hitF(a) + 1) return;
           if (C.i + 1 >= C.steps.length) { a.speed = CFG.lastRecK; return; }   // último golpe: recuperación más lenta
           if (C.readyT == null) C.readyT = this.t;
         } else if (a) return;
@@ -572,7 +572,7 @@
   }
   function onFrame(f, a) {
     if (a.name === "hit" && a.f === 0 && f.ai) f.ai.lastHits.push(f.ai.t);
-    if (W.isAtk(a) && a.f === 2 && W.sfx) W.sfx.combat(a.name === "attack2" || (a.level || 0) >= 2 ? "swingHeavy" : "swing");
+    if (W.isAtk(a) && a.f === W.hitF(a) - 1 && W.sfx) W.sfx.combat(a.name === "attack2" || (a.level || 0) >= 2 ? "swingHeavy" : "swing");
     if (a.name.startsWith("attack") && a.f === 3 && a.move === "sweep" && W.fx) {
       // barrido bajo: tierra a ras de suelo a lo largo del arco
       const b = f.body;
@@ -599,7 +599,7 @@
     const a = f.act, tt = ai ? ai.t : 0;
     let red = false;
     f.relFlash = Math.max(0, (f.relFlash || 0) - dt / 0.18);
-    if (a && W.isAtk(a) && a.f < 3) {
+    if (a && W.isAtk(a) && a.f < W.hitF(a)) {
       const P = a.plan;
       red = (a.level || 0) >= 3;
       if (!P || P.t < P.wind) k = 1.6 + 1.8 * (0.5 + 0.5 * Math.sign(Math.sin(tt * 2 * Math.PI * (red ? 9 : 7))));   // CARGA: parpadea
@@ -617,7 +617,7 @@
     const guardEye = ai && ai.commit && ai.commit.stanceOn && a && (a.name === "block" || a.name === "parry");
     if (guardEye) k = Math.max(k, 2.2);
     // rompeguardias cargando: ojo naranja intenso (distinto del ámbar de su guardia y del rojo de los peligrosos)
-    const brk = !!(a && a.breaker && a.f < 3);
+    const brk = !!(a && a.breaker && a.f < W.hitF(a));
     if (brk) k = Math.max(k, 2.6);
     const col = U.uEyeCol.value, want = red ? [1.0, 0.22, 0.14] : brk ? [1.0, 0.5, 0.08] : guardEye ? [1.0, 0.72, 0.22] : [0.35, 0.95, 1.0];
     col.set(want[0], want[1], want[2]);

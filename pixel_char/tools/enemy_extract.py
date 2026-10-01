@@ -128,7 +128,7 @@ def run(only=None):
         g = sh["grid"]
         # texto: cabecera y rótulos de la izquierda
         text = np.zeros((H, W), bool)
-        text[:g["rows"][0] - 2] = True
+        text[:max(0, g["rows"][0] - 2)] = True          # (grid_c: la 1.ª fila empieza en 0)
         xmin = g["cols"][0] - 4
         if g.get("layout") == "b":
             # hojas del Duelo 3 (enemy_grid.grid_b): el texto va dentro de las celdas (número arriba, fase debajo)

@@ -79,7 +79,12 @@
   // sustituto configurable en W.DUEL, p. ej. attack1 acelerado) y ¿es un golpe? (attack1-3 y los del duelo)
   const an = (a) => a.sheet || a.name;
   const isAtk = (a) => !!a && (!!a.atk || a.name.startsWith("attack"));
-  W.isAtk = isAtk; W.actSheet = an;
+  // frame de impacto de cada golpe (Combate completo): el primero «activo» de su hoja en el atlas (heavy: 4 =
+  // IMPACT; spin: 2 = el primer SPIN); 3 en attack1-3, riposte, deathblow, counter... Las fases relativas a él:
+  // preparación < hf, suelta = hf-1, encadenado desde hf, recuperación > hf
+  const HF = (a) => (a && a.hf != null ? a.hf : 3);
+  function hitFrame(M, s) { const A = M && M.animations && M.animations[s]; return A && A.activo && A.activo.length ? A.activo[0] : 3; }
+  W.isAtk = isAtk; W.actSheet = an; W.hitF = HF; W.hitFrameOf = hitFrame;
 
   class Fighter {
     constructor(body, o) {
@@ -114,11 +119,11 @@
     // segundos que faltan para el impacto del ataque en curso (null si no está preparando un ataque)
     toImpact() {
       const a = this.act;
-      if (!a || !isAtk(a) || a.f >= 3) return null;
+      if (!a || !isAtk(a) || a.f >= HF(a)) return null;
       const P = a.plan;
       if (P && !P.done) return (P.wind + P.hold + P.rel - P.t) / (a.speed || 1);
       const c = cumOf(this.M(), an(a));
-      return (c[3] - (a.tt || 0)) * (a.slow || 1) / (a.speed || 1);
+      return (c[HF(a)] - (a.tt || 0)) * (a.slow || 1) / (a.speed || 1);
     }
     // ---- entradas ------------------------------------------------------------------------
     input(type, data) {
@@ -128,7 +133,7 @@
         // FINTA: guardia durante la preparación de tu ataque = lo cancelas (gasta stamina) y la pulsación sigue
         // como guardia
         const fa = this.act;
-        if (fa && isAtk(fa) && fa.f < 3 && !fa.plan && !fa.noFeint && this.st >= C.feintCost * 0.5) {
+        if (fa && isAtk(fa) && fa.f < HF(fa) && !fa.plan && !fa.noFeint && this.st >= C.feintCost * 0.5) {
           this.st = Math.max(0, this.st - C.feintCost); this.stT = 0; this.act = null; this.atkHeld = false;
           if (W.combatLog) W.combatLog.push({ ev: "feint", who: this.name, anim: fa.name, t: W.U ? +W.U.uTime.value.toFixed(3) : 0 });
           if (W.onFeint) W.onFeint(this, fa);
@@ -176,7 +181,7 @@
           // riposte encadenado y remate: los decide duel.js (null = regla normal)
           const r = W.duelCan ? W.duelCan(this, a) : null;
           if (r != null) return r;
-          return !!cm.next && !a.noChain && f >= 3;                   // ventana de encadenado: IMPACT..RECOVERY
+          return !!cm.next && !a.noChain && f >= HF(a);               // ventana de encadenado: IMPACT..RECOVERY
         }
         if (type === "dodge") return (cancel.dodge || []).indexOf(f) >= 0 && this.st >= C.dodgeCost * 0.5;
         if (type === "parry") return f >= 4;
@@ -204,7 +209,7 @@
         const a = this.act;
         const next = a && isAtk(a) && !a.noChain ? (this.M().animations[an(a)] || {}).next : null;
         // pulsado en IMPACT: queda marcado y el golpe siguiente empieza al entrar en FOLLOW THROUGH
-        if (next && a.f < 4) { a.chain = true; a.chainData = data; return; }
+        if (next && a.f < HF(a) + 1) { a.chain = true; a.chainData = data; return; }
         this.startAttack(next && next.startsWith("attack") ? next : "attack1", data);
       } else if (type === "parry") { this.guardT = t0 != null ? t0 : W.ct; this.start("parry", { pressT: this.guardT }); }
       else if (type === "dodge") this.startDodge(data);
@@ -226,6 +231,7 @@
       // hoja propia o sustituto (W.DUEL): riposte → attack1 ×1.4, deathblow → attack3, counter → attack1 rápido
       const R = W.duelSheet ? W.duelSheet(this, name) : null;
       if (R) { a.sheet = R.sheet; a.speed = R.speed; a.fb = R.fb; if (R.trail) a.trail = R.trail; if (R.fb || R.noChain) a.noChain = true; a.slow = 1; }
+      a.hf = hitFrame(this.M(), an(a));
       if (data) {
         if (data.plan) { a.plan = Object.assign({ t: 0, hold: 0 }, data.plan); a.slow = 1; }
         if (data.move) a.move = data.move;
@@ -272,7 +278,7 @@
       // retroceso); golpe pesado = tambaleo completo con retroceso
       if (this.team !== "player" && !opts.guardBreak) {
         const a = this.act;
-        if (a && isAtk(a) && a.armor && a.f < 4) { this.armorT = 0.2; return "armor"; }
+        if (a && isAtk(a) && a.armor && a.f < HF(a) + 1) { this.armorT = 0.2; return "armor"; }
         if (!opts.heavy) {
           b.heading = opts.dir + Math.PI;
           this.start("hit", { kb: (opts.kb || 0.35) * 0.3 * this.kbK, kdir: opts.dir, moved: 0, flinch: true, flinchEnd: 2 });
@@ -354,24 +360,24 @@
       const P = a.plan;
       if (P && !P.done && isAtk(a)) {
         // plan del golpe: CARGA (0-1) → RETENCIÓN (1 fijo) → SUELTA (2) → impacto
-        const c = cumOf(this.M(), an(a)), t1 = P.wind, t2 = t1 + P.hold, t3 = t2 + P.rel;
-        if (P.feintNow) a.tt = c[2] - 1e-4;                       // finta: congelado al final de la carga
-        else if (P.feint && P.t + dt * a.speed >= t1) { P.t = t1; a.tt = c[2] - 1e-4; P.feintNow = true; if (this.onPhase) this.onPhase(a, "feint"); }
+        const c = cumOf(this.M(), an(a)), t1 = P.wind, t2 = t1 + P.hold, t3 = t2 + P.rel, h = HF(a);
+        if (P.feintNow) a.tt = c[h - 1] - 1e-4;                   // finta: congelado al final de la carga
+        else if (P.feint && P.t + dt * a.speed >= t1) { P.t = t1; a.tt = c[h - 1] - 1e-4; P.feintNow = true; if (this.onPhase) this.onPhase(a, "feint"); }
         else {
           P.t += dt * a.speed;
           if (P.hold > 0 && !P.held && P.t >= t1) { P.held = true; if (this.onPhase) this.onPhase(a, "hold"); }
           if (!P.released && P.t >= t2) { P.released = true; if (this.onPhase) this.onPhase(a, "release"); }
-          if (P.t < t1) a.tt = P.t / t1 * c[2];
-          else if (P.t < t2) a.tt = c[2] - 1e-4;
-          else if (P.t < t3) a.tt = c[2] + (P.t - t2) / P.rel * (c[3] - c[2]);
-          else { a.tt = c[3] + (P.t - t3); P.done = true; over = (P.t - t3) / (a.speed || 1); }
+          if (P.t < t1) a.tt = P.t / t1 * c[h - 1];
+          else if (P.t < t2) a.tt = c[h - 1] - 1e-4;
+          else if (P.t < t3) a.tt = c[h - 1] + (P.t - t2) / P.rel * (c[h] - c[h - 1]);
+          else { a.tt = c[h] + (P.t - t3); P.done = true; over = (P.t - t3) / (a.speed || 1); }
         }
       } else {
-        if (a.slow && a.slow !== 1 && isAtk(a) && a.f < 3) sp /= a.slow;
+        if (a.slow && a.slow !== 1 && isAtk(a) && a.f < HF(a)) sp /= a.slow;
         let nt = (a.tt || 0) + dt * sp;
         // RETRASO: mientras se mantenga el ataque, la preparación se queda al final de la carga (frame 1)
-        if (a.holdable && isAtk(a) && a.f < 3) {
-          const c2 = cumOf(this.M(), an(a))[2];
+        if (a.holdable && isAtk(a) && a.f < HF(a)) {
+          const c2 = cumOf(this.M(), an(a))[HF(a) - 1];
           if (this.atkHeld && nt >= c2 && (a.heldT || 0) < C.holdMax) { nt = c2 - 1e-4; a.heldT = (a.heldT || 0) + dt; if (a.heldT >= C.holdMax) this.atkHeld = false; }
         }
         a.tt = nt;
@@ -400,21 +406,21 @@
       if (a.f !== a.fPrev) {
         // instante exacto del impacto: lo que el frame se pasó en este paso no cuenta (20 fps en móvil = hasta
         // 50 ms de error si se midiera con el frame)
-        if (isAtk(a) && a.f >= 3 && a.fPrev < 3 && a.impactT == null) {
+        if (isAtk(a) && a.f >= HF(a) && a.fPrev < HF(a) && a.impactT == null) {
           const c = cumOf(this.M(), an(a));
-          a.impactT = W.ct - Math.max(0, over != null ? over : (a.tt - c[3]) / Math.max(1e-6, sp));
+          a.impactT = W.ct - Math.max(0, over != null ? over : (a.tt - c[HF(a)]) / Math.max(1e-6, sp));
         }
         if (W.onCombatFrame) W.onCombatFrame(this, a);
       }
       // combo: pulsación dentro de la ventana de encadenado
-      if (isAtk(a) && a.chain && a.f >= 4) { a.chain = false; const nx = a.chainName || this.M().animations[an(a)].next; this.act = null; this.startAttack(nx, a.chainData); return; }
+      if (isAtk(a) && a.chain && a.f >= HF(a) + 1) { a.chain = false; const nx = a.chainName || this.M().animations[an(a)].next; this.act = null; this.startAttack(nx, a.chainData); return; }
       this.motion(a, dt);
     }
     // desplazamientos del cuerpo durante las acciones (estocada, esquiva, retroceso)
     motion(a, dt) {
       const b = this.body;
       if (isAtk(a)) {
-        if (a.track && a.target && a.target.alive && a.f < 3) {
+        if (a.track && a.target && a.target.alive && a.f < HF(a)) {
           const tb = a.target.body, d = Math.hypot(tb.x - b.x, tb.z - b.z);
           a.aim = Math.atan2(tb.z - b.z, tb.x - b.x);
           a.lunge = Math.max(a.moved, Math.min(a.cap, a.moved + Math.max(0, d - a.want)));
@@ -424,8 +430,8 @@
           b.heading += d * Math.min(1, dt * 22);
         }
         // la estocada ocurre durante la preparación y el impacto (frames 1-3)
-        const c = cumOf(this.M(), an(a));
-        const t0 = a.lungeFrom === "release" ? c[2] : c[1], t1 = c[4];
+        const c = cumOf(this.M(), an(a)), h = HF(a);
+        const t0 = a.lungeFrom === "release" ? c[h - 1] : c[h - 2], t1 = c[h + 1];
         const u = Math.min(1, Math.max(0, (a.tt - t0) / (t1 - t0)));
         const want = a.lunge * (1 - Math.pow(1 - u, 2));
         const step = want - a.moved;

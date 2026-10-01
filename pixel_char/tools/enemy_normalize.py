@@ -22,7 +22,7 @@ from enemy_extract import EBUILD, EREF
 ECOLOR = os.path.join(EBUILD, "color")
 EFIX = os.path.join(EBUILD, "fixed")
 os.makedirs(EFIX, exist_ok=True)
-ANIMS = ["idle", "walk", "run", "attack1", "attack2", "parry", "hit", "block", "dodge", "death", "deflected", "counter"]
+ANIMS = ["idle", "walk", "run", "attack1", "attack2", "parry", "hit", "block", "dodge", "death", "deflected", "counter", "heavy"]
 DIRS = ["S", "SW", "W", "NW", "N", "NE", "E", "SE"]
 CANVAS = (360, 330)
 PIVOT = (180, 300)
@@ -72,8 +72,12 @@ def main():
         an, rows = v["anim"], v["rows"]
         X = np.array([[meta[f"{an}_{d}_{i}"]["box"][0] + (meta[f"{an}_{d}_{i}"]["tile"] or {"cx": np.nan})["cx"] for i in range(6)] for d in rows])
         Y = np.array([[meta[f"{an}_{d}_{i}"]["box"][1] + (meta[f"{an}_{d}_{i}"]["tile"] or {"cy": np.nan})["cy"] for i in range(6)] for d in rows])
-        colpat = np.nanmedian(X, 0)
         ii = np.arange(6)
+        with np.errstate(all="ignore"):
+            colpat = np.nanmedian(X, 0)
+        # heavy IMPACT: los escombros tapan la baldosa en las 4 filas -> esa columna se interpola de sus vecinas
+        if np.isnan(colpat).any():
+            okc = ~np.isnan(colpat); colpat = np.interp(ii, ii[okc], colpat[okc])
         for r, d in enumerate(rows):
             ok = np.isfinite(X[r]) & np.isfinite(Y[r])
             kx = np.polyfit(ii[ok], (X[r] - colpat)[ok], 1) if ok.sum() >= 2 else [0, 0]
@@ -85,6 +89,8 @@ def main():
     for an in ANIMS:
         for d in DIRS:
             names = [f"{an}_{d}_{i}" for i in range(6)]
+            if not os.path.exists(os.path.join(ECOLOR, names[0] + ".png")):
+                continue                                   # heavy: solo llegó la hoja _2 (S, SW, W, NW)
             imgs = [load(n) for n in names]
             bots, cxs, fxs = [], [], []
             for img in imgs:
@@ -112,6 +118,22 @@ def main():
         for i in range(6):
             out[f"{an}_{d}_{i}"] = out[f"{san}_{sd}_{i}"][:, ::-1].copy()
         fixes.append({"frames": f"{an}_{d}_1..6", "tipo": kind, "problema": why, "arreglo": f"espejo horizontal de {san} {sd}"})
+    # HEAVY (Combate completo): solo llegó heavy_2 (S, SW, W, NW) y su fila W está dibujada mirando a la derecha
+    # (el ojo y la cabeza a la derecha en los 6 frames): esa fila es la E tal cual y la W es su espejo;
+    # SE y NE, espejos de SW y NW; N no se puede deducir de ninguna: NW provisional (b, regenerar)
+    for i in range(6):
+        wE = out[f"heavy_W_{i}"]
+        out[f"heavy_E_{i}"] = wE.copy()
+        out[f"heavy_W_{i}"] = wE[:, ::-1].copy()
+        out[f"heavy_SE_{i}"] = out[f"heavy_SW_{i}"][:, ::-1].copy()
+        out[f"heavy_NE_{i}"] = out[f"heavy_NW_{i}"][:, ::-1].copy()
+        out[f"heavy_N_{i}"] = out[f"heavy_NW_{i}"].copy()
+    fixes.append({"frames": "heavy_E_1..6", "tipo": "a", "problema": "heavy_2 W está dibujada mirando a la derecha (ojo y cabeza a la derecha)",
+                  "arreglo": "esa fila es la E; la W es su espejo horizontal"})
+    fixes.append({"frames": "heavy_SE_1..6, heavy_NE_1..6", "tipo": "a", "problema": "no hay heavy_1 (N, NE, E, SE)",
+                  "arreglo": "espejos horizontales de heavy SW y NW"})
+    fixes.append({"frames": "heavy_N_1..6", "tipo": "b", "problema": "no hay fila N y no se deduce de ninguna otra",
+                  "arreglo": "provisional: la fila NW; regenerar heavy_1 (N, NE, E, SE)"})
     # hit N: hit_1 N tiene los frames 5-6 de frente -> STAGGER (4) sostenido y READY = idle N reposo
     out["hit_N_4"] = out["hit_N_3"].copy()
     out["hit_N_5"] = out["idle_N_0"].copy()

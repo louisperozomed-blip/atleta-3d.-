@@ -51,6 +51,8 @@ DUR = {
     # counter = respuesta rápida a tu golpe desviado (SLASH activo a los ~220 ms)
     "deflected": [60, 100, 170, 170, 120, 90],
     "counter": [70, 80, 70, 75, 110, 140],
+    # Combate completo: HEAVY = WIND UP, RAISE, HOLD (aviso largo: el juego lo sostiene), SLAM, IMPACT, RECOVERY
+    "heavy": [170, 180, 260, 70, 130, 270],
 }
 PH = {
     "idle": (["rec"] * 6, []), "walk": (["rec"] * 6, []), "run": (["rec"] * 6, []),
@@ -63,8 +65,9 @@ PH = {
     "death": (["activo", "rec", "rec", "rec", "rec", "rec"], [0]),
     "deflected": (["activo", "rec", "rec", "rec", "rec", "rec"], [0]),
     "counter": (["prep", "prep", "prep", "activo", "rec", "rec"], [3]),
+    "heavy": (["prep", "prep", "hold", "prep", "activo", "rec"], [4]),
 }
-NAMES = {"prep": "preparación", "activo": "activo", "rec": "recuperación"}
+NAMES = {"prep": "preparación", "hold": "retención (aviso largo)", "activo": "activo", "rec": "recuperación"}
 LOOP = {"idle": True, "walk": True, "run": True}
 
 

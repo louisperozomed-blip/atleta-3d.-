@@ -88,6 +88,22 @@
    "IMPACT",
    "PULL OUT",
    "RECOVER"
+  ],
+  "heavy": [
+   "CROUCH",
+   "CHARGE",
+   "CHARGE MAX",
+   "RELEASE",
+   "IMPACT",
+   "RECOVERY"
+  ],
+  "spin": [
+   "WIND UP",
+   "TWIST",
+   "SPIN",
+   "SPIN",
+   "SLASH END",
+   "RECOVERY"
   ]
  },
  "sheets": {
@@ -1016,6 +1032,186 @@
      "RECOVER"
     ]
    }
+  },
+  "heavy_1": {
+   "anim": "heavy",
+   "title": "HEAVY",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "CROUCH",
+     "CHARGE",
+     "CHARGE MAX",
+     "RELEASE",
+     "IMPACT",
+     "RECOVERY"
+    ],
+    "NE": [
+     "CROUCH",
+     "CHARGE",
+     "CHARGE MAX",
+     "RELEASE",
+     "IMPACT",
+     "RECOVERY"
+    ],
+    "E": [
+     "CROUCH",
+     "CHARGE",
+     "CHARGE MAX",
+     "RELEASE",
+     "IMPACT",
+     "RECOVERY"
+    ],
+    "SE": [
+     "CROUCH",
+     "CHARGE",
+     "CHARGE MAX",
+     "RELEASE",
+     "IMPACT",
+     "RECOVERY"
+    ]
+   },
+   "nota": "llegó en JPEG (zip Animaciones_HEAVY_SPIN): convertida a PNG sin tocar"
+  },
+  "heavy_2": {
+   "anim": "heavy",
+   "title": "HEAVY",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "CROUCH",
+     "CHARGE",
+     "CHARGE MAX",
+     "RELEASE",
+     "IMPACT",
+     "RECOVERY"
+    ],
+    "SW": [
+     "CROUCH",
+     "CHARGE",
+     "CHARGE MAX",
+     "RELEASE",
+     "IMPACT",
+     "RECOVERY"
+    ],
+    "W": [
+     "CROUCH",
+     "CHARGE",
+     "CHARGE MAX",
+     "RELEASE",
+     "IMPACT",
+     "RECOVERY"
+    ],
+    "NW": [
+     "CROUCH",
+     "CHARGE",
+     "CHARGE MAX",
+     "RELEASE",
+     "IMPACT",
+     "RECOVERY"
+    ]
+   },
+   "nota": "llegó en JPEG (zip Animaciones_HEAVY_SPIN): convertida a PNG sin tocar"
+  },
+  "spin_1": {
+   "anim": "spin",
+   "title": "SPIN",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "WIND UP",
+     "TWIST",
+     "SPIN",
+     "SPIN",
+     "SLASH END",
+     "RECOVERY"
+    ],
+    "NE": [
+     "WIND UP",
+     "TWIST",
+     "SPIN",
+     "SPIN",
+     "SLASH END",
+     "RECOVERY"
+    ],
+    "E": [
+     "WIND UP",
+     "TWIST",
+     "SPIN",
+     "SPIN",
+     "SLASH END",
+     "RECOVERY"
+    ],
+    "SE": [
+     "WIND UP",
+     "TWIST",
+     "SPIN",
+     "SPIN",
+     "SLASH END",
+     "RECOVERY"
+    ]
+   },
+   "nota": "llegó en JPEG (zip Animaciones_HEAVY_SPIN): convertida a PNG sin tocar"
+  },
+  "spin_2": {
+   "anim": "spin",
+   "title": "SPIN",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "WIND UP",
+     "TWIST",
+     "SPIN",
+     "SPIN",
+     "SLASH END",
+     "RECOVERY"
+    ],
+    "SW": [
+     "WIND UP",
+     "TWIST",
+     "SPIN",
+     "SPIN",
+     "SLASH END",
+     "RECOVERY"
+    ],
+    "W": [
+     "WIND UP",
+     "TWIST",
+     "SPIN",
+     "SPIN",
+     "SLASH END",
+     "RECOVERY"
+    ],
+    "NW": [
+     "WIND UP",
+     "TWIST",
+     "SPIN",
+     "SPIN",
+     "SLASH END",
+     "RECOVERY"
+    ]
+   },
+   "nota": "llegó en JPEG (zip Animaciones_HEAVY_SPIN): convertida a PNG sin tocar"
   }
  }
 }

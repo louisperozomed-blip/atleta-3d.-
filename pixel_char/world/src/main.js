@@ -189,6 +189,7 @@
       // hitstop: el tiempo de juego se congela un instante (la cámara, la luz y las partículas siguen)
       const gdt = W.combatStep ? W.combatStep(dt) : dt;
       if (W.controlsUpdate) W.controlsUpdate(dt);
+      if (W.animViewerStep) W.animViewerStep(dt);
       if (W.pf) W.pf.update(gdt);
       player.update(gdt);
       W.U.uPlayer.value.set(player.x, player.y, player.z);
@@ -206,6 +207,8 @@
       // seguimiento con un leve retraso y un poco de anticipación hacia donde camina (feel.js: F.on.cam)
       const ahead = W.FEEL && W.FEEL.on.cam ? Math.min(player.speed || 0, 4.5) * 0.22 : 0;
       tmp.set(player.x + Math.cos(player.heading) * ahead, player.y + 1.0, player.z + Math.sin(player.heading) * ahead);
+      if (W.camFocus) tmp.set(W.camFocus.x, W.camFocus.y + 1.0, W.camFocus.z);   // visor de animaciones
+      else if (W.camBias) W.camBias(tmp);                                          // sesgo hacia el objetivo (target.js)
       camT.lerp(tmp, W.camSnap ? 1 : 1 - Math.exp(-dt * (W.FEEL && W.FEEL.on.cam ? 3 : 4)));
       W.camSnap = false;
       // sacudida en la dirección del golpe (combat.js); se suma solo a la vista, no al seguimiento

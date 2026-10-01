@@ -1,0 +1,277 @@
+{
+ "problemas": [
+  {
+   "anim": "heavy",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "tipo": "a",
+   "problema": "maquetación en tarjetas (número en la esquina, no centrado encima) y rayas del título",
+   "arreglo": "columnas por los bordes oscuros de las tarjetas y recorte por dentro de cada tarjeta (combat_extract.card_columns)"
+  },
+  {
+   "anim": "spin",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "tipo": "a",
+   "problema": "igual que heavy (tarjetas) y una raya de título más fina que la tomaba por separador de banda",
+   "arreglo": "las rayas por encima de y=50 no son separadores"
+  },
+  {
+   "anim": "heavy",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "tipo": "a",
+   "problema": "llegó en JPEG (artefactos en el fondo oscuro)",
+   "arreglo": "el clasificador de fondo adaptativo los absorbe; sin halo tras el matte"
+  },
+  {
+   "anim": "heavy",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "tipo": "a",
+   "problema": "casco ~12 % mayor que idle a igual baldosa (como riposte/deathblow)",
+   "arreglo": "escala casco/baldosa: ×1.07"
+  },
+  {
+   "anim": "spin",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "tipo": "a",
+   "problema": "casco ~10 % mayor que idle",
+   "arreglo": "escala casco/baldosa: ×1.06"
+  },
+  {
+   "anim": "heavy",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "tipo": "a",
+   "problema": "el arco del RELEASE, la carga de la cuchilla y el aro del SPIN son amarillos (tono 54-95°), fuera de la regla de emisión de la cuchilla (≤ 68°)",
+   "arreglo": "combat_emission(arcs=True): piezas amarillas claras grandes o que sobresalen; el bordado de la túnica (sin núcleo claro, L95 ≤ 172) no brilla"
+  },
+  {
+   "anim": "heavy",
+   "dirs": [
+    "N",
+    "NE",
+    "NW"
+   ],
+   "frames": [
+    3
+   ],
+   "tipo": "b",
+   "problema": "en RELEASE, detrás del arco queda una cuña oscura (la capa al vuelo pintada casi negra)",
+   "arreglo": "leve a la escala del juego; regenerar si molesta"
+  },
+  {
+   "anim": "heavy",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    1,
+    2
+   ],
+   "tipo": "a",
+   "problema": "CHARGE y CHARGE MAX casi no brillan en la hoja",
+   "arreglo": "el brillo de la carga lo pone el juego y crece mientras se mantiene (etapa 3)"
+  },
+  {
+   "anim": "heavy_automata",
+   "dirs": [
+    "E",
+    "W"
+   ],
+   "tipo": "a",
+   "problema": "heavy_2 W está dibujada mirando a la derecha (ojo y cabeza a la derecha)",
+   "arreglo": "esa fila es la E; la W es su espejo horizontal"
+  },
+  {
+   "anim": "heavy_automata",
+   "dirs": [
+    "SE",
+    "NE"
+   ],
+   "tipo": "a",
+   "problema": "no llegó heavy_1 (N, NE, E, SE)",
+   "arreglo": "espejos horizontales de SW y NW"
+  },
+  {
+   "anim": "heavy_automata",
+   "dirs": [
+    "N"
+   ],
+   "tipo": "b",
+   "problema": "sin fila N y no se deduce de ninguna otra",
+   "arreglo": "provisional: la NW; regenerar heavy_1 del autómata (N, NE, E, SE)"
+  },
+  {
+   "anim": "heavy_automata",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "tipo": "a",
+   "problema": "maquetación distinta (fase «1. WIND UP» bajo la figura, sin números grises) y garras de RAISE/HOLD que suben hasta el título",
+   "arreglo": "enemy_grid.grid_c: solo se quita el texto real y la primera fila empieza arriba del todo"
+  },
+  {
+   "anim": "heavy_automata",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    4
+   ],
+   "tipo": "a",
+   "problema": "en IMPACT los escombros tapan la baldosa (no se puede medir el suelo)",
+   "arreglo": "la posición de esa columna se interpola de sus vecinas"
+  },
+  {
+   "anim": "heavy_automata",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "tipo": "a",
+   "problema": "algo más claro y con menos croma que idle/walk (croma 22 frente a 28 del resto de ataques ya igualados)",
+   "arreglo": "color por zonas hacia idle/walk/run (enemy_color), como attack1/2"
+  },
+  {
+   "anim": "heavy_automata",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    3
+   ],
+   "tipo": "b",
+   "problema": "las rayas de movimiento del SLAM quedan siempre a la izquierda de la figura",
+   "arreglo": "leve (y con el espejo pasan a la derecha en W/SE/NE, lo correcto en esas); regenerar si se quiere exacto"
+  }
+ ],
+ "regenerar_b": [
+  {
+   "anim": "heavy",
+   "dirs": [
+    "N",
+    "NE",
+    "NW"
+   ],
+   "frames": [
+    3
+   ],
+   "tipo": "b",
+   "problema": "en RELEASE, detrás del arco queda una cuña oscura (la capa al vuelo pintada casi negra)",
+   "arreglo": "leve a la escala del juego; regenerar si molesta"
+  },
+  {
+   "anim": "heavy_automata",
+   "dirs": [
+    "N"
+   ],
+   "tipo": "b",
+   "problema": "sin fila N y no se deduce de ninguna otra",
+   "arreglo": "provisional: la NW; regenerar heavy_1 del autómata (N, NE, E, SE)"
+  },
+  {
+   "anim": "heavy_automata",
+   "dirs": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "frames": [
+    3
+   ],
+   "tipo": "b",
+   "problema": "las rayas de movimiento del SLAM quedan siempre a la izquierda de la figura",
+   "arreglo": "leve (y con el espejo pasan a la derecha en W/SE/NE, lo correcto en esas); regenerar si se quiere exacto"
+  }
+ ]
+}

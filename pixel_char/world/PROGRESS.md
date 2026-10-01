@@ -1220,3 +1220,63 @@ puede deducir de ninguna (b: hay que regenerarla; mientras, se usa NW).
 **Presupuesto de la página**: hoy pesa 14,83 MB de los 16 permitidos y 14,3 MB son atlas en base64 (el del
 autómata, 7,2 MB). Tres animaciones más (≈ +1,6 MB) no caben tal cual: en la etapa 1 hay que ganar sitio (se
 mide qué resolución del atlas llega de verdad a la pantalla y se ajusta la compresión).
+
+## Etapa 1 — Animaciones nuevas (heavy y spin del personaje, heavy del autómata) y visor
+
+**Pipeline del personaje** (`combat_extract` → `combat_color` → `combat_normalize` → `combat_maps`):
+- recorte: estas hojas van en **tarjetas** (número en la esquina, no centrado encima) y spin trae unas rayas de
+  título que se tomaban por separadores: las columnas salen de los bordes oscuros de cada tarjeta y cada frame se
+  recorta por dentro de la suya (`card_columns`); antes, los bordes se colaban como rayas verticales;
+- color: ya llegan con el de los ataques (cuchilla L 169-175 y croma 55-59; tela verde croma 9-10, como riposte):
+  se copian sin recolorear;
+- escala: casco y baldosa, como riposte/deathblow (heavy ×1,07, spin ×1,06); ningún frame se sale del lienzo;
+- emisión: el arco del RELEASE, la carga de la cuchilla y el aro del SPIN son amarillos (tono 54-95°), fuera de la
+  regla de la cuchilla (≤ 68°): `combat_emission(arcs=True)` enciende las piezas amarillas claras grandes o que
+  sobresalen, y deja apagado el bordado de la túnica (que sobresale al volar, pero nunca tiene núcleo claro);
+- **fases** (`combat_atlas.json`): HEAVY = CROUCH (preparación) · CHARGE y CHARGE MAX = **carga en bucle**
+  (`carga: [1, 2]`; el brillo lo pone el juego y crece mientras se mantiene) · RELEASE (suelta, 60 ms) · IMPACT
+  (**activo**, frame 4) · RECOVERY (210 ms). SPIN = WIND UP, TWIST · SPIN, SPIN (**activos en 360°**,
+  `giro360: [2, 3]`) · SLASH END · RECOVERY larga (240 ms) y castigable;
+- atlas 4096×2160 → 4096×2592 (12 animaciones). Las celdas de antes no cambian ni un píxel.
+
+**Pipeline del autómata** (`enemy_grid` → `enemy_extract` → `enemy_color` → `enemy_normalize` → `enemy_maps`):
+- maquetación nueva (fase «1. WIND UP» bajo la figura, sin números grises; las garras de RAISE/HOLD suben hasta el
+  título): `enemy_grid.grid_c` quita solo el texto real (lo que `grid_b` tomaba por números eran el ojo y el musgo);
+- color por zonas hacia idle/walk/run (croma 22 → 28, como sus otros ataques);
+- direcciones: solo llegó `heavy_2` (S, SW, W, NW) y su fila W mira a la derecha: **esa fila es la E** y la W es su
+  espejo; SE y NE, espejos de SW y NW; **N = NW provisional (b)**;
+- en IMPACT los escombros tapan la baldosa: la posición de esa columna se interpola de sus vecinas;
+- **fases**: WIND UP, RAISE · **HOLD** (`hold`: el aviso largo; el plan del golpe lo sostiene lo que haga falta) ·
+  SLAM · IMPACT (activo, frame 4) · RECOVERY (270 ms). Pies anclados y ojo por frame, como el resto;
+- atlas 3960×3915 → 3960×4205 (13 animaciones). Las celdas de antes, idénticas.
+
+**Lista (b) — hay que regenerar** (`review/combate_completo/E1_revision.json`):
+1. **heavy del autómata, filas N, NE, E y SE** (la hoja `heavy_1`): N no se puede deducir (ahora es la NW); E, SE
+   y NE salen bien por espejo, pero con el espejo las rayas del SLAM cambian de lado.
+2. heavy del personaje N, NE y NW, frame RELEASE: detrás del arco queda una cuña oscura (la capa al vuelo pintada
+   casi negra). Leve a la escala del juego.
+
+**El motor ya no supone que el impacto es el frame 3**: cada golpe lleva su frame de impacto (`a.hf`, el primero
+«activo» de su hoja; 3 en attack1-3, riposte, deathblow, counter; 4 en heavy; 2 en spin) y todo lo que dependía de
+él (instante del impacto, preparación, suelta del plan del enemigo, encadenado, hyper armor, estocada, choque,
+aviso del ojo) se mide respecto a `a.hf`. Con los golpes de antes el comportamiento es idéntico: duelo 22/22,
+parry 50/50, autómata 21/21.
+
+**Sustitutos configurables** (`W.DUEL.sheets`/`fallback`, igual que los del Duelo 3): `heavy` (attack3 con la pose
+de carga mantenida y el brillo por código; en el autómata, su barrido attack2 con la retención larga), `spin`
+(attack2 ×1,15 con el golpe en 360°), `deflected` (hit con retroceso, ya existía). Con `"sustituto"` se fuerzan.
+
+**Visor de animaciones** (`src/animviewer.js`, panel ⚙ → «visor de animaciones»): personaje (jugador o autómata),
+animación (todas las de su atlas), dirección (las 8), frame a frame o reproduciendo con los tiempos del atlas,
+**con y sin luz** (sin luz = el color de la hoja tal cual + la emisión), y la fase y etiqueta de cada frame. La
+cámara se acerca y centra en el personaje; el autómata se trae junto al jugador a un sitio despejado y su IA se
+detiene; al cerrar todo vuelve a su sitio. Cabe en el iPhone sin tapar la guardia.
+
+**Página**: los mapas de normales de los atlas de combate y del autómata van a **media resolución** (el shader los
+muestrea por UV con filtrado lineal; captura antes/después con el autómata de cerca: igual a la vista). Con las tres
+animaciones nuevas la página pesa **14,2 MB** (antes 14,83 sin ellas).
+
+**Pruebas** (`tests/cc_e1.mjs`): 7/7 sin errores JS (fases en los atlas, visor en escritorio y móvil, con y sin luz,
+reproducir, cerrar). **Revisión** en `review/combate_completo/`: `E1_heavy.png`, `E1_spin.png`,
+`E1_heavy_automata.png` (antes | después con (a) en naranja y (b) en rosa), `E1_tamano.png`, `E1_emision.png`,
+`E1_visor_*.png` y `E1_revision.json` (`tools/cc_review_e1.py`).
