@@ -106,12 +106,18 @@
     } else if (kind === "parry") {
       for (const [fr, g, d] of [[1850, 0.16, 0.5], [2790, 0.1, 0.35], [4100, 0.06, 0.25], [920, 0.1, 0.4]]) tone(c, t, "triangle", fr, fr * 0.985, g, d);
       noiseHit(c, t, "highpass", 5000, 3000, 0.7, 0.25, 0.06);
+    } else if (kind === "parryPerfect") {
+      // perfecto: más agudo y largo, con una campanilla encima
+      for (const [fr, g, d] of [[2350, 0.18, 0.9], [3520, 0.11, 0.7], [4700, 0.07, 0.5], [1175, 0.12, 0.8]]) tone(c, t, "triangle", fr, fr * 0.995, g, d);
+      noiseHit(c, t, "highpass", 6000, 3500, 0.7, 0.3, 0.05);
+      tone(c, t + 0.05, "sine", 3136, 3130, 0.07, 0.7);
     } else if (kind === "block") { tone(c, t, "triangle", 620, 560, 0.14, 0.18); noiseHit(c, t, "bandpass", 1600, 900, 2, 0.2, 0.08); }
     else if (kind === "guardBreak") { tone(c, t, "sawtooth", 300, 90, 0.18, 0.3); noiseHit(c, t, "lowpass", 3000, 300, 0.6, 0.35, 0.25); }
     else if (kind === "dodge") noiseHit(c, t, "bandpass", 1800, 500, 0.9, 0.16, 0.2);
     else if (kind === "stun") { tone(c, t, "sine", 1320, 1310, 0.08, 0.6); tone(c, t + 0.09, "sine", 1760, 1750, 0.06, 0.55); }
     else if (kind === "deathblow") { tone(c, t, "sine", 90, 35, 0.6, 0.45); noiseHit(c, t, "lowpass", 3000, 200, 0.7, 0.45, 0.4); tone(c, t, "triangle", 2200, 2100, 0.08, 0.6); }
     else if (kind === "death") { tone(c, t, "sine", 80, 40, 0.35, 0.35); noiseHit(c, t, "lowpass", 900, 200, 0.6, 0.25, 0.3); }
+    else if (kind === "tick") { tone(c, t, "sine", 1250, 1240, 0.12, 0.05); tone(c, t, "square", 2500, 2480, 0.02, 0.03); }
     else if (kind === "warn") { tone(c, t, "sine", 980, 1480, 0.05, 0.12); }
     // autómata: zumbido grave mecánico al preparar el ataque (motor que se carga + chirrido de metal)
     else if (kind === "charge" || kind === "chargeHeavy") {

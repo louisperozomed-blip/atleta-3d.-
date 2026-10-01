@@ -115,7 +115,8 @@ const def = await page.evaluate(() => { const D = W.ENEMY_DIFF, keep = [D.parry,
   r.parryReps = seq.flat();
   D.parry = keep[0]; D.block = keep[1]; return r; });
 check("su bloqueo: bloquea el golpe del jugador", def.block.includes("foeBlock") && def.block.includes("block"), def.block);
-check("su bloqueo gasta su stamina hasta que se le rompe la guardia", def.blockSeq.includes("guardbreak"), { seq: def.blockSeq.join(","), st: def.st });
+// (desde el parry por niveles, bloquear también le sube la postura: la presión sostenida le rompe la guardia o la postura)
+check("su bloqueo no aguanta para siempre: gasta stamina y postura hasta romperse la guardia o quedar aturdido", def.blockSeq.includes("guardbreak") || def.blockSeq.includes("stun"), { seq: def.blockSeq.slice(0, 16).join(","), st: def.st });
 check("su parry: desvía el golpe y el jugador pierde postura", def.parry.includes("parry") && def.playerPost >= 38, { ev: def.parry, postura: def.playerPost });
 check("su parry sale más cuanto más se repite el mismo ataque", def.parryReps.length > 0 && Math.max(...def.parryReps) >= 2, { repeticiones_en_sus_parries: def.parryReps });
 await page.evaluate(() => { const D = W.ENEMY_DIFF, k = D.parry; D.parry = 1; pair(Math.PI * 0.75, 2.1); W.skipRender = false; W.pf.input("attack", { dir: Math.PI * 1.75 });
@@ -136,7 +137,8 @@ await page.evaluate(() => { pair(Math.PI * 0.75, 2.0); const e = E(); for (let k
 await shot("05_aturdido");
 
 // ---- muerte: se queda en el suelo, se desvanece con esporas; reaparecer ------------------------------------
-const dd = await page.evaluate(() => { pair(0, 2.0); const e = E(); e.hp = 5; W.pf.input("attack", { dir: Math.PI }); T(100);
+const dd = await page.evaluate(() => { const D = W.ENEMY_DIFF, k = [D.parry, D.block]; D.parry = 0; D.block = 0; pair(0, 2.0); const e = E(); e.hp = 5; const r0 = e.ai.react; e.ai.react = () => {};
+  W.pf.input("attack", { dir: Math.PI }); T(100); e.ai.react = r0; D.parry = k[0]; D.block = k[1];
   const r = { alive: e.alive, act: e.act && e.act.name + e.act.f, btn: document.getElementById("respawn").classList.contains("hot") };
   const dust0 = W.__dust || 0; T(60 * 2.5); r.fadeMid = +e.fade.toFixed(2); T(60 * 3); r.fadeEnd = +e.fade.toFixed(2); r.hidden = !!e.hidden; r.spores = (W.__dust || 0) - dust0;
   return r; });

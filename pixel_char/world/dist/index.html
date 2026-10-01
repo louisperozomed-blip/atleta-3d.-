@@ -3537,7 +3537,11 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
 //  · búfer de entrada de 180 ms: una pulsación que llega un poco antes de que se pueda actuar no se pierde
 //  · parry estilo Sekiro: la ventana (~200 ms) cuenta desde la pulsación de guardia; pulsar repetidamente
 //    la encoge (+45 ms de penalización por pulsación seguida, se recupera sola a 120 ms/s); una pulsación
-//    justo fuera de la ventana (hasta +120 ms) cuenta como bloqueo
+//    justo fuera de la ventana (hasta +120 ms) cuenta como bloqueo (parry parcial)
+//  · niveles (se mide la antelación de la pulsación respecto al instante EXACTO del impacto, con el reloj de
+//    combate W.ct y la marca de tiempo del evento de entrada, no con el frame en que se procesa):
+//      PERFECTO  últimos ~70 ms  ·  NORMAL  resto de la ventana  ·  BLOQUEO  fuera de ventana con guardia
+//    + calibración de latencia (W.COMBAT.calib, ms): desplaza la ventana para pantallas táctiles lentas
 //  · bloqueo: mantener guardia; el daño se reduce y gasta stamina; sin stamina la guardia se rompe
 //  · esquiva: invulnerable en los frames DASH; cancela un ataque después de su frame de impacto
 (function () {
@@ -3546,12 +3550,26 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
 
   const C = (W.COMBAT = {
     buffer: 0.18,
-    parryWin: 0.2, parryPartial: 0.12, parryPen: 0.045, parryPenMax: 0.13, parryPenDecay: 0.12, spamGap: 0.7,
+    parryWin: 0.2, perfectWin: 0.07, parryPartial: 0.12, parryPen: 0.045, parryPenMax: 0.13, parryPenDecay: 0.12, spamGap: 0.7,
+    counterWin: 0.35, counterDmg: 1.6, counterPost: 1.5,   // contraataque tras un parry perfecto
+    calib: 0,                                      // ms (+ = tus pulsaciones llegan tarde): desplaza la ventana
     staminaRegen: 34, staminaDelay: 0.55, blockRegenK: 0.35,
     dodgeCost: 18, attackCost: [6, 7, 12], dodgeDist: 2.3,
     postureDecay: 9, postureDelay: 1.6, stunTime: 2.4,
   });
 
+  // reloj de combate: avanza con el tiempo de juego (se congela en el hitstop); lo usan la defensa y los impactos
+  W.ct = W.ct || 0; W.ctReal = 0;
+  // instante (en W.ct) de una pulsación: con la marca de tiempo del evento (event.timeStamp, ms) se descuenta lo
+  // que tardó en procesarse; y la calibración desplaza la ventana
+  W.pressTime = function (ts, human) {
+    let t = W.ct;
+    if (ts != null && isFinite(ts)) {
+      const ref = W.manual ? performance.now() : (W.ctReal || performance.now());
+      t += Math.max(-0.12, Math.min(0.05, (ts - ref) / 1000));
+    }
+    return human ? t - (C.calib || 0) / 1000 : t;   // la calibración, solo para el jugador
+  };
   let CM = null;                                   // meta de combate (atlas)
   function meta() { return CM || (CM = W.CMETA); }
   // tiempos acumulados de cada animación, por meta (el jugador usa combat_atlas.json; cada tipo de
@@ -3586,7 +3604,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       this.postMax = o.posture || 100; this.post = 0; this.postT = 0;
       this.act = null;
       this.buf = null;                              // entrada en el búfer {type, t, data}
-      this.guardHeld = false; this.guardT = -9; this.lastGuardT = -9; this.pen = 0;
+      this.guardHeld = false; this.guardT = -9; this.lastGuardT = -9; this.pen = 0;   // guardT, lastGuardT: en W.ct
+      this.counterT = 0;                            // fin de la ventana de contraataque (W.ct)
       this.flash = 0; this.time = 0;
       this.prepK = o.prepK || 1;                    // >1: preparación de los ataques más lenta (enemigo)
       this.cm = o.meta || null;                     // meta de animaciones propio (enemigos)
@@ -3602,15 +3621,23 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     get invulnerable() { return !!(this.act && this.act.name === "dodge" && this.act.f >= this.dodgeInv[0] && this.act.f <= this.dodgeInv[1]); }
     get stunned() { return !!(this.act && this.act.name === "stun"); }
     parryWindow() { return Math.max(0.07, C.parryWin - this.pen); }
+    // segundos que faltan para el impacto del ataque en curso (null si no está preparando un ataque)
+    toImpact() {
+      const a = this.act;
+      if (!a || !a.name.startsWith("attack") || a.f >= 3) return null;
+      const c = cumOf(this.M(), a.name);
+      return (c[3] - (a.tt || 0)) * (a.slow || 1) / (a.speed || 1);
+    }
     // ---- entradas ------------------------------------------------------------------------
     input(type, data) {
       if (!this.alive) return false;
       if (type === "guardDown") {
+        const pt = W.pressTime(data && data.ts, this.team === "player");
         this.guardHeld = true;
         // spam: una pulsación seguida encoge la ventana del parry (se recupera sola)
-        if (this.time - this.lastGuardT < C.spamGap) this.pen = Math.min(C.parryPenMax, this.pen + C.parryPen);
-        this.lastGuardT = this.time;
-        this.buf = { type: "parry", t: this.time, data };
+        if (pt - this.lastGuardT < C.spamGap) this.pen = Math.min(C.parryPenMax, this.pen + C.parryPen);
+        this.lastGuardT = pt;
+        this.buf = { type: "parry", t: this.time, pt, data };
         this.tryBuffered();
         return true;
       }
@@ -3623,7 +3650,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       const b = this.buf;
       if (!b) return;
       if (this.time - b.t > C.buffer) { this.buf = null; return; }
-      if (this.can(b.type)) { this.buf = null; this.doAction(b.type, b.data, b.t); }
+      if (this.can(b.type)) { this.buf = null; this.doAction(b.type, b.data, b.pt); }
     }
     // ¿se puede empezar esa acción ahora?
     can(type) {
@@ -3645,7 +3672,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         return false;
       }
       if (a.name === "block") return type === "dodge" ? this.st >= C.dodgeCost * 0.5 : type === "attack" || type === "parry";
-      if (a.name === "parry") return (type === "attack" || type === "dodge") ? f >= 4 : type === "parry" && f >= 3;
+      // tras un parry perfecto se puede contraatacar al instante (ventana de contraataque)
+      if (a.name === "parry") return type === "attack" && this.counterT > W.ct ? true : (type === "attack" || type === "dodge") ? f >= 4 : type === "parry" && f >= 3;
       if (a.name === "dodge") return f >= 5;
       if (a.name === "hit") return a.gb ? false : (type === "dodge" || type === "parry") ? f >= 4 : f >= 5;
       return false;
@@ -3657,7 +3685,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         // pulsado en IMPACT: queda marcado y el golpe siguiente empieza al entrar en FOLLOW THROUGH
         if (next && a.f < 4) { a.chain = true; a.chainData = data; return; }
         this.startAttack(next || "attack1", data);
-      } else if (type === "parry") { this.guardT = t0 != null ? t0 : this.time; this.start("parry", { pressT: this.guardT }); }
+      } else if (type === "parry") { this.guardT = t0 != null ? t0 : W.ct; this.start("parry", { pressT: this.guardT }); }
       else if (type === "dodge") this.startDodge(data);
       else if (type === "jump") this.body.doJump();
     }
@@ -3674,6 +3702,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       this.st = Math.max(0, this.st - C.attackCost[k]); this.stT = 0;
       const a = this.start(name, { chain: false });
       a.slow = this.prepK;
+      if (this.counterT && W.ct <= this.counterT) { a.counter = true; this.counterT = 0; }   // contraataque
       // atracción suave hacia el enemigo más cercano (delante, a menos de 3.4 u): gira hacia él y se acerca
       // durante la preparación hasta quedar a distancia de golpe
       const tgt = W.nearestFoe ? W.nearestFoe(this, 3.4, 2.0) : null;
@@ -3707,7 +3736,9 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       this.start("hit", { kb: (opts.kb || 0.35) * this.kbK, kdir: opts.dir, moved: 0, gb: !!opts.guardBreak, speed: opts.guardBreak ? 0.62 : 1 });
       return "hit";
     }
-    addPosture(v) {
+    addPosture(v, o) {
+      // o.noBreak: suma pero nunca rompe (el coste de desviar)
+      if (o && o.noBreak) { this.post = Math.min(this.postMax, this.post + v); this.postT = 0; return false; }
       this.post = Math.min(this.postMax, this.post + v); this.postT = 0;
       if (this.post >= this.postMax && this.alive && !this.stunned && this.team !== "player") {
         this.start("stun", { t: 0, dur: this.stunTime });
@@ -3725,16 +3756,21 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       return false;
     }
     // ---- defensa: qué pasa si un golpe llega AHORA -------------------------------------------
-    defense() {
+    // impactT: instante exacto del impacto (W.ct). Devuelve "evade" | "perfect" | "parry" | "partial" |
+    // "block" | "open" | "none"; la antelación de la pulsación queda en this.lastEarly (s)
+    defense(impactT) {
       if (!this.alive) return "none";
       if (this.invulnerable) return "evade";
       const a = this.act;
       if (a && (a.name === "stun")) return "open";
-      const dt = this.time - this.guardT;
+      const early = (impactT != null ? impactT : W.ct) - this.guardT;
+      this.lastEarly = early;
       const pw = this.parryWindow();
       const inParry = a && a.name === "parry";
-      if (inParry && dt <= pw) return "parry";
-      if (inParry && dt <= pw + C.parryPartial) return "block";                    // parry parcial
+      // la pulsación cuenta aunque se mantenga (el parry ya pasó a guardia sostenida)
+      const guarding = inParry || (a && a.name === "block");
+      if (guarding && early >= -0.004 && early <= pw) return early <= Math.min(C.perfectWin, pw * 0.5) ? "perfect" : "parry";
+      if (inParry && early > pw && early <= pw + C.parryPartial) return "partial";   // parry parcial = bloqueo
       if (a && a.name === "block") return "block";
       if (inParry && this.guardHeld) return "block";
       return "open";
@@ -3787,7 +3823,15 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         return;
       }
       a.fPrev = a.f; a.f = f;
-      if (a.f !== a.fPrev && W.onCombatFrame) W.onCombatFrame(this, a);
+      if (a.f !== a.fPrev) {
+        // instante exacto del impacto: lo que el frame se pasó en este paso no cuenta (20 fps en móvil = hasta
+        // 50 ms de error si se midiera con el frame)
+        if (a.name.startsWith("attack") && a.f >= 3 && a.fPrev < 3 && a.impactT == null) {
+          const c = cumOf(this.M(), a.name);
+          a.impactT = W.ct - Math.max(0, (a.tt - c[3]) / Math.max(1e-6, sp));
+        }
+        if (W.onCombatFrame) W.onCombatFrame(this, a);
+      }
       // combo: pulsación dentro de la ventana de encadenado
       if (a.name.startsWith("attack") && a.chain && a.f >= 4) { a.chain = false; this.startAttack(this.M().animations[a.name].next, a.chainData); return; }
       this.motion(a, dt);
@@ -3831,7 +3875,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     }
     respawn(x, z) {
       this.hp = this.hpMax; this.st = this.stMax; this.post = 0; this.act = null; this.buf = null; this.flash = 0;
-      this.guardHeld = false; this.pen = 0;
+      this.guardHeld = false; this.pen = 0; this.counterT = 0;
       if (x != null) { const b = this.body; b.x = x; b.z = z; b.y = b.ground = W.heightAt(x, z); b.path = []; b.speed = 0; }
     }
   }
@@ -3845,7 +3889,11 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
 //  · hitbox en el suelo: arco delante del atacante (generoso: ±70°, ±85° en attack3), activa SOLO en el
 //    frame activo (IMPACT) de cada ataque; un golpe alcanza a cada objetivo una vez
 //  · defensa del objetivo en ese instante (fighter.defense): esquiva (invulnerable), parry, bloqueo o golpe
-//  · parry: chispas, destello de luz que ilumina a ambos, sin daño y mucha postura para el atacante
+//  · parry por niveles (fighter.defense, con el instante exacto del impacto):
+//      PERFECTO  chispas doradas, sonido propio, hitstop más largo, mucha postura al atacante, 0 para ti y
+//                ventana de contraataque (~350 ms: el golpe que empieces en ella hace daño extra y no se defiende)
+//      NORMAL    postura media al atacante y un pequeño coste de postura para ti
+//      BLOQUEO   sin postura al atacante, más coste para ti y gasto de stamina (sin stamina, guardia rota)
 //  · bloqueo: daño reducido, gasta stamina; sin stamina se rompe la guardia
 //  · postura llena = aturdido; golpear a un aturdido es un remate (daño ×3)
 //  · sensación: hitstop 60-120 ms (más en attack3 y en el parry), sacudida de cámara en la dirección del
@@ -3860,13 +3908,20 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     attack2: { dmg: 12, reach: 1.65, arc: 70, stop: 0.085, kb: 0.35, post: 38 },
     attack3: { dmg: 22, reach: 1.95, arc: 85, stop: 0.12, kb: 0.6, heavy: true, post: 48 },
   };
-  const STOP = { attack1: 0.075, attack2: 0.085, attack3: 0.12, parry: 0.11, parryHeavy: 0.13, block: 0.06, deathblow: 0.16 };
+  const STOP = { attack1: 0.075, attack2: 0.085, attack3: 0.12, parry: 0.11, parryHeavy: 0.13, perfect: 0.16, perfectHeavy: 0.18, block: 0.06, deathblow: 0.16 };
+  // recompensas por nivel (postura al atacante: × su "post"; coste de postura para quien defiende)
+  const LEVEL = (W.PARRY_LEVELS = {
+    perfect: { atkPost: 1.33, defPost: 0, defPostHeavy: 0 },
+    parry: { atkPost: 1.0, defPost: 7, defPostHeavy: 10 },
+    block: { atkPost: 0, defPost: 18, defPostHeavy: 26, st: 22, stHeavy: 36 },
+  });
   const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
   W.combatLog = [];
   function log(e) { e.t = W.U ? +W.U.uTime.value.toFixed(3) : 0; W.combatLog.push(e); if (W.combatLog.length > 400) W.combatLog.shift(); feedback(e); }
   // aviso sobre el personaje de lo que acaba de pasar (¡PARRY!, BLOQUEO...): así se ve si ha salido
   const FB = {
-    parry: ["¡PARRY!", "#ffe08a", "who"], block: ["BLOQUEO", "#b8d8ff", "who"], guardbreak: ["GUARDIA ROTA", "#ff6a4a", "who"],
+    parry: ["PARRY", "#ffe08a", "who"], block: ["BLOQUEO", "#b8d8ff", "who"], guardbreak: ["GUARDIA ROTA", "#ff6a4a", "who"],
+    counter: ["¡CONTRA!", "#ffd34a", "from"],
     evade: ["ESQUIVA", "#9fe8c8", "who"], playerPostureBreak: ["POSTURA ROTA", "#ff8a5a", "who"], stun: ["ATURDIDO", "#fff3b0", "who"], deathblow: ["¡REMATE!", "#ffb070", "who"],
   };
   const pops = [];
@@ -3880,6 +3935,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     if (e.ev === "parry" && f.team !== "player") { el0("¡DESVÍA!", "#9ff4ff", f); return; }
     const el = document.createElement("div");
     el.className = "cpop"; el.textContent = d[0]; el.style.color = d[1];
+    if (e.ev === "parry" && e.level === "perfect") { el.textContent = "¡PERFECTO!"; el.style.color = "#ffd34a"; el.classList.add("gold"); }
     document.getElementById("wrap").appendChild(el);
     pops.push({ el, f, t: 0 });
   }
@@ -3929,7 +3985,9 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     return out;
   };
   W.combatStep = function (dt) {
+    W.ctReal = performance.now();
     if (W.hitstop > 0) { W.hitstop = Math.max(0, W.hitstop - dt); W.hitstopAcc = (W.hitstopAcc || 0) + dt; return 0; }
+    W.ct += dt;                                      // reloj de combate (fighter.js)
     return dt;
   };
   function stop(v) { W.hitstop = Math.max(W.hitstop, v); }
@@ -3985,6 +4043,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
   };
   const EMBER = [[1, 0.62, 0.2], [1, 0.85, 0.45], [1, 0.4, 0.12]];
   const SPARK = [[1, 0.95, 0.75], [1, 0.8, 0.4], [1, 1, 1]];
+  const GOLD = [[1, 0.84, 0.3], [1, 0.95, 0.6], [1, 0.7, 0.16], [1, 1, 0.85]];
   function surf(x, z) { return (W.surfaceAt && W.surfaceAt(x, z)) || "dust"; }
   function groundBurst(x, z, n, heavy) {
     const k = surf(x, z), y = W.heightAt(x, z);
@@ -3994,8 +4053,24 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
   }
 
   // ---- resolución --------------------------------------------------------------------------------
+  const pendingHits = [];
+  function flushHits() {
+    for (let i = pendingHits.length - 1; i >= 0; i--) {
+      const q = pendingHits[i];
+      if (W.ct + 1e-6 < q.a.resolveAt) continue;
+      pendingHits.splice(i, 1);
+      if (q.f.alive && q.f.act === q.a) resolve(q.f, q.a);
+    }
+  }
   W.onCombatFrame = function (f, a) {
-    if (a.name.startsWith("attack") && a.f === 3 && !a.hitDone) { a.hitDone = true; resolve(f, a); }
+    if (a.name.startsWith("attack") && a.f >= 3 && !a.hitDone) {
+      a.hitDone = true;
+      // con calibración positiva (tus pulsaciones llegan tarde) el golpe que te lanzan se resuelve esos ms después
+      // del impacto, para que una pulsación "tarde" llegue a contar
+      const cal = (W.COMBAT.calib || 0) / 1000;
+      if (cal > 0 && f.team !== "player") { a.resolveAt = (a.impactT != null ? a.impactT : W.ct) + cal; pendingHits.push({ f, a }); }
+      else resolve(f, a);
+    }
     if (a.name.startsWith("attack") && a.f === 2 && W.sfx) W.sfx.combat(a.name === "attack3" ? "swingHeavy" : "swing");
     if (a.name === "attack3" && a.f === 3) {
       // el golpe contra el suelo levanta tierra aunque no alcance a nadie
@@ -4021,7 +4096,9 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       if (!inArc) continue;
       any = true;
       const dir = Math.atan2(dz, dx);
-      const def = t.defense();
+      let def = t.defense(a.impactT);
+      if (a.counter && def !== "evade") def = "open";        // el contraataque no se puede defender
+      if (def === "partial") def = "block";                     // parry parcial = bloqueo
       const heavy = !!AT.heavy;
       const cx = (b.x + t.body.x) / 2, cz = (b.z + t.body.z) / 2, cy = Math.max(b.y, t.body.y) + 1.05;
       const dmg = AT.dmg * (att.dmgK || 1);
@@ -4029,22 +4106,29 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         log({ ev: "evade", who: t.name, anim: a.name });
         continue;
       }
-      if (def === "parry") {
-        // sin daño; el atacante pierde mucha postura y retrocede; destello que ilumina a los dos
-        W.fx.dust(cx, cy - 0.35, cz, 26, { pal: SPARK, spd: 2.6, up: 2.2, life: 0.4 });
-        flashLight(cx, cy, cz, 0xffe2a8, heavy ? 5.5 : 4.2);
-        star(cx, cy - 0.1, cz, heavy ? 1.6 : 1.3, 0xfff0c8, 0.2);
-        stop(heavy ? STOP.parryHeavy : STOP.parry);
-        W.shakeCam(dx, dz, 0.05, 0.22);
-        if (W.sfx) W.sfx.combat("parry");
-        const broke = att.addPosture(AT.post || (heavy ? 48 : 38));
+      if (def === "perfect" || def === "parry") {
+        // sin daño; el atacante pierde postura y retrocede; destello que ilumina a los dos
+        const perfect = def === "perfect", L = LEVEL[def];
+        W.fx.dust(cx, cy - 0.35, cz, perfect ? 44 : 26, { pal: perfect ? GOLD : SPARK, spd: perfect ? 3.1 : 2.6, up: perfect ? 2.6 : 2.2, life: perfect ? 0.55 : 0.4 });
+        flashLight(cx, cy, cz, perfect ? 0xffc444 : 0xffe2a8, (heavy ? 5.5 : 4.2) * (perfect ? 1.4 : 1));
+        star(cx, cy - 0.1, cz, (heavy ? 1.6 : 1.3) * (perfect ? 1.3 : 1), perfect ? 0xffd040 : 0xfff0c8, perfect ? 0.28 : 0.2);
+        stop(perfect ? (heavy ? STOP.perfectHeavy : STOP.perfect) : (heavy ? STOP.parryHeavy : STOP.parry));
+        W.shakeCam(dx, dz, perfect ? 0.065 : 0.05, 0.22);
+        if (W.sfx) W.sfx.combat(perfect ? "parryPerfect" : "parry");
+        const gain = (W.parryPostGain ? W.parryPostGain(att, t, AT, def) : (AT.post || (heavy ? 48 : 38)) * L.atkPost);
+        const broke = att.addPosture(gain);
         if (!broke) att.start("hit", { kb: 0.3, kdir: dir + Math.PI, moved: 0, speed: 1.35, recoil: true });
+        // quien desvía: un parry nunca le rompe la postura
+        const cost = heavy ? L.defPostHeavy : L.defPost;
+        if (cost) t.addPosture(cost, { noBreak: true });
+        if (perfect) t.counterT = W.ct + W.COMBAT.counterWin;
         t.parries = (t.parries || 0) + 1;
-        log({ ev: "parry", who: t.name, from: att.name, anim: a.name, win: +t.parryWindow().toFixed(3), post: Math.round(att.post), broke });
+        log({ ev: "parry", level: perfect ? "perfect" : "normal", early: Math.round(t.lastEarly * 1000), who: t.name, from: att.name, anim: a.name,
+          win: +t.parryWindow().toFixed(3), gain: Math.round(gain), cost, post: Math.round(att.post), broke });
         continue;
       }
       if (def === "block") {
-        const cost = heavy ? 36 : 22;
+        const L = LEVEL.block, cost = heavy ? L.stHeavy : L.st;
         t.st -= cost; t.stT = 0;
         if (t.st <= 0) {
           t.st = 0;
@@ -4059,19 +4143,22 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         if (t.act && t.act.name === "block") t.act.react = 0.11;
         else t.start("block", { tt: 0.07, react: 0.11 });
         t.body.tryMove(Math.cos(dir) * 0.12, Math.sin(dir) * 0.12);
-        t.addPosture(6);
+        const pc = heavy ? L.defPostHeavy : L.defPost;
+        if (t.addPosture(pc)) { log({ ev: "block", who: t.name, from: att.name, anim: a.name, st: Math.round(t.st), hp: Math.round(t.hp), postBreak: true }); continue; }
         W.fx.dust(cx, cy - 0.35, cz, 8, { pal: SPARK, spd: 1.3, up: 1.2, life: 0.28 });
         star(cx, cy - 0.15, cz, 0.7, 0xffd8a0, 0.12);
         stop(STOP.block); W.shakeCam(dx, dz, 0.03, 0.18);
         if (W.sfx) W.sfx.combat("block");
-        log({ ev: "block", who: t.name, from: att.name, anim: a.name, st: Math.round(t.st), hp: Math.round(t.hp) });
+        log({ ev: "block", early: Math.round((t.lastEarly || 0) * 1000), who: t.name, from: att.name, anim: a.name, st: Math.round(t.st), hp: Math.round(t.hp), post: Math.round(t.post) });
         continue;
       }
       // golpe limpio (remate si está aturdido)
       const deathblow = t.stunned;
-      const dm = deathblow ? Math.max(40, dmg * 3) : dmg;
+      const counter = !!a.counter && !deathblow;
+      const dm = deathblow ? Math.max(40, dmg * 3) : counter ? dmg * W.COMBAT.counterDmg : dmg;
       const res = t.hurt({ dmg: dm, dir, kb: AT.kb || (heavy ? 0.6 : 0.35) });
-      if (!deathblow && t.alive) t.addPosture(dm * 0.7);
+      if (!deathblow && t.alive) t.addPosture(dm * 0.7 * (counter ? W.COMBAT.counterPost : 1));
+      if (counter) { log({ ev: "counter", who: t.name, from: att.name, anim: a.name, dmg: Math.round(dm) }); W.fx.dust(t.body.x, t.body.y + 1.0, t.body.z, 18, { pal: GOLD, spd: 2.2, up: 1.6, life: 0.4 }); }
       const kind = groundBurst(t.body.x, t.body.z, heavy ? 14 : 9, heavy);
       W.fx.dust(t.body.x - Math.cos(dir) * 0.1, t.body.y + 0.9, t.body.z - Math.sin(dir) * 0.1, heavy ? 16 : 10, { pal: EMBER, spd: 1.8, up: 1.3, life: 0.35 });
       if (deathblow) flashLight(t.body.x, t.body.y + 1.1, t.body.z, 0xffd0a0, 6);
@@ -4097,7 +4184,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     el.id = "cbars";
     el.innerHTML = `<div class="cb"><span>VIDA</span><div class="bb"><i id="hpP"></i></div></div>
       <div class="cb"><span>STAM</span><div class="bb"><i id="stP"></i></div></div>
-      <div class="cb"><span>POST</span><div class="bb"><i id="poP"></i></div></div>`;
+      <div class="cb"><span>POST</span><div class="bb"><i id="poP"></i></div></div>
+      <div class="cb" id="ctrW"><span>CONTRA</span><div class="bb"><i id="ctP"></i></div></div>`;
     wrap.appendChild(el);
     const foe = document.createElement("div");
     foe.id = "ebars";
@@ -4123,9 +4211,11 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       #guard small{font-size:6px;line-height:1.6;color:#e8c9a8}#guard[aria-pressed="true"]{background:#8a3a1a;border-color:#fff0c0;transform:scale(.95)}
       @media (min-width:700px){#cpad{bottom:calc(84px + env(safe-area-inset-bottom,0px))}}
       .cpop{position:absolute;pointer-events:none;font-size:11px;text-shadow:2px 2px 0 #000,-1px -1px 0 #000;white-space:nowrap;z-index:5}
+      #ctrW{visibility:hidden}#ctrW.on{visibility:visible}#ctrW span{color:#ffd34a}#ctP{background:#ffd34a!important;box-shadow:0 0 6px #ffb020}
+      .cpop.gold{font-size:14px;text-shadow:2px 2px 0 #000,-1px -1px 0 #000,0 0 8px #ffb020}
       #ebars.stun .en{color:#fff3b0}#respawn{display:none}#respawn.hot{display:inline-block;background:#6a2a1a!important;border-color:#ff9a5a!important}#cbars.low #hpP{background:#ff4a3a!important}`;
     document.head.appendChild(css);
-    return { hpP: el.querySelector("#hpP"), stP: el.querySelector("#stP"), poP: el.querySelector("#poP"), box: el, foe, hpE: foe.querySelector("#hpE"), poE: foe.querySelector("#poE"), en: foe.querySelector(".en") };
+    return { hpP: el.querySelector("#hpP"), stP: el.querySelector("#stP"), poP: el.querySelector("#poP"), ctW: el.querySelector("#ctrW"), ctP: el.querySelector("#ctP"), box: el, foe, hpE: foe.querySelector("#hpE"), poE: foe.querySelector("#poE"), en: foe.querySelector(".en") };
   }
   function updateHud() {
     if (!hud) return;
@@ -4134,6 +4224,10 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     hud.stP.style.width = (100 * p.st / p.stMax).toFixed(1) + "%";
     hud.poP.style.width = (100 * p.post / p.postMax).toFixed(1) + "%";
     hud.box.classList.toggle("low", p.hp < p.hpMax * 0.3);
+    // ventana de contraataque (tras un parry perfecto): barra dorada que se vacía
+    const cw = Math.max(0, p.counterT - W.ct) / W.COMBAT.counterWin, con = cw > 0;
+    if (hud.ctW._on !== con) { hud.ctW._on = con; hud.ctW.classList.toggle("on", con); }
+    if (con) hud.ctP.style.width = (100 * cw).toFixed(1) + "%";
     // barras del enemigo más cercano (vivo o recién caído, sin desvanecer)
     let e = null, bd = 1e9;
     for (const f of fighters) { if (f.team === "player" || f.hidden) continue; const d = Math.hypot(f.body.x - p.body.x, f.body.z - p.body.z); if (d < bd) { bd = d; e = f; } }
@@ -4181,6 +4275,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     return null;
   };
   W.combatAfter = function (dt) {
+    if (pendingHits.length) flushHits();
     updateStars(dt);
     updatePops(dt);
     // destello de luz: sube de golpe y cae en ~0.3 s
@@ -4190,6 +4285,97 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     }
     for (const f of fighters) if (f.ch) f.ch.uniforms.uFlash.value = f.flash;
     updateHud();
+  };
+})();
+
+</script>
+<script>/* calib.js */
+// calib.js — calibración de la latencia táctil para el parry (como en los juegos de ritmo).
+// Panel de pruebas ⚙ → «Latencia»: deslizador en ms y botón «calibrar». La prueba da 10 pulsos (destello + clic)
+// cada 0.75 s; tocas el círculo (o K) a su ritmo y la mediana de tu desfase (sin los dos primeros) desplaza la
+// ventana del parry (W.COMBAT.calib, + = tus pulsaciones llegan tarde). Se recuerda en este navegador.
+(function () {
+  "use strict";
+  const W = (window.W = window.W || {});
+  const KEY = "bosque.parryCalib";
+  const clampC = (v) => Math.max(-60, Math.min(150, Math.round(v / 5) * 5));
+  function load() { try { const v = localStorage.getItem(KEY); if (v != null && isFinite(+v)) W.COMBAT.calib = clampC(+v); } catch (_) {} }
+  function save(v) { try { localStorage.setItem(KEY, String(v)); } catch (_) {} }
+  W.setCalib = function (v) {
+    W.COMBAT.calib = clampC(v); save(W.COMBAT.calib);
+    const i = document.getElementById("dCalib"); if (i) { i.value = W.COMBAT.calib; i.nextElementSibling.textContent = fmt(W.COMBAT.calib); }
+    return W.COMBAT.calib;
+  };
+  const fmt = (v) => (v > 0 ? "+" : "") + v + "ms";
+  // desfase de una serie de toques respecto a los pulsos (ms): mediana sin los dos primeros
+  W.calibFrom = function (beats, taps) {
+    const d = [];
+    beats.forEach((b, i) => {
+      if (i < 2) return;
+      let best = null;
+      for (const t of taps) if (Math.abs(t - b) < 300 && (best == null || Math.abs(t - b) < Math.abs(best))) best = t - b;
+      if (best != null) d.push(best);
+    });
+    if (d.length < 4) return null;
+    d.sort((x, y) => x - y);
+    return clampC(d[d.length >> 1]);
+  };
+  function runTest(box) {
+    const N = 10, GAP = 750, beats = [], taps = [];
+    const ring = box.querySelector(".cring"), info = box.querySelector(".cinfo");
+    let next = performance.now() + 1000, n = 0, done = false;
+    const tap = (ts) => { if (!done) { taps.push(ts); ring.classList.add("hit"); setTimeout(() => ring.classList.remove("hit"), 90); } };
+    ring.onpointerdown = (e) => { e.preventDefault(); e.stopPropagation(); tap(e.timeStamp); };
+    const key = (e) => { if (e.code === "KeyK" || e.code === "Space") { e.preventDefault(); e.stopPropagation(); if (!e.repeat) tap(e.timeStamp); } };
+    addEventListener("keydown", key, true);
+    info.textContent = "Toca el círculo al ritmo de los destellos";
+    (function loop() {
+      if (done) return;
+      const now = performance.now();
+      if (n < N && now >= next) {
+        beats.push(now); n++; next += GAP;
+        ring.classList.add("beat"); setTimeout(() => ring.classList.remove("beat"), 110);
+        if (W.sfx) W.sfx.combat("tick");
+        info.textContent = "pulso " + n + " / " + N;
+      }
+      if (n >= N && now > beats[N - 1] + 500) {
+        done = true; removeEventListener("keydown", key, true);
+        const c = W.calibFrom(beats, taps);
+        if (c == null) info.textContent = "Pocos toques a tiempo; prueba otra vez";
+        else { W.setCalib(c); info.textContent = "Latencia: " + fmt(c) + " (guardada)"; }
+        box.querySelector(".cgo").disabled = false;
+        return;
+      }
+      requestAnimationFrame(loop);
+    })();
+  }
+  W.initCalibUI = function (pn) {
+    load();
+    if (!pn || pn.querySelector("#dCalib")) return;
+    const row = document.createElement("label");
+    row.innerHTML = `Latencia <input id="dCalib" type="range" min="-60" max="150" step="5"><output></output>`;
+    const btn = document.createElement("button"); btn.id = "tCalib"; btn.textContent = "calibrar latencia (ritmo)";
+    pn.appendChild(row); pn.appendChild(btn);
+    const i = row.querySelector("input"), o = row.querySelector("output");
+    i.value = W.COMBAT.calib; o.textContent = fmt(W.COMBAT.calib);
+    i.addEventListener("input", () => W.setCalib(+i.value));
+    const box = document.createElement("div");
+    box.id = "calibBox"; box.hidden = true;
+    box.innerHTML = `<div class="tt">CALIBRAR LATENCIA</div><div class="cring" role="button" aria-label="Tocar al ritmo"></div>
+      <div class="cinfo">Toca el círculo (o K) a la vez que cada destello</div><div class="crow"><button class="cgo">empezar</button><button class="cx">cerrar</button></div>`;
+    document.getElementById("wrap").appendChild(box);
+    const css = document.createElement("style");
+    css.textContent = `#calibBox{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:9;width:250px;padding:14px;background:rgba(10,18,26,.95);
+        border:2px solid var(--edge);display:flex;flex-direction:column;align-items:center;gap:12px;font-size:8px;line-height:1.5;text-align:center}
+      #calibBox[hidden]{display:none}#calibBox .tt{color:var(--dim)}
+      #calibBox .cring{width:120px;height:120px;border-radius:50%;border:4px solid #ffb070;background:rgba(40,22,14,.7);touch-action:none;cursor:pointer;transition:background .06s}
+      #calibBox .cring.beat{background:#ffe08a;box-shadow:0 0 24px #ffb020}#calibBox .cring.hit{border-color:#fff}
+      #calibBox .crow{display:flex;gap:8px}#calibBox button{font:inherit;font-size:8px;color:var(--ink);background:#0d1a26;border:1px solid var(--edge);min-height:32px;padding:0 10px}`;
+    document.head.appendChild(css);
+    for (const ev of ["pointerdown", "click"]) box.addEventListener(ev, (e) => e.stopPropagation());
+    btn.addEventListener("click", () => { box.hidden = false; box.querySelector(".cinfo").textContent = "Toca el círculo (o K) a la vez que cada destello"; });
+    box.querySelector(".cx").addEventListener("click", () => { box.hidden = true; });
+    box.querySelector(".cgo").addEventListener("click", (e) => { e.currentTarget.disabled = true; runTest(box); });
   };
 })();
 
@@ -4324,6 +4510,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     bind("dParry", "parry", (v) => Math.round(v * 100) + "%");
     bind("dBlock", "block", (v) => Math.round(v * 100) + "%");
     pn.querySelector("#tResp").addEventListener("click", () => W.respawnAll());
+    if (W.initCalibUI) W.initCalibUI(pn);           // latencia del parry (calib.js)
   };
 })();
 
@@ -4971,12 +5158,18 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     } else if (kind === "parry") {
       for (const [fr, g, d] of [[1850, 0.16, 0.5], [2790, 0.1, 0.35], [4100, 0.06, 0.25], [920, 0.1, 0.4]]) tone(c, t, "triangle", fr, fr * 0.985, g, d);
       noiseHit(c, t, "highpass", 5000, 3000, 0.7, 0.25, 0.06);
+    } else if (kind === "parryPerfect") {
+      // perfecto: más agudo y largo, con una campanilla encima
+      for (const [fr, g, d] of [[2350, 0.18, 0.9], [3520, 0.11, 0.7], [4700, 0.07, 0.5], [1175, 0.12, 0.8]]) tone(c, t, "triangle", fr, fr * 0.995, g, d);
+      noiseHit(c, t, "highpass", 6000, 3500, 0.7, 0.3, 0.05);
+      tone(c, t + 0.05, "sine", 3136, 3130, 0.07, 0.7);
     } else if (kind === "block") { tone(c, t, "triangle", 620, 560, 0.14, 0.18); noiseHit(c, t, "bandpass", 1600, 900, 2, 0.2, 0.08); }
     else if (kind === "guardBreak") { tone(c, t, "sawtooth", 300, 90, 0.18, 0.3); noiseHit(c, t, "lowpass", 3000, 300, 0.6, 0.35, 0.25); }
     else if (kind === "dodge") noiseHit(c, t, "bandpass", 1800, 500, 0.9, 0.16, 0.2);
     else if (kind === "stun") { tone(c, t, "sine", 1320, 1310, 0.08, 0.6); tone(c, t + 0.09, "sine", 1760, 1750, 0.06, 0.55); }
     else if (kind === "deathblow") { tone(c, t, "sine", 90, 35, 0.6, 0.45); noiseHit(c, t, "lowpass", 3000, 200, 0.7, 0.45, 0.4); tone(c, t, "triangle", 2200, 2100, 0.08, 0.6); }
     else if (kind === "death") { tone(c, t, "sine", 80, 40, 0.35, 0.35); noiseHit(c, t, "lowpass", 900, 200, 0.6, 0.25, 0.3); }
+    else if (kind === "tick") { tone(c, t, "sine", 1250, 1240, 0.12, 0.05); tone(c, t, "square", 2500, 2480, 0.02, 0.03); }
     else if (kind === "warn") { tone(c, t, "sine", 980, 1480, 0.05, 0.12); }
     // autómata: zumbido grave mecánico al preparar el ataque (motor que se carga + chirrido de metal)
     else if (kind === "charge" || kind === "chargeHeavy") {
@@ -5618,11 +5811,12 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     canvas.addEventListener("pointercancel", end);
     const jb = document.getElementById("jump");
     if (jb) jb.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); W.player.doJump(); });
-    // botón de guardia: tocar = parry, mantener = bloquear (la máquina de estados distingue por la duración)
+    // botón de guardia: tocar = parry, mantener = bloquear (la máquina de estados distingue por la duración);
+    // la pulsación lleva su marca de tiempo (event.timeStamp): el parry se mide desde ahí, no desde el frame
     const gb = document.getElementById("guard");
     if (gb) {
       const up = (e) => { e.preventDefault(); gb.setAttribute("aria-pressed", "false"); W.pf.input("guardUp"); };
-      gb.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); if (W.sfx) W.sfx.unlock(); try { gb.setPointerCapture(e.pointerId); } catch (_) {} gb.setAttribute("aria-pressed", "true"); W.pf.input("guardDown"); });
+      gb.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); if (W.sfx) W.sfx.unlock(); try { gb.setPointerCapture(e.pointerId); } catch (_) {} gb.setAttribute("aria-pressed", "true"); W.pf.input("guardDown", { ts: e.timeStamp }); });
       gb.addEventListener("pointerup", up); gb.addEventListener("pointercancel", up);
     }
     // teclado (Mac): WASD/flechas mover, Mayús correr, J atacar, K guardia, Espacio esquivar, L saltar
@@ -5637,7 +5831,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         e.preventDefault();
         const f = W.nearestFoe ? W.nearestFoe(W.pf, 3.4, 2.0) : null;
         W.pf.input("attack", f ? { dir: Math.atan2(f.body.z - W.player.z, f.body.x - W.player.x) } : { dir: kbDir() });
-      } else if (e.code === "KeyK") { e.preventDefault(); W.pf.input("guardDown"); }
+      } else if (e.code === "KeyK") { e.preventDefault(); W.pf.input("guardDown", { ts: e.timeStamp }); }
       else if (e.code === "Space") {
         e.preventDefault();
         const d = kbDir();

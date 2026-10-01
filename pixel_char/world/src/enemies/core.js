@@ -127,5 +127,6 @@
     bind("dParry", "parry", (v) => Math.round(v * 100) + "%");
     bind("dBlock", "block", (v) => Math.round(v * 100) + "%");
     pn.querySelector("#tResp").addEventListener("click", () => W.respawnAll());
+    if (W.initCalibUI) W.initCalibUI(pn);           // latencia del parry (calib.js)
   };
 })();

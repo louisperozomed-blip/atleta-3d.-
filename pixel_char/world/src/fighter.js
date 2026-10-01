@@ -10,7 +10,11 @@
 //  · búfer de entrada de 180 ms: una pulsación que llega un poco antes de que se pueda actuar no se pierde
 //  · parry estilo Sekiro: la ventana (~200 ms) cuenta desde la pulsación de guardia; pulsar repetidamente
 //    la encoge (+45 ms de penalización por pulsación seguida, se recupera sola a 120 ms/s); una pulsación
-//    justo fuera de la ventana (hasta +120 ms) cuenta como bloqueo
+//    justo fuera de la ventana (hasta +120 ms) cuenta como bloqueo (parry parcial)
+//  · niveles (se mide la antelación de la pulsación respecto al instante EXACTO del impacto, con el reloj de
+//    combate W.ct y la marca de tiempo del evento de entrada, no con el frame en que se procesa):
+//      PERFECTO  últimos ~70 ms  ·  NORMAL  resto de la ventana  ·  BLOQUEO  fuera de ventana con guardia
+//    + calibración de latencia (W.COMBAT.calib, ms): desplaza la ventana para pantallas táctiles lentas
 //  · bloqueo: mantener guardia; el daño se reduce y gasta stamina; sin stamina la guardia se rompe
 //  · esquiva: invulnerable en los frames DASH; cancela un ataque después de su frame de impacto
 (function () {
@@ -19,12 +23,26 @@
 
   const C = (W.COMBAT = {
     buffer: 0.18,
-    parryWin: 0.2, parryPartial: 0.12, parryPen: 0.045, parryPenMax: 0.13, parryPenDecay: 0.12, spamGap: 0.7,
+    parryWin: 0.2, perfectWin: 0.07, parryPartial: 0.12, parryPen: 0.045, parryPenMax: 0.13, parryPenDecay: 0.12, spamGap: 0.7,
+    counterWin: 0.35, counterDmg: 1.6, counterPost: 1.5,   // contraataque tras un parry perfecto
+    calib: 0,                                      // ms (+ = tus pulsaciones llegan tarde): desplaza la ventana
     staminaRegen: 34, staminaDelay: 0.55, blockRegenK: 0.35,
     dodgeCost: 18, attackCost: [6, 7, 12], dodgeDist: 2.3,
     postureDecay: 9, postureDelay: 1.6, stunTime: 2.4,
   });
 
+  // reloj de combate: avanza con el tiempo de juego (se congela en el hitstop); lo usan la defensa y los impactos
+  W.ct = W.ct || 0; W.ctReal = 0;
+  // instante (en W.ct) de una pulsación: con la marca de tiempo del evento (event.timeStamp, ms) se descuenta lo
+  // que tardó en procesarse; y la calibración desplaza la ventana
+  W.pressTime = function (ts, human) {
+    let t = W.ct;
+    if (ts != null && isFinite(ts)) {
+      const ref = W.manual ? performance.now() : (W.ctReal || performance.now());
+      t += Math.max(-0.12, Math.min(0.05, (ts - ref) / 1000));
+    }
+    return human ? t - (C.calib || 0) / 1000 : t;   // la calibración, solo para el jugador
+  };
   let CM = null;                                   // meta de combate (atlas)
   function meta() { return CM || (CM = W.CMETA); }
   // tiempos acumulados de cada animación, por meta (el jugador usa combat_atlas.json; cada tipo de
@@ -59,7 +77,8 @@
       this.postMax = o.posture || 100; this.post = 0; this.postT = 0;
       this.act = null;
       this.buf = null;                              // entrada en el búfer {type, t, data}
-      this.guardHeld = false; this.guardT = -9; this.lastGuardT = -9; this.pen = 0;
+      this.guardHeld = false; this.guardT = -9; this.lastGuardT = -9; this.pen = 0;   // guardT, lastGuardT: en W.ct
+      this.counterT = 0;                            // fin de la ventana de contraataque (W.ct)
       this.flash = 0; this.time = 0;
       this.prepK = o.prepK || 1;                    // >1: preparación de los ataques más lenta (enemigo)
       this.cm = o.meta || null;                     // meta de animaciones propio (enemigos)
@@ -75,15 +94,23 @@
     get invulnerable() { return !!(this.act && this.act.name === "dodge" && this.act.f >= this.dodgeInv[0] && this.act.f <= this.dodgeInv[1]); }
     get stunned() { return !!(this.act && this.act.name === "stun"); }
     parryWindow() { return Math.max(0.07, C.parryWin - this.pen); }
+    // segundos que faltan para el impacto del ataque en curso (null si no está preparando un ataque)
+    toImpact() {
+      const a = this.act;
+      if (!a || !a.name.startsWith("attack") || a.f >= 3) return null;
+      const c = cumOf(this.M(), a.name);
+      return (c[3] - (a.tt || 0)) * (a.slow || 1) / (a.speed || 1);
+    }
     // ---- entradas ------------------------------------------------------------------------
     input(type, data) {
       if (!this.alive) return false;
       if (type === "guardDown") {
+        const pt = W.pressTime(data && data.ts, this.team === "player");
         this.guardHeld = true;
         // spam: una pulsación seguida encoge la ventana del parry (se recupera sola)
-        if (this.time - this.lastGuardT < C.spamGap) this.pen = Math.min(C.parryPenMax, this.pen + C.parryPen);
-        this.lastGuardT = this.time;
-        this.buf = { type: "parry", t: this.time, data };
+        if (pt - this.lastGuardT < C.spamGap) this.pen = Math.min(C.parryPenMax, this.pen + C.parryPen);
+        this.lastGuardT = pt;
+        this.buf = { type: "parry", t: this.time, pt, data };
         this.tryBuffered();
         return true;
       }
@@ -96,7 +123,7 @@
       const b = this.buf;
       if (!b) return;
       if (this.time - b.t > C.buffer) { this.buf = null; return; }
-      if (this.can(b.type)) { this.buf = null; this.doAction(b.type, b.data, b.t); }
+      if (this.can(b.type)) { this.buf = null; this.doAction(b.type, b.data, b.pt); }
     }
     // ¿se puede empezar esa acción ahora?
     can(type) {
@@ -118,7 +145,8 @@
         return false;
       }
       if (a.name === "block") return type === "dodge" ? this.st >= C.dodgeCost * 0.5 : type === "attack" || type === "parry";
-      if (a.name === "parry") return (type === "attack" || type === "dodge") ? f >= 4 : type === "parry" && f >= 3;
+      // tras un parry perfecto se puede contraatacar al instante (ventana de contraataque)
+      if (a.name === "parry") return type === "attack" && this.counterT > W.ct ? true : (type === "attack" || type === "dodge") ? f >= 4 : type === "parry" && f >= 3;
       if (a.name === "dodge") return f >= 5;
       if (a.name === "hit") return a.gb ? false : (type === "dodge" || type === "parry") ? f >= 4 : f >= 5;
       return false;
@@ -130,7 +158,7 @@
         // pulsado en IMPACT: queda marcado y el golpe siguiente empieza al entrar en FOLLOW THROUGH
         if (next && a.f < 4) { a.chain = true; a.chainData = data; return; }
         this.startAttack(next || "attack1", data);
-      } else if (type === "parry") { this.guardT = t0 != null ? t0 : this.time; this.start("parry", { pressT: this.guardT }); }
+      } else if (type === "parry") { this.guardT = t0 != null ? t0 : W.ct; this.start("parry", { pressT: this.guardT }); }
       else if (type === "dodge") this.startDodge(data);
       else if (type === "jump") this.body.doJump();
     }
@@ -147,6 +175,7 @@
       this.st = Math.max(0, this.st - C.attackCost[k]); this.stT = 0;
       const a = this.start(name, { chain: false });
       a.slow = this.prepK;
+      if (this.counterT && W.ct <= this.counterT) { a.counter = true; this.counterT = 0; }   // contraataque
       // atracción suave hacia el enemigo más cercano (delante, a menos de 3.4 u): gira hacia él y se acerca
       // durante la preparación hasta quedar a distancia de golpe
       const tgt = W.nearestFoe ? W.nearestFoe(this, 3.4, 2.0) : null;
@@ -180,7 +209,9 @@
       this.start("hit", { kb: (opts.kb || 0.35) * this.kbK, kdir: opts.dir, moved: 0, gb: !!opts.guardBreak, speed: opts.guardBreak ? 0.62 : 1 });
       return "hit";
     }
-    addPosture(v) {
+    addPosture(v, o) {
+      // o.noBreak: suma pero nunca rompe (el coste de desviar)
+      if (o && o.noBreak) { this.post = Math.min(this.postMax, this.post + v); this.postT = 0; return false; }
       this.post = Math.min(this.postMax, this.post + v); this.postT = 0;
       if (this.post >= this.postMax && this.alive && !this.stunned && this.team !== "player") {
         this.start("stun", { t: 0, dur: this.stunTime });
@@ -198,16 +229,21 @@
       return false;
     }
     // ---- defensa: qué pasa si un golpe llega AHORA -------------------------------------------
-    defense() {
+    // impactT: instante exacto del impacto (W.ct). Devuelve "evade" | "perfect" | "parry" | "partial" |
+    // "block" | "open" | "none"; la antelación de la pulsación queda en this.lastEarly (s)
+    defense(impactT) {
       if (!this.alive) return "none";
       if (this.invulnerable) return "evade";
       const a = this.act;
       if (a && (a.name === "stun")) return "open";
-      const dt = this.time - this.guardT;
+      const early = (impactT != null ? impactT : W.ct) - this.guardT;
+      this.lastEarly = early;
       const pw = this.parryWindow();
       const inParry = a && a.name === "parry";
-      if (inParry && dt <= pw) return "parry";
-      if (inParry && dt <= pw + C.parryPartial) return "block";                    // parry parcial
+      // la pulsación cuenta aunque se mantenga (el parry ya pasó a guardia sostenida)
+      const guarding = inParry || (a && a.name === "block");
+      if (guarding && early >= -0.004 && early <= pw) return early <= Math.min(C.perfectWin, pw * 0.5) ? "perfect" : "parry";
+      if (inParry && early > pw && early <= pw + C.parryPartial) return "partial";   // parry parcial = bloqueo
       if (a && a.name === "block") return "block";
       if (inParry && this.guardHeld) return "block";
       return "open";
@@ -260,7 +296,15 @@
         return;
       }
       a.fPrev = a.f; a.f = f;
-      if (a.f !== a.fPrev && W.onCombatFrame) W.onCombatFrame(this, a);
+      if (a.f !== a.fPrev) {
+        // instante exacto del impacto: lo que el frame se pasó en este paso no cuenta (20 fps en móvil = hasta
+        // 50 ms de error si se midiera con el frame)
+        if (a.name.startsWith("attack") && a.f >= 3 && a.fPrev < 3 && a.impactT == null) {
+          const c = cumOf(this.M(), a.name);
+          a.impactT = W.ct - Math.max(0, (a.tt - c[3]) / Math.max(1e-6, sp));
+        }
+        if (W.onCombatFrame) W.onCombatFrame(this, a);
+      }
       // combo: pulsación dentro de la ventana de encadenado
       if (a.name.startsWith("attack") && a.chain && a.f >= 4) { a.chain = false; this.startAttack(this.M().animations[a.name].next, a.chainData); return; }
       this.motion(a, dt);
@@ -304,7 +348,7 @@
     }
     respawn(x, z) {
       this.hp = this.hpMax; this.st = this.stMax; this.post = 0; this.act = null; this.buf = null; this.flash = 0;
-      this.guardHeld = false; this.pen = 0;
+      this.guardHeld = false; this.pen = 0; this.counterT = 0;
       if (x != null) { const b = this.body; b.x = x; b.z = z; b.y = b.ground = W.heightAt(x, z); b.path = []; b.speed = 0; }
     }
   }

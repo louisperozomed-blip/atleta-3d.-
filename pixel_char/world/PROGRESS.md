@@ -689,3 +689,58 @@ El recorrido del mundo con `#enemy=none`: `stage5.mjs` 13/13 OK (pies, escalones
 `W.setEnemyType("echo")` en la consola. El código del eco está intacto en `src/enemies/echo/echo.js`.
 
 Publicado en el mismo enlace (versión 6): https://claude.ai/artifact/ANHrkwwHE8urZjzme74NhG
+
+# Duelo de timing: parry por niveles y la IA del autómata
+Objetivo: un duelo de timing y lectura contra una IA avanzada, pero justo (todo se puede leer y aprender).
+
+## Revisión del sistema anterior: qué se conserva y qué cambia
+**Se conserva**: `W.COMBAT` como tabla de ajustes, la máquina de estados `Fighter` (búfer de 180 ms, combo
+a1→a2→a3, esquiva con frames invulnerables, aturdido y remate), el parry estilo Sekiro con la ventana (~200 ms)
+desde la pulsación, la penalización por spam (+45 ms por pulsación seguida, se recupera sola) y el parry parcial
+(justo fuera de la ventana = bloqueo), la resolución de golpes en `combat.js` (arco delante del atacante, tabla
+de ataques por tipo), hitstop, sacudida y destellos. **El eco queda intacto** en `src/enemies/echo/`: le
+afectan las mecánicas del jugador, no su IA.
+
+**Cambia**:
+- El tiempo de la defensa se medía con el reloj del luchador en el paso en que cambiaba el frame (a 20 fps en
+  móvil, hasta 50 ms de error). Ahora hay un reloj de combate común (`W.ct`), el instante EXACTO del impacto
+  (descontando lo que el frame se pasó) y la marca de tiempo del evento de entrada (`event.timeStamp`), más una
+  calibración de latencia.
+- `Fighter.defense()` devuelve el nivel (perfecto / normal / parcial / bloqueo) y `resolve` reparte recompensas
+  por nivel y abre la ventana de contraataque.
+- Postura: cualquier parry sumaba 38-50 al atacante y nada al que desvía → tensión estilo Sekiro (etapa 2).
+- IA del autómata: defendía con dados (`onPlayerAttack`/`react` con probabilidades), reaccionaba en 140 ms y
+  atacaba con golpes sueltos cada 1.3-2.2 s → cadenas, retrasos, fintas, ataques peligrosos y una defensa basada
+  en un modelo del jugador (etapas 3-4).
+
+## Etapa 1 — Niveles de parry
+- **Medida**: `W.pressTime(event.timeStamp)` coloca la pulsación en el reloj de combate aunque se procese tarde;
+  el impacto guarda su instante exacto (`act.impactT`), y `defense(impactT)` compara los dos. La antelación queda
+  en el registro (`early`, ms).
+- **Niveles**: PERFECTO = últimos 70 ms (la mitad de la ventana si el spam la ha encogido), NORMAL = resto de la
+  ventana de 200 ms, BLOQUEO = fuera de ventana con la guardia mantenida (o parry parcial: hasta 120 ms fuera).
+  Mantener la guardia tras pulsar a tiempo sigue contando como parry.
+- **Recompensas** (`W.PARRY_LEVELS`):
+  | nivel | postura al atacante | tu postura | stamina | efectos |
+  |---|---|---|---|---|
+  | PERFECTO | ×1.33 su "post" | 0 | 0 | chispas doradas, sonido propio, hitstop 160-180 ms, **ventana de contraataque 350 ms** |
+  | NORMAL | ×1.0 | +7 (+10 pesado) | 0 | chispas, hitstop 110-130 ms |
+  | BLOQUEO | 0 | +18 (+26 pesado) | −22 (−36) | sin stamina, guardia rota |
+- **Contraataque**: un ataque que empiezas dentro de los 350 ms tras un PERFECTO (puedes cortar la recuperación
+  del parry) hace ×1.6 de daño y ×1.5 de postura y no se puede defender («¡CONTRA!»). Barra dorada CONTRA bajo tus
+  barras mientras dura.
+- **Calibración de latencia** (panel ⚙): deslizador «Latencia» (−60…+150 ms) y prueba de ritmo «calibrar latencia»
+  (10 pulsos con destello y clic; tocas el círculo o K; la mediana del desfase sin los dos primeros). Con valor
+  positivo, el golpe que te lanzan se resuelve esos ms después del impacto, así una pulsación que llega tarde por la
+  pantalla táctil sigue contando. Se recuerda en el navegador. Solo afecta al jugador.
+- **Pruebas** `tests/parry2.mjs` (STAGES=1): 15/15 OK, sin errores JS. Comprueban:
+  - los niveles a 30/65/100/190/270 ms en los dos ataques;
+  - que la antelación medida coincide con la real (±2 ms);
+  - recompensas, sonido, hitstop y la ventana de contraataque (dentro y fuera);
+  - spam, y los mismos niveles a 20 fps;
+  - un evento real procesado 60 ms tarde, que cuenta 60 ms antes;
+  - calibración +40 ms, la mediana de la prueba de ritmo y el panel.
+- **Regresión**: autómata (`enemy.mjs`) 21/21, eco (`combat.mjs`, `#enemy=echo`) 31/31.
+- En `enemy.mjs`: bloquear también le sube la postura, así que la presión sostenida le rompe la guardia o la
+  postura; además, la prueba de la muerte desactiva su defensa para ser determinista.
+- Capturas: `review/parry2/E1_perfecto.png` (chispas doradas, ¡PERFECTO!, barra CONTRA) y `E1_calibrar.png`.

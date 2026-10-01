@@ -169,11 +169,12 @@
     canvas.addEventListener("pointercancel", end);
     const jb = document.getElementById("jump");
     if (jb) jb.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); W.player.doJump(); });
-    // botón de guardia: tocar = parry, mantener = bloquear (la máquina de estados distingue por la duración)
+    // botón de guardia: tocar = parry, mantener = bloquear (la máquina de estados distingue por la duración);
+    // la pulsación lleva su marca de tiempo (event.timeStamp): el parry se mide desde ahí, no desde el frame
     const gb = document.getElementById("guard");
     if (gb) {
       const up = (e) => { e.preventDefault(); gb.setAttribute("aria-pressed", "false"); W.pf.input("guardUp"); };
-      gb.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); if (W.sfx) W.sfx.unlock(); try { gb.setPointerCapture(e.pointerId); } catch (_) {} gb.setAttribute("aria-pressed", "true"); W.pf.input("guardDown"); });
+      gb.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); if (W.sfx) W.sfx.unlock(); try { gb.setPointerCapture(e.pointerId); } catch (_) {} gb.setAttribute("aria-pressed", "true"); W.pf.input("guardDown", { ts: e.timeStamp }); });
       gb.addEventListener("pointerup", up); gb.addEventListener("pointercancel", up);
     }
     // teclado (Mac): WASD/flechas mover, Mayús correr, J atacar, K guardia, Espacio esquivar, L saltar
@@ -188,7 +189,7 @@
         e.preventDefault();
         const f = W.nearestFoe ? W.nearestFoe(W.pf, 3.4, 2.0) : null;
         W.pf.input("attack", f ? { dir: Math.atan2(f.body.z - W.player.z, f.body.x - W.player.x) } : { dir: kbDir() });
-      } else if (e.code === "KeyK") { e.preventDefault(); W.pf.input("guardDown"); }
+      } else if (e.code === "KeyK") { e.preventDefault(); W.pf.input("guardDown", { ts: e.timeStamp }); }
       else if (e.code === "Space") {
         e.preventDefault();
         const d = kbDir();
