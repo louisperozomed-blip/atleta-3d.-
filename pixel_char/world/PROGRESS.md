@@ -1126,3 +1126,58 @@ carga del contenedor (stage5 tarda ahora ~25 min con las dos versiones). El escr
 cada etapa), `E5_duelo.gif` (duelo con la IA: perfectos con cámara lenta, riposte de 3 con el anillo del ritmo,
 deathblow; te desvía → counter → clin-clin ×3 → se le rompe la postura → remate; choque), `E5_*.png` y
 `E5_results.json`. El GIF se graba con `tests/record_duel3.mjs`.
+
+---
+
+# Salto contextual (`terrain.js`, `nav.js`, `player.js`, `controls.js`, `character.js`, `interact.js`)
+
+Solo este cambio; el eco, el autómata, el duelo y el resto de sistemas siguen igual.
+
+**Medida de la cabeza.** En los sprites del personaje (vistas de frente, a resolución completa) la cabeza, del
+casco al borde inferior del visor, mide **~59 px** (57-60 según la vista) de **206 px** de alto de pie. Con
+`CHAR_H = 1,7 u` eso es **1 cabeza ≈ 0,49 u** del mundo → **2 cabezas ≈ 0,98 u** (`W.HEAD_H`, `W.JUMP_MAX` en
+`terrain.js`). Los desniveles del mapa van de 0,5 en 0,5 u (vecinos: 0,5 u ×3271, 1 u ×644, 1,5 u ×348, 2 u ×153,
+más ×248), así que en la práctica:
+
+| desnivel entre baldosas vecinas | cabezas | qué pasa |
+|---|---|---|
+| ≤ 0,5 u (escalón) | ≤ 1 | se camina, como antes |
+| 1 u | 2,04 (se admite un 3 % de margen sobre la medida) | **se salta** (subir y bajar) |
+| ≥ 1,5 u | ≥ 3 | infranqueable: se rodea o, si no hay camino, **marcador rojo** |
+
+**Cambios:**
+1. **Fuera el salto por doble toque** (`controls.js`): dos toques seguidos son dos órdenes de ir a ese punto.
+2. **El botón SALTAR y la tecla L se quedan** (para esquivar el barrido bajo del autómata), sin cambios.
+3. **A\* con aristas de salto** (`nav.js`, `opts.jump`, solo para el jugador): entre celdas vecinas ortogonales
+   libres con desnivel entre un escalón (0,5 u) y 2 cabezas, con un coste extra de 2,2 celdas (`W.JUMP_COST`): si
+   hay un rodeo andando corto lo prefiere; solo salta cuando hace falta o compensa. El punto de aterrizaje sale
+   marcado en el camino (`{jump: true, dh}`) y el anterior es el despegue (el suavizado lo conserva porque la línea
+   recta cruza el borde). Al llegar al despegue (a 0,12 u) el jugador lanza `terrainJump`.
+4. **Zona inalcanzable** (más de 2 cabezas y sin camino): no se mueve y sale el **marcador rojo** (elipse con
+   cruz, late dos veces y se apaga en 1 s). Se dibuja encima de la imagen, fuera del post-proceso de paleta: el aro
+   3D rojo salía naranja, igual que el normal.
+5. **Animación** (`player.js`, `character.js`): hoja `jump` completa (preparación → despegue → vuelo → aterrizaje),
+   pies anclados en la preparación (0,11 s) y en el aterrizaje (0,16 s) — 0 mm de deslizamiento medido —, arco
+   suave hasta el borde de destino (vuelo 0,4 s + 0,12 s por unidad de desnivel; sube con ease-out y baja con
+   ease-in), polvo al despegar y más polvo al aterrizar (más cuanto más alta la caída) con su golpe sordo, y la
+   sombra que se queda en el suelo y se encoge (hasta 0,36 de su tamaño) mientras el cuerpo está en el aire.
+6. **El autómata (y el eco) no saltan**: su A\* es el de siempre (sin `opts.jump`), así que ante un desnivel que no
+   puede salvar te persigue rodeando por el camino andando más corto.
+
+**Pruebas** (`tests/salto.mjs`, Playwright, escritorio 1280×800 con ratón y teclado e iPhone 13 con toques reales
+por CDP, paso fijo): **15/15, sin errores JS**.
+- sube saltando en 3 puntos del mapa y baja saltando en otros 3, tocando la zona de destino;
+- animación: fotogramas 0-5 de la hoja, pies quietos al despegar y aterrizar, sombra separada, altura en el aire;
+- 2 u (4,1 cabezas) → marcador rojo y no se mueve; en 40 caminos al azar ningún salto supera 1 u (2,04 cabezas);
+- botón SALTAR (y L en escritorio) siguen saltando; doble toque → camina al punto, no salta;
+- autómata: borde de 1 u entre él y tú (a 2 u en línea recta) → rodea 11,2 u sin pisar desniveles de más de
+  0,5 u y te alcanza, sin saltar.
+`tests/e2e.mjs`: la comprobación del doble toque ahora espera que **no** salte. Regresión: `e2e.mjs`
+(escritorio e iPhone) **33/33**, `enemy.mjs` (autómata, incluido esquivar el barrido saltando) **21/21**.
+
+**Publicado** en el mismo enlace: https://claude.ai/artifact/ANHrkwwHE8urZjzme74NhG
+
+**Revisión** en `review/salto/`: `salto.gif` (`tests/record_salto.mjs`: sube un borde de 1 u, vuelve a bajar,
+baja otro, toca una zona de 2 u → marcador rojo, y el autómata rodeando el desnivel para alcanzarte), capturas de
+escritorio y iPhone (`*_01_subiendo`, `*_02_aterriza`, `*_03_bajando`, `*_04_marcador_rojo`),
+`autómata_rodea.png` y `results.json`.

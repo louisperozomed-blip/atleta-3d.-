@@ -56,7 +56,11 @@
     evs.length = 0;
     if (W.FX.impact) {
       if (p.inWater && !p.jump && st.anim === "idle") { idleT += dt; if (idleT > 1.4) { idleT = 0; fx.ripple(p.x, surf, p.z, 0.35); } }
-      for (const e of p.events) if (e.type === "land") { fx.dust(p.x, p.ground, p.z, 18); if (p.inWater) { fx.ripple(p.x, surf, p.z, 0.9); fx.ripple(p.x, surf, p.z, 0.5); } if (W.sfx) W.sfx.step(surfaceKind(p.x, p.z), 1.2); }
+      for (const e of p.events) {
+        // salto por el terreno: más polvo al aterrizar cuanto mayor es la caída; un poco al despegar
+        if (e.type === "land") { fx.dust(p.x, p.ground, p.z, e.terrain ? 18 + Math.round(10 * Math.max(0, -(e.dh || 0))) : 18); if (p.inWater) { fx.ripple(p.x, surf, p.z, 0.9); fx.ripple(p.x, surf, p.z, 0.5); } if (W.sfx) W.sfx.step(surfaceKind(p.x, p.z), e.terrain ? 1.4 : 1.2); }
+        if (e.type === "takeoff") { fx.dust(e.x, e.y, e.z, 7); if (W.sfx) W.sfx.step(surfaceKind(e.x, e.z), 0.7); }
+      }
       p.events.length = 0;
       return;
     }

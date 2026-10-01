@@ -1,6 +1,9 @@
 // nav.js — búsqueda de camino A* sobre la rejilla de navegación (celdas de 0.5 u, 8 vecinos)
 // respetando obstáculos, agua y desniveles (> 0.5 no se sube andando), con coste extra junto
 // a las paredes y suavizado por línea de visión (string pulling).
+// Salto contextual (opts.jump, solo el jugador): aristas de salto entre celdas vecinas ortogonales con un
+// desnivel entre «escalón caminable» (MAX_STEP) y 2 cabezas (JUMP_MAX), con coste extra (JUMP_COST); el punto de
+// aterrizaje sale marcado ({jump: true}) y el punto anterior es el de despegue.
 (function () {
   "use strict";
   const W = (window.W = window.W || {});
@@ -27,6 +30,14 @@
     if (bx < 0 || bz < 0 || bx >= n || bz >= n || W.NAV.blocked[bx * n + bz]) return false;
     return Math.abs(heightC(bx, bz) - heightC(ax, az)) <= W.MAX_STEP + 1e-3;
   }
+  // ¿arista de salto? (vecina ortogonal libre con desnivel entre un escalón y 2 cabezas)
+  function jumpable(ax, az, bx, bz) {
+    const n = W.NAV.n;
+    if (bx < 0 || bz < 0 || bx >= n || bz >= n || W.NAV.blocked[bx * n + bz]) return false;
+    const dh = Math.abs(heightC(bx, bz) - heightC(ax, az));
+    return dh > W.MAX_STEP + 1e-3 && dh <= W.JUMP_MAX + 1e-3;
+  }
+  W.jumpable = function (x0, z0, x1, z1) { return jumpable(toCell(x0), toCell(z0), toCell(x1), toCell(z1)); };
 
   // Montículo binario mínimo sobre índices de celda
   class Heap {
@@ -80,7 +91,7 @@
     stamp[si] = stampN; gBuf[si] = 0; fromBuf[si] = -1;
     heap.push(si, h(si));
     let bestI = si, bestH = h(si), expanded = 0;
-    const limit = maxNodes || 40000;
+    const limit = maxNodes || 40000, canJump = !!(opts && opts.jump);
     while (heap.size) {
       const i = heap.pop();
       if (i === ti) { bestI = i; break; }
@@ -89,12 +100,16 @@
       const hi = h(i); if (hi < bestH) { bestH = hi; bestI = i; }
       for (const [dx, dz, c] of NB) {
         const nx = cx + dx, nz = cz + dz;
-        if (!passable(cx, cz, nx, nz)) continue;
+        let extra = 0;
+        if (!passable(cx, cz, nx, nz)) {
+          if (!(canJump && !(dx && dz) && jumpable(cx, cz, nx, nz))) continue;
+          extra = W.JUMP_COST;                  // salto: algo más caro que caminar
+        }
         // sin cortar esquinas: las dos celdas ortogonales pasables desde aquí Y hacia el destino (si no, al rozar
         // la esquina el personaje pisaba una celda desde la que el destino queda 1 u más abajo y se atascaba)
         if (dx && dz && (!passable(cx, cz, cx + dx, cz) || !passable(cx, cz, cx, cz + dz) ||
             !passable(cx + dx, cz, nx, nz) || !passable(cx, cz + dz, nx, nz))) continue;
-        const j = nx * n + nz, g = gi + c + near[j];
+        const j = nx * n + nz, g = gi + c + near[j] + extra;
         if (stamp[j] === stampN && g >= gBuf[j]) continue;
         stamp[j] = stampN; gBuf[j] = g; fromBuf[j] = i;
         heap.push(j, g + h(j) * 1.001);
@@ -105,10 +120,18 @@
     for (let i = bestI; i !== -1; i = fromBuf[i]) { cells.push(i); if (i === si) break; }
     cells.reverse();
     let pts = cells.map((i) => ({ x: toW((i / n) | 0), z: toW(i % n) }));
-    // el último punto: el destino exacto si era libre y alcanzado
-    if (bestI === ti && exactGoal) pts[pts.length - 1] = { x: x1, z: z1 };
+    // aristas de salto: el punto de aterrizaje se marca (el anterior es el despegue)
+    for (let k = 1; k < cells.length; k++) {
+      const a = cells[k - 1], b = cells[k];
+      const dh = heightC((b / n) | 0, b % n) - heightC((a / n) | 0, a % n);
+      if (Math.abs(dh) > W.MAX_STEP + 1e-3) { pts[k].jump = true; pts[k].dh = dh; pts.jumps = (pts.jumps || 0) + 1; }
+    }
+    // el último punto: el destino exacto si era libre y alcanzado (si era un aterrizaje, lo sigue siendo)
+    if (bestI === ti && exactGoal) { const L = pts[pts.length - 1]; pts[pts.length - 1] = Object.assign({}, L, { x: x1, z: z1 }); }
+    const nJumps = pts.jumps || 0;
     // sin suavizar (opts.raw): de centro de celda en centro de celda, para salir de un atasco
     if (!(opts && opts.raw)) pts = W.smoothPath({ x: x0, z: z0 }, pts);
+    pts.jumps = nJumps;
     pts.reached = bestI === ti;
     pts.exact = bestI === ti && exactGoal;
     return pts;

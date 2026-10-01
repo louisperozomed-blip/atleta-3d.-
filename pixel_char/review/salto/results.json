@@ -1,0 +1,414 @@
+{
+ "results": [
+  {
+   "name": "[escritorio] sube saltando bordes de 2 cabezas (1 u) en varios puntos del mapa, tocando la zona alta",
+   "ok": true,
+   "info": [
+    {
+     "a": [
+      -35.5,
+      -17.5
+     ],
+     "saltos": [
+      1
+     ],
+     "y": 2.5
+    },
+    {
+     "a": [
+      -35.5,
+      10.5
+     ],
+     "saltos": [
+      1
+     ],
+     "y": 4
+    },
+    {
+     "a": [
+      -33.5,
+      30.5
+     ],
+     "saltos": [
+      1
+     ],
+     "y": 2.5
+    }
+   ]
+  },
+  {
+   "name": "[escritorio] baja saltando (más de un escalón y hasta 2 cabezas) con aterrizaje",
+   "ok": true,
+   "info": [
+    {
+     "a": [
+      -35.5,
+      -16.5
+     ],
+     "tocado": [
+      -35.5,
+      -16.5
+     ],
+     "fin": [
+      -35.5,
+      -16.5
+     ],
+     "saltos": [
+      -1
+     ],
+     "y": 1.5
+    },
+    {
+     "a": [
+      -34.5,
+      10.5
+     ],
+     "tocado": [
+      -34.5,
+      10.5
+     ],
+     "fin": [
+      -34.5,
+      10.5
+     ],
+     "saltos": [
+      -1
+     ],
+     "y": 3
+    },
+    {
+     "a": [
+      -33.5,
+      31.5
+     ],
+     "tocado": [
+      -28.75,
+      35.75
+     ],
+     "fin": [
+      -28.75,
+      35.75
+     ],
+     "saltos": [
+      -1
+     ],
+     "y": 3
+    }
+   ]
+  },
+  {
+   "name": "[escritorio] animación del salto: hoja jump entera (preparación → aterrizaje), pies quietos al despegar y aterrizar, sombra que se separa en el aire",
+   "ok": true,
+   "info": [
+    {
+     "frames": "012345",
+     "despegue": 0,
+     "aterrizaje": 0,
+     "sombra": 0.36,
+     "alto": 1.4
+    },
+    {
+     "frames": "012345",
+     "despegue": 0,
+     "aterrizaje": 0,
+     "sombra": 0.36,
+     "alto": 1.4
+    },
+    {
+     "frames": "012345",
+     "despegue": 0,
+     "aterrizaje": 0,
+     "sombra": 0.36,
+     "alto": 1.4
+    },
+    {
+     "frames": "012345",
+     "despegue": 0,
+     "aterrizaje": 0,
+     "sombra": 0.46,
+     "alto": 0.92
+    },
+    {
+     "frames": "012345",
+     "despegue": 0,
+     "aterrizaje": 0,
+     "sombra": 0.46,
+     "alto": 0.92
+    },
+    {
+     "frames": "012345",
+     "despegue": 0,
+     "aterrizaje": 0,
+     "sombra": 0.44,
+     "alto": 0.97
+    }
+   ]
+  },
+  {
+   "name": "[escritorio] zona alta inalcanzable (más de 2 cabezas: 2 u = 4.1 cabezas) → marcador ROJO y no se mueve",
+   "ok": true,
+   "info": {
+    "rojo": true,
+    "path": 0,
+    "st": {
+     "x": -15.75,
+     "z": -15.75,
+     "y": 1.5,
+     "h": 1.5,
+     "jump": false
+    },
+    "dh": 2
+   }
+  },
+  {
+   "name": "[escritorio] A*: los saltos del camino nunca superan 2 cabezas (1,5 u o más sigue siendo infranqueable)",
+   "ok": true,
+   "info": {
+    "caminos": 40,
+    "saltos": 10,
+    "max_desnivel": 1,
+    "cabezas": 2.04,
+    "JUMP_MAX": 1.009
+   }
+  },
+  {
+   "name": "[escritorio] botón SALTAR y tecla L siguen saltando (para el barrido bajo del autómata)",
+   "ok": true,
+   "info": {
+    "boton": {
+     "salta": true,
+     "alto": 0.85
+    },
+    "L": {
+     "salta": true,
+     "alto": 0.85
+    }
+   }
+  },
+  {
+   "name": "[escritorio] doble toque: ya no salta (va al punto tocado)",
+   "ok": true,
+   "info": {
+    "salta": false,
+    "recorrido": 1.2
+   }
+  },
+  {
+   "name": "[iphone] sube saltando bordes de 2 cabezas (1 u) en varios puntos del mapa, tocando la zona alta",
+   "ok": true,
+   "info": [
+    {
+     "a": [
+      -35.5,
+      -17.5
+     ],
+     "saltos": [
+      1
+     ],
+     "y": 2.5
+    },
+    {
+     "a": [
+      -35.5,
+      10.5
+     ],
+     "saltos": [
+      1
+     ],
+     "y": 4
+    },
+    {
+     "a": [
+      -33.5,
+      30.5
+     ],
+     "saltos": [
+      1
+     ],
+     "y": 2.5
+    }
+   ]
+  },
+  {
+   "name": "[iphone] baja saltando (más de un escalón y hasta 2 cabezas) con aterrizaje",
+   "ok": true,
+   "info": [
+    {
+     "a": [
+      -35.5,
+      -16.5
+     ],
+     "tocado": [
+      -35.5,
+      -16.5
+     ],
+     "fin": [
+      -35.5,
+      -16.5
+     ],
+     "saltos": [
+      -1
+     ],
+     "y": 1.5
+    },
+    {
+     "a": [
+      -34.5,
+      10.5
+     ],
+     "tocado": [
+      -34.5,
+      10.5
+     ],
+     "fin": [
+      -34.5,
+      10.5
+     ],
+     "saltos": [
+      -1
+     ],
+     "y": 3
+    },
+    {
+     "a": [
+      -33.5,
+      31.5
+     ],
+     "tocado": [
+      -28.75,
+      35.75
+     ],
+     "fin": [
+      -28.75,
+      35.75
+     ],
+     "saltos": [
+      -1
+     ],
+     "y": 3
+    }
+   ]
+  },
+  {
+   "name": "[iphone] animación del salto: hoja jump entera (preparación → aterrizaje), pies quietos al despegar y aterrizar, sombra que se separa en el aire",
+   "ok": true,
+   "info": [
+    {
+     "frames": "012345",
+     "despegue": 0,
+     "aterrizaje": 0,
+     "sombra": 0.36,
+     "alto": 1.4
+    },
+    {
+     "frames": "012345",
+     "despegue": 0,
+     "aterrizaje": 0,
+     "sombra": 0.36,
+     "alto": 1.4
+    },
+    {
+     "frames": "012345",
+     "despegue": 0,
+     "aterrizaje": 0,
+     "sombra": 0.36,
+     "alto": 1.4
+    },
+    {
+     "frames": "012345",
+     "despegue": 0,
+     "aterrizaje": 0,
+     "sombra": 0.46,
+     "alto": 0.92
+    },
+    {
+     "frames": "012345",
+     "despegue": 0,
+     "aterrizaje": 0,
+     "sombra": 0.46,
+     "alto": 0.92
+    },
+    {
+     "frames": "012345",
+     "despegue": 0,
+     "aterrizaje": 0,
+     "sombra": 0.44,
+     "alto": 0.97
+    }
+   ]
+  },
+  {
+   "name": "[iphone] zona alta inalcanzable (más de 2 cabezas: 2 u = 4.1 cabezas) → marcador ROJO y no se mueve",
+   "ok": true,
+   "info": {
+    "rojo": true,
+    "path": 0,
+    "st": {
+     "x": -15.75,
+     "z": -15.75,
+     "y": 1.5,
+     "h": 1.5,
+     "jump": false
+    },
+    "dh": 2
+   }
+  },
+  {
+   "name": "[iphone] A*: los saltos del camino nunca superan 2 cabezas (1,5 u o más sigue siendo infranqueable)",
+   "ok": true,
+   "info": {
+    "caminos": 40,
+    "saltos": 10,
+    "max_desnivel": 1,
+    "cabezas": 2.04,
+    "JUMP_MAX": 1.009
+   }
+  },
+  {
+   "name": "[iphone] botón SALTAR siguen saltando (para el barrido bajo del autómata)",
+   "ok": true,
+   "info": {
+    "boton": {
+     "salta": true,
+     "alto": 0.85
+    },
+    "L": {
+     "salta": null
+    }
+   }
+  },
+  {
+   "name": "[iphone] doble toque: ya no salta (va al punto tocado)",
+   "ok": true,
+   "info": {
+    "salta": false,
+    "recorrido": 1.2
+   }
+  },
+  {
+   "name": "el autómata no salta: si te persigue y hay un desnivel que no puede salvar, rodea (camino más corto andando) y llega",
+   "ok": true,
+   "info": {
+    "borde": {
+     "lo": [
+      -33.5,
+      31.5
+     ],
+     "hi": [
+      -33.5,
+      30.5
+     ],
+     "dh": 1
+    },
+    "rodeo_andando": 10.43,
+    "distancia_inicial": 2,
+    "recorrido": 11.16,
+    "mayor_desnivel_pisado": 0.5,
+    "llega": true,
+    "segundos": 14,
+    "saltos": false
+   }
+  }
+ ],
+ "errors": []
+}

@@ -5,18 +5,21 @@
 //     mantener el dedo sobre él = golpe RETRASADO (se suelta al levantar el dedo)
 //   · deslizar rápido: esquivar hacia allí
 //   · botón GUARDIA: tocar = parry, mantener = bloquear
-//   · doble toque en el suelo o botón SALTAR: salta en el sitio, o hacia delante si se mueve
+//   · botón SALTAR (y tecla L): salta en el sitio, o hacia delante si se mueve (combate: el barrido bajo)
+//   · salto CONTEXTUAL: si el camino pasa por un desnivel de hasta 2 cabezas, camina hasta el borde y salta
+//     (sube o baja); si tocas una zona más alta inalcanzable, el marcador sale en ROJO y no se mueve
+//     (el doble toque ya no salta)
 //   · teclado: WASD/flechas mover (Mayús corre), J atacar (mantener = retrasar el golpe), K guardia (durante la
 //     preparación de tu golpe = finta), Espacio esquivar, L saltar
 //   · marcador en el suelo: círculo que se encoge y se desvanece
 (function () {
   "use strict";
   const W = (window.W = window.W || {});
-  const TAP_MS = 170, DOUBLE_MS = 320;
+  const TAP_MS = 170;
   const SWIPE_MS = 260, SWIPE_PX = 42;              // deslizar rápido = esquivar
   let pendingAttack = null, pendingMove = null;
   const ptr = { down: false, id: null, x0: 0, y0: 0, x: 0, y: 0, timer: 0 };
-  let lastTap = null, following = false, replanT = 0, lastFollowGoal = null;
+  let following = false, replanT = 0, lastFollowGoal = null;
   const markers = [];
   let followMarker = null, ringGeo = null;
 
@@ -26,10 +29,35 @@
     m.renderOrder = 3; W.scene.add(m);
     return m;
   }
-  function addMarker(x, y, z) {
+  // marcador rojo (zona inalcanzable): se dibuja encima de la imagen, fuera del post-proceso de paleta (que
+  // convertía el aro rojo en naranja, igual que el normal): elipse en el suelo con una cruz, en rojo puro
+  function redMark() {
+    const d = document.createElement("div");
+    d.className = "mark-red";
+    d.style.cssText = "position:fixed;left:0;top:0;pointer-events:none;z-index:5;transform-origin:0 0;will-change:transform,opacity";
+    d.innerHTML = '<svg width="100" height="100" viewBox="-50 -50 100 100" style="display:block;overflow:visible">' +
+      '<ellipse rx="44" ry="44" fill="rgba(255,40,30,0.18)" stroke="#ff2a1e" stroke-width="7"/>' +
+      '<path d="M-20,-20 L20,20 M20,-20 L-20,20" stroke="#ff2a1e" stroke-width="9" stroke-linecap="round"/></svg>';
+    document.body.appendChild(d);
+    return d;
+  }
+  function placeRed(q, s) {
+    // radio en pantalla: el de un círculo de radio s en el suelo (eje derecho de la cámara); alto acortado por la elevación
+    const th = W.ui ? W.ui.theta : Math.PI / 4, c = W.toScreen(q.x, q.y, q.z),
+      e = W.toScreen(q.x + Math.cos(th) * s, q.y, q.z - Math.sin(th) * s), r = Math.max(6, Math.hypot(e[0] - c[0], e[1] - c[1]));
+    q.el.style.transform = `translate(${c[0] - r}px,${c[1] - r * Math.sin(W.CAM_EL)}px) scale(${r / 50},${r * Math.sin(W.CAM_EL) / 50})`;
+  }
+  function addMarker(x, y, z, red) {
+    if (red) {
+      const q = { x, y: y + 0.04, z, t: 0, red: true, el: redMark() };
+      markers.push(q); placeRed(q, 0.42);
+      W.lastMarker = { x, y, z, red: true, t: performance.now() };
+      return;
+    }
     const m = ring(0xffd27a);
     m.position.set(x, y + 0.04, z);
-    markers.push({ m, t: 0 });
+    markers.push({ m, t: 0, red: false });
+    W.lastMarker = { x, y, z, red: false, t: performance.now() };
   }
 
   // dirección en el suelo de un vector de pantalla (px, y hacia abajo), deshaciendo el acortamiento isométrico
@@ -58,7 +86,7 @@
     // ts: instante del toque (para el ritmo del riposte cuenta cuándo bajó el dedo, no cuándo se levantó)
     if (d <= 3.2 || pf.act) { pf.input("attack", { dir, ts }); pendingAttack = null; return "attack"; }
     // lejos: va hacia él y ataca al llegar
-    const path = W.findPath(p.x, p.z, f.body.x - Math.cos(dir) * 1.1, f.body.z - Math.sin(dir) * 1.1);
+    const path = W.findPath(p.x, p.z, f.body.x - Math.cos(dir) * 1.1, f.body.z - Math.sin(dir) * 1.1, undefined, { jump: true });
     if (path.length) { p.setPath(path, { noDelay: true }); pendingAttack = { f, t: 0 }; }
     return "approach";
   }
@@ -68,8 +96,10 @@
     const p = W.player;
     // en mitad de una acción de combate el paseo queda pendiente hasta que termine
     if (W.pf && W.pf.act) { pendingMove = { x, z }; return { ok: true, pending: true, path: [{ x, z }] }; }
-    const path = W.findPath(p.x, p.z, x, z);
+    const path = W.findPath(p.x, p.z, x, z, undefined, { jump: true });
     if (!path.length) return { ok: false };
+    // toque en una zona libre a la que no se llega ni saltando (más de 2 cabezas de desnivel): no se mueve
+    if (opts && opts.tap && !path.reached && W.cellFree(x, z)) return { ok: false, unreachable: true, path };
     const wasIdle = p.setPath(path, opts);
     W.lastPath = path;
     return { ok: true, wasIdle, path, reached: path.reached, exact: path.exact };
@@ -79,8 +109,9 @@
     pendingAttack = null;
     const g = W.pick(cx, cy);
     if (!g) return { ok: false };
-    const r = W.goTo(g.x, g.z);
+    const r = W.goTo(g.x, g.z, { tap: true });
     if (r.ok) { const e = r.path[r.path.length - 1]; addMarker(e.x, W.heightAt(e.x, e.z), e.z); }
+    else if (r.unreachable) { W.player.stop(); addMarker(g.x, W.heightAt(g.x, g.z), g.z, true); }
     r.start = { x: W.player.x, z: W.player.z };
     return r;
   }
@@ -103,7 +134,7 @@
       replanT = 0.2; lastFollowGoal = g;
       const p = W.player;
       if (Math.hypot(g.x - p.x, g.z - p.z) < 0.18 * W.CHAR_H) { p.stop(); return; }
-      const path = W.findPath(p.x, p.z, g.x, g.z, 12000);
+      const path = W.findPath(p.x, p.z, g.x, g.z, 12000, { jump: true });
       if (path.length) p.setPath(path, { noDelay: true });
     }
   }
@@ -139,7 +170,7 @@
     const end = (e) => {
       if (!ptr.down || e.pointerId !== ptr.id) return;
       ptr.down = false; clearTimeout(ptr.timer); clearTimeout(ptr.holdTimer);
-      if (ptr.atkHold) { ptr.atkHold = false; W.pf.input("attackUp"); lastTap = null; return; }   // suelta el golpe retenido
+      if (ptr.atkHold) { ptr.atkHold = false; W.pf.input("attackUp"); return; }   // suelta el golpe retenido
       // deslizar rápido: esquivar en esa dirección
       const dx = e.clientX - ptr.x0, dy = e.clientY - ptr.y0, el = performance.now() - ptr.t0;
       W.lastGesture = { dx, dy, ms: Math.round(el), following, foe: !!ptr.foe };
@@ -148,13 +179,11 @@
         W.player.stop(); pendingAttack = null; pendingMove = null;
         W.pf.input("dodge", { dir: W.screenDirToHeading(dx, dy) });
         W.lastSwipe = { dx, dy, ms: el, dir: W.screenDirToHeading(dx, dy) };
-        lastTap = null;
         return;
       }
       if (ptr.foe && !following) {
         if (e.type === "pointercancel") return;
         W.lastFoeTap = attackFoe(ptr.foe, ptr.t0);
-        lastTap = null;
         return;
       }
       if (following) {
@@ -164,20 +193,8 @@
         return;
       }
       if (e.type === "pointercancel") return;
-      const now = performance.now();
-      if (lastTap && now - lastTap.t < DOUBLE_MS && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 60) {
-        // doble toque: si el primer toque arrancó desde parado, se anula ese paseo y salta en el sitio
-        if (lastTap.wasIdle) {
-          const p = W.player; p.stop(); p.speed = 0;
-          if (lastTap.start && Math.hypot(p.x - lastTap.start.x, p.z - lastTap.start.z) < 0.2) { p.x = lastTap.start.x; p.z = lastTap.start.z; }
-          const m = markers.pop(); if (m) W.scene.remove(m.m);
-        }
-        W.player.doJump();
-        lastTap = null;
-        return;
-      }
-      const r = tapAt(e.clientX, e.clientY);
-      lastTap = { t: now, x: e.clientX, y: e.clientY, wasIdle: !!r.wasIdle, start: r.start };
+      // (el doble toque ya no salta: cada toque es un destino; los saltos los decide el camino)
+      W.lastTap = tapAt(e.clientX, e.clientY);
     };
     canvas.addEventListener("pointerup", end);
     canvas.addEventListener("pointercancel", end);
@@ -257,11 +274,13 @@
     if (pendingMove && pf && !pf.act) { const m = pendingMove; pendingMove = null; W.goTo(m.x, m.z); }
     for (let i = markers.length - 1; i >= 0; i--) {
       const q = markers[i];
-      q.t += dt / 0.6;
-      if (q.t >= 1) { W.scene.remove(q.m); q.m.material.dispose(); markers.splice(i, 1); continue; }
-      const s = 0.55 - 0.4 * (1 - Math.pow(1 - q.t, 3));
+      q.t += dt / (q.red ? 1.0 : 0.6);
+      if (q.t >= 1) { if (q.el) q.el.remove(); else { W.scene.remove(q.m); q.m.material.dispose(); } markers.splice(i, 1); continue; }
+      // rojo (inalcanzable): no se encoge, late dos veces y se apaga
+      const s = q.red ? 0.42 + 0.06 * Math.sin(q.t * Math.PI * 4) : 0.55 - 0.4 * (1 - Math.pow(1 - q.t, 3));
+      if (q.el) { placeRed(q, s); q.el.style.opacity = Math.min(1, 1.6 * (1 - q.t)); continue; }
       q.m.scale.set(s, 1, s);
-      q.m.material.opacity = 1 - q.t;
+      q.m.material.opacity = q.red ? Math.min(1, 1.6 * (1 - q.t)) : 1 - q.t;
     }
   };
 })();

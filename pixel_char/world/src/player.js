@@ -14,6 +14,8 @@
     runDist: 4.0, walkBackDist: 2.2,
     radius: 0.28,
     jumpPrep: 0.07, jumpAir: 0.62, jumpLand: 0.15, jumpHeight: 0.5,
+    // salto por el terreno (contextual): preparación más marcada, vuelo según el desnivel y aterrizaje
+    tjPrep: 0.11, tjAir: 0.4, tjAirPerU: 0.12, tjLand: 0.16,
     stepSmooth: 10, stepSmoothFoot: 30,                     // rapidez del ajuste vertical al subir/bajar escalones
   });
 
@@ -71,6 +73,19 @@
       this.jump = { t: 0, forward: moving, v: moving ? Math.max(this.speed, this.walkV) : 0, landed: false, h: 0 };
       if (!moving) this.speed = 0;
     }
+    // salto por el terreno hasta (x, z) (aterrizaje de una arista de salto del camino): arco suave hasta el
+    // borde de destino, sin colisiones en el aire; quieto al despegar y al aterrizar (pies anclados)
+    terrainJump(x, z) {
+      const h0 = W.heightAt(this.x, this.z), h1 = W.heightAt(x, z), dh = h1 - h0;
+      this.heading = Math.atan2(z - this.z, x - this.x);
+      this.jump = { terrain: true, t: 0, h: 0, landed: false, forward: true, v: 0,
+        prep: P.tjPrep, air: P.tjAir + P.tjAirPerU * Math.abs(dh), land: P.tjLand,
+        from: { x: this.x, z: this.z, h: h0 }, to: { x, z, h: h1 }, dh,
+        arc: dh > 0 ? 0.25 + 0.35 * dh : 0.28 };
+      this.speed = 0;
+      this.events.push({ type: "takeoff", x: this.x, y: h0, z: this.z, dh });
+      if (W.combatLog) W.combatLog.push({ ev: "terrainJump", dh: +dh.toFixed(2), from: [+this.x.toFixed(2), +this.z.toFixed(2)], to: [+x.toFixed(2), +z.toFixed(2)], t: W.U ? +W.U.uTime.value.toFixed(3) : 0 });
+    }
     // intenta moverse (dx, dz); desliza por la pared si choca
     tryMove(dx, dz) {
       const r = this.radius || P.radius;
@@ -94,7 +109,26 @@
       // inercia: arranque más pesado, llega a la velocidad de la marcha en ~0.25 s
       if (W.FX && W.FX.inertia) accel = (this.gait === "run" ? runV : walkV) / 0.25;
       const x0 = this.x, z0 = this.z;
-      if (this.jump) {
+      if (this.jump && this.jump.terrain) {
+        // salto por el terreno: la altura sigue una curva (subiendo, sube pronto y pasa el borde por encima;
+        // bajando, se mantiene arriba hasta el borde y cae) + un arco; x, z en línea recta hasta el aterrizaje
+        const J = this.jump;
+        J.t += dt;
+        const u = Math.min(1, Math.max(0, (J.t - J.prep) / J.air));
+        if (J.t >= J.prep && !J.landed) {
+          const e = J.dh > 0 ? 1 - (1 - u) * (1 - u) : u * u;
+          const yc = J.from.h + J.dh * e + J.arc * 4 * u * (1 - u);
+          J.base = J.from.h + J.dh * u;                     // referencia lineal (la sombra mide la altura sobre el suelo)
+          J.h = yc - J.base; J.yc = yc;
+          this.x = J.from.x + (J.to.x - J.from.x) * u; this.z = J.from.z + (J.to.z - J.from.z) * u;
+          if (u >= 1) {
+            J.landed = true; J.h = 0; J.base = J.to.h; this.y = J.to.h; this.squash = 1;
+            this.x = J.to.x; this.z = J.to.z;
+            this.events.push({ type: "land", x: this.x, y: this.y, z: this.z, terrain: true, dh: J.dh });
+          }
+        }
+        if (J.landed && J.t >= J.prep + J.air + J.land) this.jump = null;
+      } else if (this.jump) {
         const J = this.jump;
         J.t += dt;
         const a0 = P.jumpPrep, a1 = P.jumpPrep + P.jumpAir;
@@ -111,8 +145,17 @@
       } else if (this.path.length) {
         let q = this.path[0];
         let dx = q.x - this.x, dz = q.z - this.z, d = Math.hypot(dx, dz);
-        // pasa al siguiente punto de paso cuando está cerca (no frena en los intermedios)
-        while (this.path.length > 1 && d < 0.35) { this.path.shift(); q = this.path[0]; dx = q.x - this.x; dz = q.z - this.z; d = Math.hypot(dx, dz); }
+        // pasa al siguiente punto de paso cuando está cerca (no frena en los intermedios); el punto de despegue de
+        // un salto hay que pisarlo (0.12 u), para saltar desde el borde y no desde más atrás
+        while (this.path.length > 1 && d < (this.path[1].jump ? 0.12 : 0.35)) { this.path.shift(); q = this.path[0]; dx = q.x - this.x; dz = q.z - this.z; d = Math.hypot(dx, dz); }
+        // el siguiente punto es el aterrizaje de un salto: salta (si no está en mitad de una acción de combate)
+        if (q.jump && !(this.fighter && this.fighter.act)) {
+          if (W.jumpable && W.jumpable(this.x, this.z, q.x, q.z) || Math.abs(W.heightAt(q.x, q.z) - W.heightAt(this.x, this.z)) > W.MAX_STEP + 1e-3) {
+            this.path.shift(); this.terrainJump(q.x, q.z);
+            return this.finishUpdate(dt, x0, z0);
+          }
+          q.jump = false;                                   // ya está en el mismo nivel: camina
+        }
         const rest = this.remaining();
         if (this.following) {
           if (rest > 1.2 * H) this.gait = "run"; else if (rest < 0.7 * H) this.gait = "walk";
@@ -144,7 +187,7 @@
           this.replans = (this.replans || 0) + 1;
           if (this.replans <= 3 && W.findPath) {
             // al atascarse, camino sin suavizar: los centros de celda de A* ya respetan desniveles y esquinas
-            const np = W.findPath(this.x, this.z, goal.x, goal.z, undefined, { raw: true });
+            const np = W.findPath(this.x, this.z, goal.x, goal.z, undefined, { raw: true, jump: this === W.player });
             if (np.length) { this.path = np; this.speed *= 0.5; } else this.path = [];
           } else { this.path = []; }
         }
@@ -156,6 +199,9 @@
         this.speed = Math.max(0, this.speed - decel * 1.6 * dt);
         if (this.speed > 0) this.tryMove(Math.cos(this.heading) * this.speed * dt, Math.sin(this.heading) * this.speed * dt);
       }
+      return this.finishUpdate(dt, x0, z0);
+    }
+    finishUpdate(dt, x0, z0) {
       const dist = Math.hypot(this.x - x0, this.z - z0);
       this.moved += dist;
       this.realSpeed = dist / Math.max(dt, 1e-4);
@@ -163,6 +209,13 @@
       // Al subir o bajar un escalón el cuerpo cambia de nivel cuando el apoyo pasa al pie del otro nivel,
       // con un ajuste corto (~0.1 s) en vez de ir flotando o hundido detrás del centro.
       this.ground = W.heightAt(this.x, this.z);
+      if (this.jump && this.jump.terrain && this.jump.t >= this.jump.prep) {
+        // en el aire (y al aterrizar): la altura la lleva el salto, sin el ajuste suave de los escalones
+        this.y = this.jump.landed ? this.jump.to.h : this.jump.base;
+        this.squash = Math.max(0, this.squash - dt / 0.16);
+        this.inWater = W.kindAt(this.x, this.z) === W.K.PUDDLE;
+        return dist;
+      }
       const chr = this.ch || W.character;
       const an = W.FX && W.FX.anchor && !this.jump && chr && chr.anchor && chr.anchor.st.anchor;
       let target = this.ground;

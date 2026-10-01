@@ -141,7 +141,7 @@ async function suite(browser, label, opts, touch) {
   check(`[${label}] ondas al pisar charcas`, rings > 0, `${rings} ondas creadas`);
   await page.screenshot({ path: `${out}/${label}_04_charca.png` });
 
-  // --- 6. doble toque parado: salta en el sitio -------------------------------------------------------
+  // --- 6. doble toque parado: ya NO salta (salto contextual; solo camina al punto) -------------------------------------------------------
   await page.evaluate(() => { W.teleport(3.5, -5.5); });
   await sleep(500);
   let s0 = await S(page);
@@ -171,7 +171,7 @@ async function suite(browser, label, opts, touch) {
     gap = await page.evaluate(() => W.__ups.length >= 2 ? W.__ups[1] - W.__ups[0] : -1);
     if (gap >= 0 && gap <= 320) break;
   }
-  check(`[${label}] doble toque parado → salta en el sitio`, jumped && Math.hypot(s1.x - s0.x, s1.z - s0.z) < 0.05, `desplazamiento ${Math.hypot(s1.x - s0.x, s1.z - s0.z).toFixed(3)} u, toques separados ${gap.toFixed(0)} ms (intento ${tries + 1})`);
+  check(`[${label}] doble toque → ya no salta, camina al punto`, !jumped && Math.hypot(s1.x - s0.x, s1.z - s0.z) > 0.8, `desplazamiento ${Math.hypot(s1.x - s0.x, s1.z - s0.z).toFixed(3)} u, toques separados ${gap.toFixed(0)} ms (intento ${tries + 1})`);
   // --- 7. SALTAR en marcha: hacia delante ------------------------------------------------------------
   await page.evaluate(() => { W.teleport(-8.5, 0.5); W.goTo(-3, 5.9); });
   await sleep(900);

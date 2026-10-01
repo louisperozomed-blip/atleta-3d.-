@@ -341,6 +341,13 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
   W.HALF = W.N / 2;
   W.STEP = 0.5;          // altura de un escalón
   W.MAX_STEP = 0.5;      // desnivel máximo que se puede subir andando
+  // Salto contextual: la cabeza del personaje mide ~59 px de sus 206 px de alto de pie en los sprites (casco
+  // hasta el borde inferior del visor, vistas de frente) → 0,49 u con CHAR_H = 1,7 u. Se salta hasta 2 cabezas;
+  // como los desniveles del mapa van de 0,5 en 0,5, eso son los bordes de 1 u (2,04 cabezas: se admite un 3 % de
+  // margen sobre la medida). 1,5 u (3 cabezas) o más sigue siendo infranqueable
+  W.HEAD_H = 0.49;
+  W.JUMP_MAX = 2 * W.HEAD_H * 1.03;
+  W.JUMP_COST = 2.2;     // coste extra de una arista de salto en A* (en celdas): solo salta si hace falta o compensa
 
   // Tipos de baldosa
   const K = (W.K = { GRASS: 0, PATH: 1, WATER: 2, PUDDLE: 3, PLAZA: 4, STONE: 5, CRYSTAL: 6, BORDER: 7 });
@@ -2488,6 +2495,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     runDist: 4.0, walkBackDist: 2.2,
     radius: 0.28,
     jumpPrep: 0.07, jumpAir: 0.62, jumpLand: 0.15, jumpHeight: 0.5,
+    // salto por el terreno (contextual): preparación más marcada, vuelo según el desnivel y aterrizaje
+    tjPrep: 0.11, tjAir: 0.4, tjAirPerU: 0.12, tjLand: 0.16,
     stepSmooth: 10, stepSmoothFoot: 30,                     // rapidez del ajuste vertical al subir/bajar escalones
   });
 
@@ -2545,6 +2554,19 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       this.jump = { t: 0, forward: moving, v: moving ? Math.max(this.speed, this.walkV) : 0, landed: false, h: 0 };
       if (!moving) this.speed = 0;
     }
+    // salto por el terreno hasta (x, z) (aterrizaje de una arista de salto del camino): arco suave hasta el
+    // borde de destino, sin colisiones en el aire; quieto al despegar y al aterrizar (pies anclados)
+    terrainJump(x, z) {
+      const h0 = W.heightAt(this.x, this.z), h1 = W.heightAt(x, z), dh = h1 - h0;
+      this.heading = Math.atan2(z - this.z, x - this.x);
+      this.jump = { terrain: true, t: 0, h: 0, landed: false, forward: true, v: 0,
+        prep: P.tjPrep, air: P.tjAir + P.tjAirPerU * Math.abs(dh), land: P.tjLand,
+        from: { x: this.x, z: this.z, h: h0 }, to: { x, z, h: h1 }, dh,
+        arc: dh > 0 ? 0.25 + 0.35 * dh : 0.28 };
+      this.speed = 0;
+      this.events.push({ type: "takeoff", x: this.x, y: h0, z: this.z, dh });
+      if (W.combatLog) W.combatLog.push({ ev: "terrainJump", dh: +dh.toFixed(2), from: [+this.x.toFixed(2), +this.z.toFixed(2)], to: [+x.toFixed(2), +z.toFixed(2)], t: W.U ? +W.U.uTime.value.toFixed(3) : 0 });
+    }
     // intenta moverse (dx, dz); desliza por la pared si choca
     tryMove(dx, dz) {
       const r = this.radius || P.radius;
@@ -2568,7 +2590,26 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       // inercia: arranque más pesado, llega a la velocidad de la marcha en ~0.25 s
       if (W.FX && W.FX.inertia) accel = (this.gait === "run" ? runV : walkV) / 0.25;
       const x0 = this.x, z0 = this.z;
-      if (this.jump) {
+      if (this.jump && this.jump.terrain) {
+        // salto por el terreno: la altura sigue una curva (subiendo, sube pronto y pasa el borde por encima;
+        // bajando, se mantiene arriba hasta el borde y cae) + un arco; x, z en línea recta hasta el aterrizaje
+        const J = this.jump;
+        J.t += dt;
+        const u = Math.min(1, Math.max(0, (J.t - J.prep) / J.air));
+        if (J.t >= J.prep && !J.landed) {
+          const e = J.dh > 0 ? 1 - (1 - u) * (1 - u) : u * u;
+          const yc = J.from.h + J.dh * e + J.arc * 4 * u * (1 - u);
+          J.base = J.from.h + J.dh * u;                     // referencia lineal (la sombra mide la altura sobre el suelo)
+          J.h = yc - J.base; J.yc = yc;
+          this.x = J.from.x + (J.to.x - J.from.x) * u; this.z = J.from.z + (J.to.z - J.from.z) * u;
+          if (u >= 1) {
+            J.landed = true; J.h = 0; J.base = J.to.h; this.y = J.to.h; this.squash = 1;
+            this.x = J.to.x; this.z = J.to.z;
+            this.events.push({ type: "land", x: this.x, y: this.y, z: this.z, terrain: true, dh: J.dh });
+          }
+        }
+        if (J.landed && J.t >= J.prep + J.air + J.land) this.jump = null;
+      } else if (this.jump) {
         const J = this.jump;
         J.t += dt;
         const a0 = P.jumpPrep, a1 = P.jumpPrep + P.jumpAir;
@@ -2585,8 +2626,17 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       } else if (this.path.length) {
         let q = this.path[0];
         let dx = q.x - this.x, dz = q.z - this.z, d = Math.hypot(dx, dz);
-        // pasa al siguiente punto de paso cuando está cerca (no frena en los intermedios)
-        while (this.path.length > 1 && d < 0.35) { this.path.shift(); q = this.path[0]; dx = q.x - this.x; dz = q.z - this.z; d = Math.hypot(dx, dz); }
+        // pasa al siguiente punto de paso cuando está cerca (no frena en los intermedios); el punto de despegue de
+        // un salto hay que pisarlo (0.12 u), para saltar desde el borde y no desde más atrás
+        while (this.path.length > 1 && d < (this.path[1].jump ? 0.12 : 0.35)) { this.path.shift(); q = this.path[0]; dx = q.x - this.x; dz = q.z - this.z; d = Math.hypot(dx, dz); }
+        // el siguiente punto es el aterrizaje de un salto: salta (si no está en mitad de una acción de combate)
+        if (q.jump && !(this.fighter && this.fighter.act)) {
+          if (W.jumpable && W.jumpable(this.x, this.z, q.x, q.z) || Math.abs(W.heightAt(q.x, q.z) - W.heightAt(this.x, this.z)) > W.MAX_STEP + 1e-3) {
+            this.path.shift(); this.terrainJump(q.x, q.z);
+            return this.finishUpdate(dt, x0, z0);
+          }
+          q.jump = false;                                   // ya está en el mismo nivel: camina
+        }
         const rest = this.remaining();
         if (this.following) {
           if (rest > 1.2 * H) this.gait = "run"; else if (rest < 0.7 * H) this.gait = "walk";
@@ -2618,7 +2668,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
           this.replans = (this.replans || 0) + 1;
           if (this.replans <= 3 && W.findPath) {
             // al atascarse, camino sin suavizar: los centros de celda de A* ya respetan desniveles y esquinas
-            const np = W.findPath(this.x, this.z, goal.x, goal.z, undefined, { raw: true });
+            const np = W.findPath(this.x, this.z, goal.x, goal.z, undefined, { raw: true, jump: this === W.player });
             if (np.length) { this.path = np; this.speed *= 0.5; } else this.path = [];
           } else { this.path = []; }
         }
@@ -2630,6 +2680,9 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         this.speed = Math.max(0, this.speed - decel * 1.6 * dt);
         if (this.speed > 0) this.tryMove(Math.cos(this.heading) * this.speed * dt, Math.sin(this.heading) * this.speed * dt);
       }
+      return this.finishUpdate(dt, x0, z0);
+    }
+    finishUpdate(dt, x0, z0) {
       const dist = Math.hypot(this.x - x0, this.z - z0);
       this.moved += dist;
       this.realSpeed = dist / Math.max(dt, 1e-4);
@@ -2637,6 +2690,13 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       // Al subir o bajar un escalón el cuerpo cambia de nivel cuando el apoyo pasa al pie del otro nivel,
       // con un ajuste corto (~0.1 s) en vez de ir flotando o hundido detrás del centro.
       this.ground = W.heightAt(this.x, this.z);
+      if (this.jump && this.jump.terrain && this.jump.t >= this.jump.prep) {
+        // en el aire (y al aterrizar): la altura la lleva el salto, sin el ajuste suave de los escalones
+        this.y = this.jump.landed ? this.jump.to.h : this.jump.base;
+        this.squash = Math.max(0, this.squash - dt / 0.16);
+        this.inWater = W.kindAt(this.x, this.z) === W.K.PUDDLE;
+        return dist;
+      }
       const chr = this.ch || W.character;
       const an = W.FX && W.FX.anchor && !this.jump && chr && chr.anchor && chr.anchor.st.anchor;
       let target = this.ground;
@@ -3367,9 +3427,11 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         // --- frame -----------------------------------------------------------------
         let f;
         if (anim === "jump") {
-          const J = p.jump, P = W.PLAYER_PARAMS, t = J.t;
-          if (t < P.jumpPrep) f = 0;
-          else if (t < P.jumpPrep + P.jumpAir) { const u = (t - P.jumpPrep) / P.jumpAir; f = u < 0.2 ? 1 : u < 0.45 ? 2 : u < 0.72 ? 3 : 4; }
+          // hoja jump: 0 preparación, 1 impulso, 2-3 vuelo, 4 caída, 5 aterrizaje (el salto por el terreno trae
+          // sus propios tiempos: preparación más marcada y vuelo según el desnivel)
+          const J = p.jump, P = W.PLAYER_PARAMS, t = J.t, a0 = J.prep != null ? J.prep : P.jumpPrep, A = J.air != null ? J.air : P.jumpAir;
+          if (t < a0) f = 0;
+          else if (t < a0 + A && !(J.terrain && J.landed)) { const u = (t - a0) / A; f = u < 0.2 ? 1 : u < 0.45 ? 2 : u < 0.72 ? 3 : 4; }
           else f = 5;
         } else if (anim === "idle" && st.settle && st.settle.t < 0.16) {
           st.settle.t += dt;
@@ -3487,7 +3549,9 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         } else caster.position.set(p.x + srx * ox, baseY, p.z + srz * ox);
         uniforms.uSunW.value.copy(sd);
         // contacto: se encoge y aclara con la altura del salto
-        const air = hgt / W.CHAR_H, k = 1 / (1 + air * 2.2);
+        // (salto por el terreno: la altura sobre el suelo que hay debajo, que cambia al pasar el borde)
+        const airH = p.jump && p.jump.terrain ? Math.max(0, p.y + hgt - p.ground) : hgt;
+        const air = airH / W.CHAR_H, k = 1 / (1 + air * 2.2);
         blob.position.set(p.x, p.ground + 0.03, p.z);
         if (W.FX.contact) { blob.scale.set(0.7 * k, 1, 0.42 * k); blob.material.opacity = 0.32 * k; }
         else { blob.scale.set(0.95 * k, 1, 0.62 * k); blob.material.opacity = 0.75 * k; }
@@ -6152,7 +6216,11 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     evs.length = 0;
     if (W.FX.impact) {
       if (p.inWater && !p.jump && st.anim === "idle") { idleT += dt; if (idleT > 1.4) { idleT = 0; fx.ripple(p.x, surf, p.z, 0.35); } }
-      for (const e of p.events) if (e.type === "land") { fx.dust(p.x, p.ground, p.z, 18); if (p.inWater) { fx.ripple(p.x, surf, p.z, 0.9); fx.ripple(p.x, surf, p.z, 0.5); } if (W.sfx) W.sfx.step(surfaceKind(p.x, p.z), 1.2); }
+      for (const e of p.events) {
+        // salto por el terreno: más polvo al aterrizar cuanto mayor es la caída; un poco al despegar
+        if (e.type === "land") { fx.dust(p.x, p.ground, p.z, e.terrain ? 18 + Math.round(10 * Math.max(0, -(e.dh || 0))) : 18); if (p.inWater) { fx.ripple(p.x, surf, p.z, 0.9); fx.ripple(p.x, surf, p.z, 0.5); } if (W.sfx) W.sfx.step(surfaceKind(p.x, p.z), e.terrain ? 1.4 : 1.2); }
+        if (e.type === "takeoff") { fx.dust(e.x, e.y, e.z, 7); if (W.sfx) W.sfx.step(surfaceKind(e.x, e.z), 0.7); }
+      }
       p.events.length = 0;
       return;
     }
@@ -6647,6 +6715,9 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
 // nav.js — búsqueda de camino A* sobre la rejilla de navegación (celdas de 0.5 u, 8 vecinos)
 // respetando obstáculos, agua y desniveles (> 0.5 no se sube andando), con coste extra junto
 // a las paredes y suavizado por línea de visión (string pulling).
+// Salto contextual (opts.jump, solo el jugador): aristas de salto entre celdas vecinas ortogonales con un
+// desnivel entre «escalón caminable» (MAX_STEP) y 2 cabezas (JUMP_MAX), con coste extra (JUMP_COST); el punto de
+// aterrizaje sale marcado ({jump: true}) y el punto anterior es el de despegue.
 (function () {
   "use strict";
   const W = (window.W = window.W || {});
@@ -6673,6 +6744,14 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     if (bx < 0 || bz < 0 || bx >= n || bz >= n || W.NAV.blocked[bx * n + bz]) return false;
     return Math.abs(heightC(bx, bz) - heightC(ax, az)) <= W.MAX_STEP + 1e-3;
   }
+  // ¿arista de salto? (vecina ortogonal libre con desnivel entre un escalón y 2 cabezas)
+  function jumpable(ax, az, bx, bz) {
+    const n = W.NAV.n;
+    if (bx < 0 || bz < 0 || bx >= n || bz >= n || W.NAV.blocked[bx * n + bz]) return false;
+    const dh = Math.abs(heightC(bx, bz) - heightC(ax, az));
+    return dh > W.MAX_STEP + 1e-3 && dh <= W.JUMP_MAX + 1e-3;
+  }
+  W.jumpable = function (x0, z0, x1, z1) { return jumpable(toCell(x0), toCell(z0), toCell(x1), toCell(z1)); };
 
   // Montículo binario mínimo sobre índices de celda
   class Heap {
@@ -6726,7 +6805,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     stamp[si] = stampN; gBuf[si] = 0; fromBuf[si] = -1;
     heap.push(si, h(si));
     let bestI = si, bestH = h(si), expanded = 0;
-    const limit = maxNodes || 40000;
+    const limit = maxNodes || 40000, canJump = !!(opts && opts.jump);
     while (heap.size) {
       const i = heap.pop();
       if (i === ti) { bestI = i; break; }
@@ -6735,12 +6814,16 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       const hi = h(i); if (hi < bestH) { bestH = hi; bestI = i; }
       for (const [dx, dz, c] of NB) {
         const nx = cx + dx, nz = cz + dz;
-        if (!passable(cx, cz, nx, nz)) continue;
+        let extra = 0;
+        if (!passable(cx, cz, nx, nz)) {
+          if (!(canJump && !(dx && dz) && jumpable(cx, cz, nx, nz))) continue;
+          extra = W.JUMP_COST;                  // salto: algo más caro que caminar
+        }
         // sin cortar esquinas: las dos celdas ortogonales pasables desde aquí Y hacia el destino (si no, al rozar
         // la esquina el personaje pisaba una celda desde la que el destino queda 1 u más abajo y se atascaba)
         if (dx && dz && (!passable(cx, cz, cx + dx, cz) || !passable(cx, cz, cx, cz + dz) ||
             !passable(cx + dx, cz, nx, nz) || !passable(cx, cz + dz, nx, nz))) continue;
-        const j = nx * n + nz, g = gi + c + near[j];
+        const j = nx * n + nz, g = gi + c + near[j] + extra;
         if (stamp[j] === stampN && g >= gBuf[j]) continue;
         stamp[j] = stampN; gBuf[j] = g; fromBuf[j] = i;
         heap.push(j, g + h(j) * 1.001);
@@ -6751,10 +6834,18 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     for (let i = bestI; i !== -1; i = fromBuf[i]) { cells.push(i); if (i === si) break; }
     cells.reverse();
     let pts = cells.map((i) => ({ x: toW((i / n) | 0), z: toW(i % n) }));
-    // el último punto: el destino exacto si era libre y alcanzado
-    if (bestI === ti && exactGoal) pts[pts.length - 1] = { x: x1, z: z1 };
+    // aristas de salto: el punto de aterrizaje se marca (el anterior es el despegue)
+    for (let k = 1; k < cells.length; k++) {
+      const a = cells[k - 1], b = cells[k];
+      const dh = heightC((b / n) | 0, b % n) - heightC((a / n) | 0, a % n);
+      if (Math.abs(dh) > W.MAX_STEP + 1e-3) { pts[k].jump = true; pts[k].dh = dh; pts.jumps = (pts.jumps || 0) + 1; }
+    }
+    // el último punto: el destino exacto si era libre y alcanzado (si era un aterrizaje, lo sigue siendo)
+    if (bestI === ti && exactGoal) { const L = pts[pts.length - 1]; pts[pts.length - 1] = Object.assign({}, L, { x: x1, z: z1 }); }
+    const nJumps = pts.jumps || 0;
     // sin suavizar (opts.raw): de centro de celda en centro de celda, para salir de un atasco
     if (!(opts && opts.raw)) pts = W.smoothPath({ x: x0, z: z0 }, pts);
+    pts.jumps = nJumps;
     pts.reached = bestI === ti;
     pts.exact = bestI === ti && exactGoal;
     return pts;
@@ -6805,18 +6896,21 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
 //     mantener el dedo sobre él = golpe RETRASADO (se suelta al levantar el dedo)
 //   · deslizar rápido: esquivar hacia allí
 //   · botón GUARDIA: tocar = parry, mantener = bloquear
-//   · doble toque en el suelo o botón SALTAR: salta en el sitio, o hacia delante si se mueve
+//   · botón SALTAR (y tecla L): salta en el sitio, o hacia delante si se mueve (combate: el barrido bajo)
+//   · salto CONTEXTUAL: si el camino pasa por un desnivel de hasta 2 cabezas, camina hasta el borde y salta
+//     (sube o baja); si tocas una zona más alta inalcanzable, el marcador sale en ROJO y no se mueve
+//     (el doble toque ya no salta)
 //   · teclado: WASD/flechas mover (Mayús corre), J atacar (mantener = retrasar el golpe), K guardia (durante la
 //     preparación de tu golpe = finta), Espacio esquivar, L saltar
 //   · marcador en el suelo: círculo que se encoge y se desvanece
 (function () {
   "use strict";
   const W = (window.W = window.W || {});
-  const TAP_MS = 170, DOUBLE_MS = 320;
+  const TAP_MS = 170;
   const SWIPE_MS = 260, SWIPE_PX = 42;              // deslizar rápido = esquivar
   let pendingAttack = null, pendingMove = null;
   const ptr = { down: false, id: null, x0: 0, y0: 0, x: 0, y: 0, timer: 0 };
-  let lastTap = null, following = false, replanT = 0, lastFollowGoal = null;
+  let following = false, replanT = 0, lastFollowGoal = null;
   const markers = [];
   let followMarker = null, ringGeo = null;
 
@@ -6826,10 +6920,35 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     m.renderOrder = 3; W.scene.add(m);
     return m;
   }
-  function addMarker(x, y, z) {
+  // marcador rojo (zona inalcanzable): se dibuja encima de la imagen, fuera del post-proceso de paleta (que
+  // convertía el aro rojo en naranja, igual que el normal): elipse en el suelo con una cruz, en rojo puro
+  function redMark() {
+    const d = document.createElement("div");
+    d.className = "mark-red";
+    d.style.cssText = "position:fixed;left:0;top:0;pointer-events:none;z-index:5;transform-origin:0 0;will-change:transform,opacity";
+    d.innerHTML = '<svg width="100" height="100" viewBox="-50 -50 100 100" style="display:block;overflow:visible">' +
+      '<ellipse rx="44" ry="44" fill="rgba(255,40,30,0.18)" stroke="#ff2a1e" stroke-width="7"/>' +
+      '<path d="M-20,-20 L20,20 M20,-20 L-20,20" stroke="#ff2a1e" stroke-width="9" stroke-linecap="round"/></svg>';
+    document.body.appendChild(d);
+    return d;
+  }
+  function placeRed(q, s) {
+    // radio en pantalla: el de un círculo de radio s en el suelo (eje derecho de la cámara); alto acortado por la elevación
+    const th = W.ui ? W.ui.theta : Math.PI / 4, c = W.toScreen(q.x, q.y, q.z),
+      e = W.toScreen(q.x + Math.cos(th) * s, q.y, q.z - Math.sin(th) * s), r = Math.max(6, Math.hypot(e[0] - c[0], e[1] - c[1]));
+    q.el.style.transform = `translate(${c[0] - r}px,${c[1] - r * Math.sin(W.CAM_EL)}px) scale(${r / 50},${r * Math.sin(W.CAM_EL) / 50})`;
+  }
+  function addMarker(x, y, z, red) {
+    if (red) {
+      const q = { x, y: y + 0.04, z, t: 0, red: true, el: redMark() };
+      markers.push(q); placeRed(q, 0.42);
+      W.lastMarker = { x, y, z, red: true, t: performance.now() };
+      return;
+    }
     const m = ring(0xffd27a);
     m.position.set(x, y + 0.04, z);
-    markers.push({ m, t: 0 });
+    markers.push({ m, t: 0, red: false });
+    W.lastMarker = { x, y, z, red: false, t: performance.now() };
   }
 
   // dirección en el suelo de un vector de pantalla (px, y hacia abajo), deshaciendo el acortamiento isométrico
@@ -6858,7 +6977,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     // ts: instante del toque (para el ritmo del riposte cuenta cuándo bajó el dedo, no cuándo se levantó)
     if (d <= 3.2 || pf.act) { pf.input("attack", { dir, ts }); pendingAttack = null; return "attack"; }
     // lejos: va hacia él y ataca al llegar
-    const path = W.findPath(p.x, p.z, f.body.x - Math.cos(dir) * 1.1, f.body.z - Math.sin(dir) * 1.1);
+    const path = W.findPath(p.x, p.z, f.body.x - Math.cos(dir) * 1.1, f.body.z - Math.sin(dir) * 1.1, undefined, { jump: true });
     if (path.length) { p.setPath(path, { noDelay: true }); pendingAttack = { f, t: 0 }; }
     return "approach";
   }
@@ -6868,8 +6987,10 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     const p = W.player;
     // en mitad de una acción de combate el paseo queda pendiente hasta que termine
     if (W.pf && W.pf.act) { pendingMove = { x, z }; return { ok: true, pending: true, path: [{ x, z }] }; }
-    const path = W.findPath(p.x, p.z, x, z);
+    const path = W.findPath(p.x, p.z, x, z, undefined, { jump: true });
     if (!path.length) return { ok: false };
+    // toque en una zona libre a la que no se llega ni saltando (más de 2 cabezas de desnivel): no se mueve
+    if (opts && opts.tap && !path.reached && W.cellFree(x, z)) return { ok: false, unreachable: true, path };
     const wasIdle = p.setPath(path, opts);
     W.lastPath = path;
     return { ok: true, wasIdle, path, reached: path.reached, exact: path.exact };
@@ -6879,8 +7000,9 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     pendingAttack = null;
     const g = W.pick(cx, cy);
     if (!g) return { ok: false };
-    const r = W.goTo(g.x, g.z);
+    const r = W.goTo(g.x, g.z, { tap: true });
     if (r.ok) { const e = r.path[r.path.length - 1]; addMarker(e.x, W.heightAt(e.x, e.z), e.z); }
+    else if (r.unreachable) { W.player.stop(); addMarker(g.x, W.heightAt(g.x, g.z), g.z, true); }
     r.start = { x: W.player.x, z: W.player.z };
     return r;
   }
@@ -6903,7 +7025,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       replanT = 0.2; lastFollowGoal = g;
       const p = W.player;
       if (Math.hypot(g.x - p.x, g.z - p.z) < 0.18 * W.CHAR_H) { p.stop(); return; }
-      const path = W.findPath(p.x, p.z, g.x, g.z, 12000);
+      const path = W.findPath(p.x, p.z, g.x, g.z, 12000, { jump: true });
       if (path.length) p.setPath(path, { noDelay: true });
     }
   }
@@ -6939,7 +7061,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     const end = (e) => {
       if (!ptr.down || e.pointerId !== ptr.id) return;
       ptr.down = false; clearTimeout(ptr.timer); clearTimeout(ptr.holdTimer);
-      if (ptr.atkHold) { ptr.atkHold = false; W.pf.input("attackUp"); lastTap = null; return; }   // suelta el golpe retenido
+      if (ptr.atkHold) { ptr.atkHold = false; W.pf.input("attackUp"); return; }   // suelta el golpe retenido
       // deslizar rápido: esquivar en esa dirección
       const dx = e.clientX - ptr.x0, dy = e.clientY - ptr.y0, el = performance.now() - ptr.t0;
       W.lastGesture = { dx, dy, ms: Math.round(el), following, foe: !!ptr.foe };
@@ -6948,13 +7070,11 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         W.player.stop(); pendingAttack = null; pendingMove = null;
         W.pf.input("dodge", { dir: W.screenDirToHeading(dx, dy) });
         W.lastSwipe = { dx, dy, ms: el, dir: W.screenDirToHeading(dx, dy) };
-        lastTap = null;
         return;
       }
       if (ptr.foe && !following) {
         if (e.type === "pointercancel") return;
         W.lastFoeTap = attackFoe(ptr.foe, ptr.t0);
-        lastTap = null;
         return;
       }
       if (following) {
@@ -6964,20 +7084,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         return;
       }
       if (e.type === "pointercancel") return;
-      const now = performance.now();
-      if (lastTap && now - lastTap.t < DOUBLE_MS && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 60) {
-        // doble toque: si el primer toque arrancó desde parado, se anula ese paseo y salta en el sitio
-        if (lastTap.wasIdle) {
-          const p = W.player; p.stop(); p.speed = 0;
-          if (lastTap.start && Math.hypot(p.x - lastTap.start.x, p.z - lastTap.start.z) < 0.2) { p.x = lastTap.start.x; p.z = lastTap.start.z; }
-          const m = markers.pop(); if (m) W.scene.remove(m.m);
-        }
-        W.player.doJump();
-        lastTap = null;
-        return;
-      }
-      const r = tapAt(e.clientX, e.clientY);
-      lastTap = { t: now, x: e.clientX, y: e.clientY, wasIdle: !!r.wasIdle, start: r.start };
+      // (el doble toque ya no salta: cada toque es un destino; los saltos los decide el camino)
+      W.lastTap = tapAt(e.clientX, e.clientY);
     };
     canvas.addEventListener("pointerup", end);
     canvas.addEventListener("pointercancel", end);
@@ -7057,11 +7165,13 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     if (pendingMove && pf && !pf.act) { const m = pendingMove; pendingMove = null; W.goTo(m.x, m.z); }
     for (let i = markers.length - 1; i >= 0; i--) {
       const q = markers[i];
-      q.t += dt / 0.6;
-      if (q.t >= 1) { W.scene.remove(q.m); q.m.material.dispose(); markers.splice(i, 1); continue; }
-      const s = 0.55 - 0.4 * (1 - Math.pow(1 - q.t, 3));
+      q.t += dt / (q.red ? 1.0 : 0.6);
+      if (q.t >= 1) { if (q.el) q.el.remove(); else { W.scene.remove(q.m); q.m.material.dispose(); } markers.splice(i, 1); continue; }
+      // rojo (inalcanzable): no se encoge, late dos veces y se apaga
+      const s = q.red ? 0.42 + 0.06 * Math.sin(q.t * Math.PI * 4) : 0.55 - 0.4 * (1 - Math.pow(1 - q.t, 3));
+      if (q.el) { placeRed(q, s); q.el.style.opacity = Math.min(1, 1.6 * (1 - q.t)); continue; }
       q.m.scale.set(s, 1, s);
-      q.m.material.opacity = 1 - q.t;
+      q.m.material.opacity = q.red ? Math.min(1, 1.6 * (1 - q.t)) : 1 - q.t;
     }
   };
 })();

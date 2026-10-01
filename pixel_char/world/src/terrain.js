@@ -10,6 +10,13 @@
   W.HALF = W.N / 2;
   W.STEP = 0.5;          // altura de un escalón
   W.MAX_STEP = 0.5;      // desnivel máximo que se puede subir andando
+  // Salto contextual: la cabeza del personaje mide ~59 px de sus 206 px de alto de pie en los sprites (casco
+  // hasta el borde inferior del visor, vistas de frente) → 0,49 u con CHAR_H = 1,7 u. Se salta hasta 2 cabezas;
+  // como los desniveles del mapa van de 0,5 en 0,5, eso son los bordes de 1 u (2,04 cabezas: se admite un 3 % de
+  // margen sobre la medida). 1,5 u (3 cabezas) o más sigue siendo infranqueable
+  W.HEAD_H = 0.49;
+  W.JUMP_MAX = 2 * W.HEAD_H * 1.03;
+  W.JUMP_COST = 2.2;     // coste extra de una arista de salto en A* (en celdas): solo salta si hace falta o compensa
 
   // Tipos de baldosa
   const K = (W.K = { GRASS: 0, PATH: 1, WATER: 2, PUDDLE: 3, PLAZA: 4, STONE: 5, CRYSTAL: 6, BORDER: 7 });

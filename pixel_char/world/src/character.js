@@ -409,9 +409,11 @@
         // --- frame -----------------------------------------------------------------
         let f;
         if (anim === "jump") {
-          const J = p.jump, P = W.PLAYER_PARAMS, t = J.t;
-          if (t < P.jumpPrep) f = 0;
-          else if (t < P.jumpPrep + P.jumpAir) { const u = (t - P.jumpPrep) / P.jumpAir; f = u < 0.2 ? 1 : u < 0.45 ? 2 : u < 0.72 ? 3 : 4; }
+          // hoja jump: 0 preparación, 1 impulso, 2-3 vuelo, 4 caída, 5 aterrizaje (el salto por el terreno trae
+          // sus propios tiempos: preparación más marcada y vuelo según el desnivel)
+          const J = p.jump, P = W.PLAYER_PARAMS, t = J.t, a0 = J.prep != null ? J.prep : P.jumpPrep, A = J.air != null ? J.air : P.jumpAir;
+          if (t < a0) f = 0;
+          else if (t < a0 + A && !(J.terrain && J.landed)) { const u = (t - a0) / A; f = u < 0.2 ? 1 : u < 0.45 ? 2 : u < 0.72 ? 3 : 4; }
           else f = 5;
         } else if (anim === "idle" && st.settle && st.settle.t < 0.16) {
           st.settle.t += dt;
@@ -529,7 +531,9 @@
         } else caster.position.set(p.x + srx * ox, baseY, p.z + srz * ox);
         uniforms.uSunW.value.copy(sd);
         // contacto: se encoge y aclara con la altura del salto
-        const air = hgt / W.CHAR_H, k = 1 / (1 + air * 2.2);
+        // (salto por el terreno: la altura sobre el suelo que hay debajo, que cambia al pasar el borde)
+        const airH = p.jump && p.jump.terrain ? Math.max(0, p.y + hgt - p.ground) : hgt;
+        const air = airH / W.CHAR_H, k = 1 / (1 + air * 2.2);
         blob.position.set(p.x, p.ground + 0.03, p.z);
         if (W.FX.contact) { blob.scale.set(0.7 * k, 1, 0.42 * k); blob.material.opacity = 0.32 * k; }
         else { blob.scale.set(0.95 * k, 1, 0.62 * k); blob.material.opacity = 0.75 * k; }
