@@ -77,8 +77,9 @@ for (const prof of ["escritorio", "movil"]) {
   const t0 = await page.evaluate(() => W.ct);
   if (mob) await touch(fx, fy, async () => { await page.waitForTimeout(400); await page.evaluate(() => T(36)); });
   else { await page.keyboard.down("j"); await page.evaluate(() => T(36)); await page.keyboard.up("j"); }
-  const hold = await page.evaluate((t0) => { const p = W.pf; let n = 0; while (!(p.act && p.act.impactT != null) && n < 120) { T(); n++; } const a = p.act; return { anim: a && a.name, retenido_ms: Math.round((a && a.heldT || 0) * 1000), impacto_ms: a && a.impactT != null ? Math.round((a.impactT - t0) * 1000) : null }; }, t0);
-  check(`[${prof}] golpe retrasado ${mob ? "manteniendo el dedo sobre el enemigo" : "manteniendo J"}: la carga se retiene y el impacto llega más tarde`, hold.anim === "attack1" && hold.retenido_ms >= 250 && hold.impacto_ms >= 450, hold);
+  const hold = await page.evaluate((t0) => { const p = W.pf; let n = 0; while (!(p.act && p.act.impactT != null) && n < 120) { T(); n++; } const a = p.act; return { anim: a && a.name, retenido_ms: Math.round((a && a.held || 0) * 1000), impacto_ms: a && a.impactT != null ? Math.round((a.impactT - t0) * 1000) : null }; }, t0);
+  // (Combate completo: el antiguo «retraso» lo sustituye la carga del FUERTE: mantener ≥ 0,4 s carga y sale al soltar)
+  check(`[${prof}] fuerte ${mob ? "manteniendo el dedo sobre el enemigo" : "manteniendo J"}: carga mientras se mantiene y el golpe sale al soltar`, hold.anim === "heavy" && hold.retenido_ms >= 450 && hold.impacto_ms >= 450, hold);
   await page.evaluate(() => { T(40); pair(0.6, 1.9); });
   const [gx, gy] = await foeXY();
   if (mob) await touch(gx, gy); else { await page.keyboard.down("j"); await page.keyboard.up("j"); }

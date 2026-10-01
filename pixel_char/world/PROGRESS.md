@@ -1301,3 +1301,34 @@ JS — seleccionar, cambiar, atacar al objetivo girándose al instante (error 0 
 caminar/guardar/esquivar, sesgo de cámara, Tab, soltar por distancia, por visión (a 1 s sigue, a 1,7 s no) y por
 muerte (pasa al otro; sin otro, se suelta). Las pruebas antiguas que atacaban tocando al enemigo lo fijan antes
 (`combat.mjs` 31/31 con el eco, `parry2_ui.mjs` 10/10). Capturas: `review/combate_completo/E2_objetivo_*.png`.
+
+## Etapa 3 — Ataques ligeros y fuertes (`src/moves.js`, `fighter.js`, `controls.js`)
+- **Con objetivo**: tocarlo = **LIGERO (L)**; mantener **≥ 0,4 s = FUERTE (H)**: a los 0,4 s empieza la carga (hoja
+  heavy: CROUCH y luego CHARGE / CHARGE MAX en bucle); hasta **1,2 s** sube a la **carga de nivel 2** (destello,
+  sonido y brasas); **soltar lanza el golpe** (RELEASE → IMPACT); a 1,8 s se suelta sola. **Teclado**: J tocada = L,
+  J mantenida = H. La pulsación se mide en **tiempo de juego** desde que bajó el dedo (las pruebas a paso fijo y el
+  juego real ven lo mismo); la marca del evento sigue sirviendo para el ritmo.
+- La carga **sustituye al antiguo «retraso»** (en el jugador; el plan de golpe del autómata sigue igual). Durante la
+  carga **eres vulnerable** (un golpe la interrumpe) y **pulsar guardia la cancela**: es la finta de siempre (cuesta
+  14 de stamina) y la pulsación sigue como guardia.
+- **Brillo por código**: la emisión de la cuchilla crece con la carga (`uCharge` en el shader del personaje, hasta
+  ×2,6; en nivel 2 late) y salen brasas cada vez más seguidas. Sin luz puntual propia (cada luz más se paga en
+  todos los materiales; en el móvil cuenta).
+- **Stamina**: ligero 6-12 (según el paso del combo), fuerte 18, nivel 2 ×1,55 (≈ 28). Mientras se carga no se
+  recupera. **Sin stamina los golpes salen más lentos** (preparación ×1,35: 205 → 277 ms hasta el impacto del ligero).
+- **Fuerte** (`combat.js`): 22 de daño, alcance 2,05, postura ×1,5 (nivel 2: daño ×1,5, postura ×1,6, hitstop
+  ×1,35); el enemigo lo encaja con el tambaleo completo (los ligeros, respingo corto, como en el Duelo 3).
+- **Tabla de golpes en datos** (`W.MOVES.STEPS`: L, LL, LLL, H...): cada golpe sigue la secuencia si la pulsación
+  llega en la ventana del anterior (de su impacto al final de su recuperación + 0,35 s); la etapa 4 la amplía con
+  los combos y el ritmo.
+- **Mantener en el suelo** sigue siendo seguir el dedo; **tocar el suelo** te mueve (con salto contextual).
+- El autómata **lee también tus fuertes** (ficha propia en su modelo) y, si ve una carga a su alcance, alza la
+  guardia y aguanta hasta que salga (la etapa 6 lo afina). Sus fichas solo cuentan tus golpes normales (no el
+  riposte ni el remate: contarlos dejaba, en el entrenamiento, un compromiso de defensa colgado y el autómata
+  esperando para siempre — lo detectó la prueba del entrenamiento de riposte).
+
+**Pruebas** (`tests/cc_e3.mjs`, escritorio e iPhone con toques reales): **15/15**, sin errores JS — L al tocar, H a
+partir de 0,4 s (a 0,35 s aún no), nivel 2 (×1,5 daño, más postura), suelta automática a 1,8 s, finta con guardia,
+vulnerable al cargar, costes de stamina y lentitud sin stamina, J en teclado, tocar el suelo mueve. Regresión:
+duelo 22/22, parry 50/50, parry2_ui 10/10 (su «golpe retrasado» es ahora el fuerte con carga), autómata 21/21,
+combate con el eco 31/31. Capturas: `review/combate_completo/E3_*.png`.

@@ -43,6 +43,7 @@
       uQuant: { value: 0 }, uOutline: { value: 0 },
       uEmit: { value: opts.emit || 0 }, uFlash: { value: 0 }, uEcho: { value: opts.echo ? 1 : 0 }, uWarn: { value: 0 },
       uUnlit: { value: 0 },                                  // visor de animaciones: color plano, sin luz
+      uCharge: { value: 0 },                                 // carga del fuerte (moves.js): la cuchilla brilla más
       uFade: { value: 1 }, uEyeCol: { value: new THREE.Vector3().fromArray(opts.emitCol || (opts.echo ? [0.45, 0.95, 1.0] : [1.0, 0.55, 0.18])) }, uEyeK: { value: 1 },
     }]);
     uniforms.uColor.value = tex.color; uniforms.uNormal.value = tex.normal; uniforms.uSpec.value = tex.spec;
@@ -101,7 +102,7 @@
         float wh = exp(-pow((q.x - F.x) / uFootR.x, 2.0));
         return F.zw * wv * wh;
       }
-      uniform float uNormalAmt, uGrade, uGain, uVisor, uTime, uUnlit; uniform vec2 uCovC; uniform vec3 uUp, uWarm;
+      uniform float uNormalAmt, uGrade, uGain, uVisor, uTime, uUnlit, uCharge; uniform vec2 uCovC; uniform vec3 uUp, uWarm;
       uniform float uEmit, uFlash, uEcho, uWarn, uFade, uEyeK; uniform vec3 uEyeCol;
       varying vec2 vUv; varying vec2 vQ; varying vec3 vViewPos;
       void main() {
@@ -135,7 +136,7 @@
         n = normalize(mix(vec3(0.0, 0.0, 1.0), n, uNormalAmt));   // normal en espacio de vista (+y arriba)
         vec4 sp4 = texture2D(uSpec, uv);
         float sm = sp4.r;
-        float em = sp4.g * uEmit;                                  // emisión: cuchilla, estela, chispas (combate)
+        float em = sp4.g * uEmit * (1.0 + 1.6 * uCharge);   // la carga del fuerte la aviva                                  // emisión: cuchilla, estela, chispas (combate)
         vec3 base = c.rgb;
         if (uEcho > 0.5) {
           // eco: los mismos dibujos en tonos fríos (cian y gris); el negro del visor se queda oscuro

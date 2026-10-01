@@ -3061,6 +3061,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       uQuant: { value: 0 }, uOutline: { value: 0 },
       uEmit: { value: opts.emit || 0 }, uFlash: { value: 0 }, uEcho: { value: opts.echo ? 1 : 0 }, uWarn: { value: 0 },
       uUnlit: { value: 0 },                                  // visor de animaciones: color plano, sin luz
+      uCharge: { value: 0 },                                 // carga del fuerte (moves.js): la cuchilla brilla más
       uFade: { value: 1 }, uEyeCol: { value: new THREE.Vector3().fromArray(opts.emitCol || (opts.echo ? [0.45, 0.95, 1.0] : [1.0, 0.55, 0.18])) }, uEyeK: { value: 1 },
     }]);
     uniforms.uColor.value = tex.color; uniforms.uNormal.value = tex.normal; uniforms.uSpec.value = tex.spec;
@@ -3119,7 +3120,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         float wh = exp(-pow((q.x - F.x) / uFootR.x, 2.0));
         return F.zw * wv * wh;
       }
-      uniform float uNormalAmt, uGrade, uGain, uVisor, uTime, uUnlit; uniform vec2 uCovC; uniform vec3 uUp, uWarm;
+      uniform float uNormalAmt, uGrade, uGain, uVisor, uTime, uUnlit, uCharge; uniform vec2 uCovC; uniform vec3 uUp, uWarm;
       uniform float uEmit, uFlash, uEcho, uWarn, uFade, uEyeK; uniform vec3 uEyeCol;
       varying vec2 vUv; varying vec2 vQ; varying vec3 vViewPos;
       void main() {
@@ -3153,7 +3154,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         n = normalize(mix(vec3(0.0, 0.0, 1.0), n, uNormalAmt));   // normal en espacio de vista (+y arriba)
         vec4 sp4 = texture2D(uSpec, uv);
         float sm = sp4.r;
-        float em = sp4.g * uEmit;                                  // emisión: cuchilla, estela, chispas (combate)
+        float em = sp4.g * uEmit * (1.0 + 1.6 * uCharge);   // la carga del fuerte la aviva                                  // emisión: cuchilla, estela, chispas (combate)
         vec3 base = c.rgb;
         if (uEcho > 0.5) {
           // eco: los mismos dibujos en tonos fríos (cian y gris); el negro del visor se queda oscuro
@@ -3625,8 +3626,11 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
 //  · plan de golpe (enemigos): CARGA (frames 0-1) → RETENCIÓN (frame 1 fijo) → SUELTA (frame 2) → impacto, con
 //    duraciones propias (act.plan = {wind, hold, rel}); avisa de las fases con this.onPhase(act, "hold"|"release")
 //  · tras saltar un barrido, contraataque en el aire (airCounterT)
-//  · herramientas para ganar la lectura: FINTA (guardia durante la preparación de tu ataque: lo cancela, gasta
-//    stamina) y RETRASO (mantener pulsado el ataque: la preparación se queda en la pose de carga hasta soltar)
+//  · herramientas para ganar la lectura: FINTA (guardia durante la preparación de tu ataque o la carga del fuerte:
+//    lo cancela, gasta stamina) y RETRASO (mantener pulsado el ataque: la preparación se queda en la pose de carga
+//    hasta soltar; Combate completo: en el jugador lo sustituye la CARGA del fuerte, moves.js)
+//  · jugador (moves.js): ataques L/H con su secuencia de combo; el fuerte se CARGA mientras se mantiene (frames de
+//    carga en bucle; a 1,2 s nivel 2) y sale al soltar
 (function () {
   "use strict";
   const W = (window.W = window.W || {});
@@ -3724,7 +3728,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     // segundos que faltan para el impacto del ataque en curso (null si no está preparando un ataque)
     toImpact() {
       const a = this.act;
-      if (!a || !isAtk(a) || a.f >= HF(a)) return null;
+      if (!a || !isAtk(a) || a.f >= HF(a) || a.charging) return null;   // (la carga del fuerte: no se sabe cuándo saldrá)
       const P = a.plan;
       if (P && !P.done) return (P.wind + P.hold + P.rel - P.t) / (a.speed || 1);
       const c = cumOf(this.M(), an(a));
@@ -3756,6 +3760,9 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       }
       if (type === "guardUp") { this.guardHeld = false; return true; }
       if (type === "attackUp") { this.atkHeld = false; return true; }          // suelta el golpe retenido
+      // suelta la carga del fuerte (moves.js): si aún no ha empezado (en cola), sale con la carga mínima
+      if (type === "chargeRelease") { this.chargeRel = true; return true; }
+      if (type === "attack" && data && data.kind === "H") this.chargeRel = false;
       if (type === "attack" && data && data.hold) this.atkHeld = true;
       this.buf = { type, t: this.time, data, pt: type === "attack" ? W.pressTime(data && data.ts, this.team === "player") : undefined };
       this.tryBuffered();
@@ -3786,6 +3793,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
           // riposte encadenado y remate: los decide duel.js (null = regla normal)
           const r = W.duelCan ? W.duelCan(this, a) : null;
           if (r != null) return r;
+          // jugador con L/H (moves.js): en la ventana de encadenado de cualquier golpe que no cierre su combo
+          if (a.comboSeq != null) return !a.noChain && !(a.step && a.step.end) && !a.charging && f >= HF(a);
           return !!cm.next && !a.noChain && f >= HF(a);               // ventana de encadenado: IMPACT..RECOVERY
         }
         if (type === "dodge") return (cancel.dodge || []).indexOf(f) >= 0 && this.st >= C.dodgeCost * 0.5;
@@ -3812,6 +3821,12 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         if (dn === "queued" || dn === "none") return;
         if (dn) { this.act = null; this.startAttack(dn, data); return; }
         const a = this.act;
+        if (data && data.kind && W.movesNext) {
+          // L/H: la tabla de combos decide el golpe; pulsado antes de la recuperación queda en cola
+          const mv = W.movesNext(this, data.kind, t0);
+          if (a && isAtk(a) && a.f < HF(a) + 1) { a.chain = true; a.chainName = mv.step.anim; a.chainData = data; a.chainMv = mv; a.chainPt = t0; return; }
+          this.act = null; this.startAttack(mv.step.anim, data, mv, t0); return;
+        }
         const next = a && isAtk(a) && !a.noChain ? (this.M().animations[an(a)] || {}).next : null;
         // pulsado en IMPACT: queda marcado y el golpe siguiente empieza al entrar en FOLLOW THROUGH
         if (next && a.f < HF(a) + 1) { a.chain = true; a.chainData = data; return; }
@@ -3830,15 +3845,30 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       if (W.onCombatAct) W.onCombatAct(this, this.act);
       return this.act;
     }
-    startAttack(name, data) {
+    startAttack(name, data, mv, pt) {
       const k = name === "attack3" || name === "deathblow" ? 2 : name === "attack2" ? 1 : 0;
-      this.st = Math.max(0, this.st - C.attackCost[k] * (name === "riposte" ? 0.5 : 1)); this.stT = 0;
+      // coste de stamina: el de su paso del combo (moves.js) o el de siempre; sin stamina, preparación más lenta
+      const cost = mv && W.movesCost ? W.movesCost(mv.step, 1) : C.attackCost[k] * (name === "riposte" ? 0.5 : 1);
+      const tired = !!mv && this.st < cost;
+      this.st = Math.max(0, this.st - cost); this.stT = 0;
       const a = this.start(name, { chain: false, atk: true });
       a.slow = this.prepK;
       // hoja propia o sustituto (W.DUEL): riposte → attack1 ×1.4, deathblow → attack3, counter → attack1 rápido
       const R = W.duelSheet ? W.duelSheet(this, name) : null;
       if (R) { a.sheet = R.sheet; a.speed = R.speed; a.fb = R.fb; if (R.trail) a.trail = R.trail; if (R.fb || R.noChain) a.noChain = true; a.slow = 1; }
       a.hf = hitFrame(this.M(), an(a));
+      if (tired) { a.slow = (a.slow || 1) * W.MOVES.tiredSlow; a.tired = true; }
+      if (mv && W.movesStarted) {
+        W.movesStarted(this, a, mv.seq, mv.step);
+        if (mv.step.charge) {
+          // FUERTE: carga mientras se mantiene (frames de carga de su hoja en bucle; el sustituto, su frame de carga)
+          const A = this.M().animations[an(a)] || {};
+          // la carga cuenta desde la pulsación (en tiempo de juego, la da controls.js); 0,4 s ya pasaron al empezar
+          a.charging = true; a.press = data && data.pressCt != null ? data.pressCt : pt != null ? pt : W.ct; a.chargeK = 0; a.level = 1;
+          a.cl = A.carga && A.carga.length && an(a) === name ? A.carga : [Math.max(0, a.hf - 2)];
+          a.lungeFrom = "release";
+        }
+      }
       if (data) {
         if (data.plan) { a.plan = Object.assign({ t: 0, hold: 0 }, data.plan); a.slow = 1; }
         if (data.move) a.move = data.move;
@@ -3985,6 +4015,24 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
           else if (P.t < t3) a.tt = c[h - 1] + (P.t - t2) / P.rel * (c[h] - c[h - 1]);
           else { a.tt = c[h] + (P.t - t3); P.done = true; over = (P.t - t3) / (a.speed || 1); }
         }
+      } else if (a.charging) {
+        // carga del fuerte: CROUCH y luego los frames de carga en bucle; a 1,2 s nivel 2; a 1,8 s se suelta solo
+        const c = cumOf(this.M(), an(a)), l0 = c[a.cl[0]], l1 = c[a.cl[a.cl.length - 1] + 1], M = W.MOVES;
+        let nt = (a.tt || 0) + dt * sp;
+        if (nt >= l1) nt = l0 + ((nt - l0) % Math.max(1e-3, l1 - l0));
+        a.tt = nt;
+        this.stT = 0;                                              // cargar también gasta: la stamina no se recupera
+        const held = W.ct - a.press;
+        a.chargeK = Math.max(0, Math.min(1, held / M.holdH2));
+        if (a.level < 2 && held >= M.holdH2) { a.level = 2; if (W.onCharge2) W.onCharge2(this, a); }
+        if (this.chargeRel || held >= M.holdMax) {
+          // suelta: RELEASE → IMPACT → RECOVERY; el nivel 2 cuesta más stamina y pega más
+          this.chargeRel = false; a.charging = false; a.held = +held.toFixed(3);
+          if (a.level === 2) { const ex = W.movesCost(a.step, 2) - W.movesCost(a.step, 1); if (this.st < ex) { a.slow = (a.slow || 1) * M.tiredSlow; a.tired = true; } this.st = Math.max(0, this.st - ex); this.stT = 0;
+            a.dmgK = M.level2.dmg; a.postK = M.level2.post; a.stopK = M.level2.stop; }
+          a.tt = c[HF(a) - 1];
+          if (W.onChargeRelease) W.onChargeRelease(this, a);
+        }
       } else {
         if (a.slow && a.slow !== 1 && isAtk(a) && a.f < HF(a)) sp /= a.slow;
         let nt = (a.tt || 0) + dt * sp;
@@ -4012,6 +4060,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       }
       if (f >= 6 || (a.flinchEnd != null && f >= a.flinchEnd)) {
         if (a.name === "death") { a.f = 5; return; }
+        if (a.comboSeq != null && W.movesEnded) W.movesEnded(this, a);
         this.act = null;
         return;
       }
@@ -4026,7 +4075,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         if (W.onCombatFrame) W.onCombatFrame(this, a);
       }
       // combo: pulsación dentro de la ventana de encadenado
-      if (isAtk(a) && a.chain && a.f >= HF(a) + 1) { a.chain = false; const nx = a.chainName || this.M().animations[an(a)].next; this.act = null; this.startAttack(nx, a.chainData); return; }
+      if (isAtk(a) && a.chain && a.f >= HF(a) + 1) { a.chain = false; const nx = a.chainName || this.M().animations[an(a)].next; const mv = a.chainMv, pt = a.chainPt; this.act = null; this.startAttack(nx, a.chainData, mv, pt != null ? Math.max(pt, W.ct - 0.05) : null); return; }
       this.motion(a, dt);
     }
     // desplazamientos del cuerpo durante las acciones (estocada, esquiva, retroceso)
@@ -4113,6 +4162,9 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     // Duelo 3 (duel.js decide daño, postura y sensación de cada golpe; aquí, el alcance)
     riposte: { dmg: 8, reach: 1.95, arc: 80, stop: 0.07, kb: 0.2, post: 22 },
     deathblow: { dmg: 100, reach: 2.2, arc: 120, stop: 0.18, kb: 0.6, heavy: true, post: 0 },
+    // Combate completo: el FUERTE (carga; nivel 2 ×1,5 daño, ×1,6 postura) y el remate giratorio en 360°
+    heavy: { dmg: 22, reach: 2.05, arc: 80, stop: 0.13, kb: 0.75, heavy: true, post: 50, postK: 1.5 },
+    spin: { dmg: 15, reach: 2.25, arc: 180, stop: 0.12, kb: 0.6, heavy: true, post: 44, postK: 1.7 },
   };
   const STOP = { attack1: 0.075, attack2: 0.085, attack3: 0.12, parry: 0.11, parryHeavy: 0.13, perfect: 0.16, perfectHeavy: 0.18, block: 0.06, deathblow: 0.16 };
   // recompensas por nivel (postura al atacante: × su "post"; coste de postura para quien defiende)
@@ -4338,7 +4390,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       if (def === "partial") def = "block";                     // parry parcial = bloqueo
       const heavy = !!AT.heavy;
       const cx = (b.x + t.body.x) / 2, cz = (b.z + t.body.z) / 2, cy = Math.max(b.y, t.body.y) + 1.05;
-      const dmg = AT.dmg * (att.dmgK || 1);
+      const dmg = AT.dmg * (att.dmgK || 1) * (a.dmgK || 1);
       const toPlayer = t === W.pf && att.team !== "player";
       if (toPlayer) W.lastFoeImpact = { t: a.impactT != null ? a.impactT : W.ct, open: false };
       if (AT.perilous) {
@@ -4443,7 +4495,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         if (W.sfx) W.sfx.combat("armor");
       }
       if (AT.throw) log({ ev: "grab", who: t.name, from: att.name, anim: a.name, move: a.move });
-      const pg = dm * 0.7 * (counter ? W.COMBAT.counterPost : 1) * (exposed ? 1.5 : 1);
+      const pg = dm * 0.7 * (counter ? W.COMBAT.counterPost : 1) * (exposed ? 1.5 : 1) * (AT.postK || 1) * (a.postK || 1);
       if (!deathblow && t.alive) t.addPosture(pg);
       // tras el remate su postura queda como al acabar el aturdido (antes se quedaba llena y cualquier desvío
       // posterior lo volvía a aturdir al instante)
@@ -4453,7 +4505,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       W.fx.dust(t.body.x - Math.cos(dir) * 0.1, t.body.y + 0.9, t.body.z - Math.sin(dir) * 0.1, heavy ? 16 : 10, { pal: EMBER, spd: 1.8, up: 1.3, life: 0.35 });
       if (deathblow) flashLight(t.body.x, t.body.y + 1.1, t.body.z, 0xffd0a0, 6);
       star(t.body.x - Math.cos(dir) * 0.15, t.body.y + 1.0, t.body.z - Math.sin(dir) * 0.15, deathblow ? 1.8 : heavy ? 1.1 : 0.8, deathblow ? 0xfff4d8 : 0xffc890, deathblow ? 0.24 : 0.13);
-      stop(deathblow ? STOP.deathblow : AT.stop);
+      stop(deathblow ? STOP.deathblow : AT.stop * (a.stopK || 1));
       W.shakeCam(dx, dz, deathblow ? 0.14 : heavy ? 0.11 : 0.06, heavy || deathblow ? 0.32 : 0.22);
       if (W.sfx) W.sfx.combat(deathblow ? "deathblow" : heavy ? "hitHeavy" : "hit", kind);
       log({ ev: deathblow ? "deathblow" : "hit", who: t.name, from: att.name, anim: a.name, dmg: Math.round(dm), hp: Math.round(t.hp), res, surface: kind, exp: exposed, pg: +pg.toFixed(1) });
@@ -4596,6 +4648,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     }
     for (const f of fighters) if (f.ch) f.ch.uniforms.uFlash.value = f.flash;
     updateHud();
+    if (W.movesAfter) W.movesAfter(dt);               // brillo y brasas de la carga del fuerte (moves.js)
     if (W.duelAfter) W.duelAfter(dt);                 // riposte, ritmo, rebote, cámara del remate (duel.js)
     if (W.practiceAfter) W.practiceAfter(dt);         // barras de postura centrales, entrenamiento (practice.js)
   };
@@ -5099,6 +5152,97 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
   };
   // main.js: desplaza el punto que sigue la cámara
   W.camBias = function (v) { v.x += T.cam.x; v.z += T.cam.z; };
+})();
+
+</script>
+<script>/* moves.js */
+// moves.js — ataques del jugador: LIGERO (L) y FUERTE (H) con carga, stamina y combos en datos.
+//
+//  · tocar = L; mantener ≥ 0,4 s = H (la carga empieza ahí: CROUCH y luego CHARGE/CHARGE MAX en bucle, con el
+//    brillo de la cuchilla creciendo); a 1,2 s, carga de NIVEL 2; soltar lanza el golpe (a 1,8 s se suelta solo)
+//  · la carga sustituye al antiguo «retraso»; durante la carga eres vulnerable y pulsar guardia la cancela (finta,
+//    gasta stamina, como antes)
+//  · stamina: el ligero gasta poco, el fuerte bastante más y el nivel 2 aún más; sin stamina los golpes salen más
+//    lentos (preparación ×1,35)
+//  · combos (tabla STEPS, fácil de ampliar): cada golpe continúa la secuencia L/H si la pulsación llega dentro de la
+//    ventana de encadenado del anterior (desde su impacto hasta el final de su recuperación + un margen)
+(function () {
+  "use strict";
+  const W = (window.W = window.W || {});
+  const M = (W.MOVES = {
+    holdH: 0.4,            // s manteniendo para que sea FUERTE
+    holdH2: 1.2,           // s manteniendo para la carga de nivel 2
+    holdMax: 1.8,          // se suelta solo
+    chainGrace: 0.35,      // margen tras la recuperación para seguir el combo (s)
+    tiredSlow: 1.35,       // sin stamina: preparación más lenta
+    // golpes por secuencia: anim (hoja), coste de stamina, daño y postura (× los del golpe en combat.js), etiqueta
+    // y si cierra el combo. H2 = nivel 2 de la carga (multiplica daño, postura y coste)
+    level2: { dmg: 1.5, post: 1.6, st: 1.55, stop: 1.35 },
+    STEPS: {
+      L: { anim: "attack1", st: 6, name: "ligero" },
+      LL: { anim: "attack2", st: 7, name: "ligero 2" },
+      LLL: { anim: "attack3", st: 12, name: "ligero 3", end: true },
+      H: { anim: "heavy", st: 18, name: "fuerte", charge: true },
+    },
+  });
+  const now3 = () => (W.U ? +W.U.uTime.value.toFixed(3) : 0);
+
+  // ¿continúa el combo? (pulsación en la ventana del golpe anterior: desde su impacto hasta el final + margen)
+  function comboSeq(f, kind, pt) {
+    const C = f.combo;
+    if (!C || !C.seq) return kind;
+    const a = f.act, inWin = a && W.isAtk(a) && a.comboSeq === C.seq && a.f >= W.hitF(a);
+    const after = !a && C.end != null && pt <= C.end + M.chainGrace;
+    if (!(inWin || after) || C.closed) return kind;
+    const s = C.seq + kind;
+    return M.STEPS[s] ? s : kind;
+  }
+  W.movesNext = function (f, kind, pt) {
+    const seq = comboSeq(f, kind, pt == null ? W.ct : pt);
+    return { seq, step: M.STEPS[seq] || M.STEPS[kind] };
+  };
+  // al empezar un golpe del combo (fighter.startAttack): su secuencia, coste y nivel
+  W.movesStarted = function (f, a, seq, step) {
+    a.comboSeq = seq; a.kind = seq[seq.length - 1]; a.step = step;
+    f.combo = { seq, end: null, closed: !!step.end, t0: W.ct };
+    if (W.combatLog) W.combatLog.push({ ev: "move", seq, anim: a.name, name: step.name, t: now3() });
+  };
+  // al terminar (fighter.update): la ventana de después
+  W.movesEnded = function (f, a) { if (f.combo && a.comboSeq === f.combo.seq) f.combo.end = W.ct; };
+  W.movesCost = function (step, level) { return step.st * (level === 2 ? M.level2.st : 1); };
+})();
+
+// ---- sensación de la carga: la emisión de la cuchilla crece (uCharge), brasas que suben; nivel 2 = destello -----
+// (sin luz puntual propia: cada luz más se paga en todos los materiales del mundo, y en el móvil cuenta)
+(function () {
+  "use strict";
+  const W = window.W;
+  const hand = (b, k) => ({ x: b.x + Math.cos(b.heading) * 0.45 * k, z: b.z + Math.sin(b.heading) * 0.45 * k, y: b.y + 0.85 });
+  W.onChargeStart = function (f, a) { if (W.sfx) W.sfx.combat("chargeStart"); if (W.combatLog) W.combatLog.push({ ev: "chargeStart", seq: a.comboSeq, t: W.U ? +W.U.uTime.value.toFixed(3) : 0 }); };
+  W.onCharge2 = function (f, a) {
+    if (W.sfx) W.sfx.combat("charge2");
+    const p = hand(f.body, 1);
+    if (W.combatStar) W.combatStar(p.x, p.y + 0.2, p.z, 1.3, 0xffb040, 0.25);
+    if (W.fx) W.fx.dust(p.x, p.y, p.z, 16, { pal: [[1, 0.7, 0.25], [1, 0.9, 0.5], [1, 0.5, 0.15]], spd: 1.6, up: 1.4, life: 0.4 });
+    if (W.combatLog) W.combatLog.push({ ev: "charge2", t: W.U ? +W.U.uTime.value.toFixed(3) : 0 });
+  };
+  W.onChargeRelease = function (f, a) {
+    if (W.combatLog) W.combatLog.push({ ev: "heavyRelease", level: a.level, held: a.held, seq: a.comboSeq, tired: !!a.tired, t: W.U ? +W.U.uTime.value.toFixed(3) : 0 });
+  };
+  W.movesAfter = function (dt) {
+    const p = W.pf; if (!p || !p.ch) return;
+    const a = p.act, U = p.ch.uniforms;
+    let k = 0;
+    if (a && a.charging) {
+      if (!a.chargeFx) { a.chargeFx = true; if (W.onChargeStart) W.onChargeStart(p, a); }
+      k = 0.25 + 0.75 * a.chargeK;
+      if (a.level === 2) k = 1 + 0.15 * Math.sin(W.ct * 30);
+      const q = hand(p.body, 1);
+      if (W.fx && Math.random() < dt * (8 + 26 * a.chargeK)) W.fx.dust(q.x + (Math.random() - 0.5) * 0.3, q.y + Math.random() * 0.3, q.z + (Math.random() - 0.5) * 0.3, 1,
+        { pal: [[1, 0.6, 0.2], [1, 0.82, 0.4]], spd: 0.25, up: 0.8, life: 0.35 });
+    } else if (a && a.name === "heavy" && a.f <= 4) k = a.level === 2 ? 0.9 : 0.5;
+    U.uCharge.value += (k - U.uCharge.value) * Math.min(1, dt * 18);
+  };
 })();
 
 </script>
@@ -5655,7 +5799,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         // tus golpes: cada impacto es una ficha para el modelo
         for (let i = this.pAtks.length - 1; i >= 0; i--) {
           const a = this.pAtks[i];
-          if (a.impactT != null) { this.pAtks.splice(i, 1); this.addToken(a.name === "attack1" ? "a1" : a.name === "attack2" ? "a2" : "a3", a.impactT); }
+          if (a.impactT != null) { this.pAtks.splice(i, 1); this.addToken({ attack1: "a1", attack2: "a2", attack3: "a3", heavy: "aH", spin: "aS" }[a.name] || "a1", a.impactT); }
           else if (pl.act !== a) this.pAtks.splice(i, 1);
         }
         // defensa: compromiso por lectura y reacción humana
@@ -5934,6 +6078,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         const nx = g.next[best], conf = nx.n / g.n;
         this.predict = { key: best, conf, at: now + nx.gap, n: nx.n, ctx };
         const D = W.ENEMY_DIFF, parryConf = 1 - 0.5 * D.parry, blockConf = 0.9 - 0.6 * D.block;
+        if (this.training) return;                       // en entrenamiento no se defiende (ni se queda esperando)
         if (!/^a/.test(best) || nx.seen < 2 || conf < Math.min(parryConf, blockConf)) return;
         // la apertura de tu combo (tras una pausa: ritmo «s») la bloquea; los golpes encadenados, los desvía
         const lastK = T[T.length - 1].key, opener = lastK === "E" || lastK === "·" || /s$/.test(best) || nx.gap > 0.8;
@@ -6004,6 +6149,15 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         this.react1 = null;
         const pl = W.pf, a = pl.act;
         if (!a || a !== q.act || !this.freeToDefend() || this.commit) return;
+        // una carga del fuerte se ve venir: alza la guardia y aguanta hasta que salga (Combate completo, etapa 3)
+        if (a.charging) {
+          if (W.ENEMY_DIFF.block > 0 && Math.hypot(pl.body.x - f.body.x, pl.body.z - f.body.z) < 3.4) {
+            f.guardHeld = true; f.act = null; f.start("block"); f.act.tt = 0.07; this.stanceUntil = W.ct + 2.2;
+            this.commit = { kind: "block", at: W.ct + 2.0, stance: W.ct, press: 0, stanceOn: true, conf: 0, reactive: true, charge: true };
+            W.combatLog.push({ ev: "foeBlock", ct: +W.ct.toFixed(3), who: f.name, reactive: true, charge: true, t: +W.U.uTime.value.toFixed(3) });
+          }
+          return;
+        }
         const left = pl.toImpact(); if (left == null) return;
         // tras encajar un combo o con poca vida: se aparta de lado si le da tiempo
         this.lastHits = this.lastHits.filter((t) => this.t - t < 2.2);
@@ -6037,7 +6191,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
 
   // ---- ganchos -----------------------------------------------------------------------------------------
   function onAct(f, actor, act) {
-    if (actor === W.pf && act.name.startsWith("attack") && f.ai) { f.ai.pAtks.push(act); if (f.ai.enabled) f.ai.onPlayerAttack(act); }
+    // tus golpes normales (ligeros y fuertes; el riposte y el remate no son hábitos que leer)
+    if (actor === W.pf && W.isAtk(act) && /^(attack|heavy|spin)/.test(act.name) && f.ai) { f.ai.pAtks.push(act); if (f.ai.enabled) f.ai.onPlayerAttack(act); }
   }
   function onFrame(f, a) {
     if (a.name === "hit" && a.f === 0 && f.ai) f.ai.lastHits.push(f.ai.t);
@@ -6681,6 +6836,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       tone(c, t, "triangle", 2200, 2100, 0.08, 0.6); tone(c, t + 0.08, "sine", 1760, 1755, 0.05, 0.9);
     }
     else if (kind === "death") { tone(c, t, "sine", 80, 40, 0.35, 0.35); noiseHit(c, t, "lowpass", 900, 200, 0.6, 0.25, 0.3); }
+    else if (kind === "charge2") { tone(c, t, "sawtooth", 220, 440, 0.08, 0.22); tone(c, t + 0.02, "triangle", 1320, 1980, 0.06, 0.3); noiseHit(c, t, "highpass", 3000, 6000, 0.6, 0.08, 0.2); }
+    else if (kind === "chargeStart") { tone(c, t, "sine", 110, 180, 0.07, 0.4); noiseHit(c, t, "bandpass", 400, 1200, 3, 0.05, 0.35); }
     else if (kind === "target") { tone(c, t, "triangle", 880, 1320, 0.06, 0.07); tone(c, t + 0.04, "sine", 1760, 1760, 0.03, 0.09); }   // objetivo fijado
     else if (kind === "tick") { tone(c, t, "sine", 1250, 1240, 0.12, 0.05); tone(c, t, "square", 2500, 2480, 0.02, 0.03); }
     else if (kind === "warn") { tone(c, t, "sine", 980, 1480, 0.05, 0.12); }
@@ -7271,7 +7428,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     const p = W.player, pf = W.pf;
     const d = Math.hypot(f.body.x - p.x, f.body.z - p.z), dir = Math.atan2(f.body.z - p.z, f.body.x - p.x);
     // ts: instante del toque (para el ritmo del riposte cuenta cuándo bajó el dedo, no cuándo se levantó)
-    if (d <= 3.2 || pf.act) { pf.input("attack", { dir, ts }); pendingAttack = null; return "attack"; }
+    if (d <= 3.2 || pf.act) { pf.input("attack", { dir, ts, kind: "L" }); pendingAttack = null; return "attack"; }
     // lejos: va hacia él y ataca al llegar
     const path = W.findPath(p.x, p.z, f.body.x - Math.cos(dir) * 1.1, f.body.z - Math.sin(dir) * 1.1, undefined, { jump: true });
     if (path.length) { p.setPath(path, { noDelay: true }); pendingAttack = { f, t: 0 }; }
@@ -7339,15 +7496,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       ptr.atkHold = false;
       // tocar un enemigo que no es el objetivo lo SELECCIONA (target.js); tocar el objetivo, ataca
       ptr.select = !!ptr.foe && W.getTarget && W.getTarget() !== ptr.foe;
-      if (ptr.foe && !ptr.select) {
-        clearTimeout(ptr.holdTimer);
-        ptr.holdTimer = setTimeout(() => {
-          if (!ptr.down || !ptr.foe || Math.hypot(ptr.x - ptr.x0, ptr.y - ptr.y0) > 14) return;
-          const f = ptr.foe, d = Math.hypot(f.body.x - W.player.x, f.body.z - W.player.z);
-          if (d > 3.2 && !W.pf.act) return;
-          ptr.atkHold = true; W.pf.input("attack", { dir: Math.atan2(f.body.z - W.player.z, f.body.x - W.player.x), hold: true, ts: ptr.t0 });
-        }, 150);
-      }
+      // sobre el objetivo: tocar = LIGERO, mantener ≥ 0,4 s = FUERTE con carga (W.attackPress / attackRelease)
+      if (ptr.foe && !ptr.select) W.attackPress("touch", e.timeStamp, ptr.foe);
     });
     canvas.addEventListener("pointermove", (e) => {
       if (!ptr.down || e.pointerId !== ptr.id) return;
@@ -7359,13 +7509,13 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     const end = (e) => {
       if (!ptr.down || e.pointerId !== ptr.id) return;
       ptr.down = false; clearTimeout(ptr.timer); clearTimeout(ptr.holdTimer);
-      if (ptr.atkHold) { ptr.atkHold = false; W.pf.input("attackUp"); return; }   // suelta el golpe retenido
       // deslizar rápido: esquivar en esa dirección
       const dx = e.clientX - ptr.x0, dy = e.clientY - ptr.y0, el = performance.now() - ptr.t0;
       W.lastGesture = { dx, dy, ms: Math.round(el), following, foe: !!ptr.foe };
       if (e.type !== "pointercancel" && Math.hypot(dx, dy) > SWIPE_PX && el < SWIPE_MS) {
         if (following) { following = false; W.player.following = false; if (followMarker) followMarker.visible = false; }
         W.player.stop(); pendingAttack = null; pendingMove = null;
+        if (atk && atk.src === "touch") { if (atk.charging) W.pf.input("chargeRelease"); atk = null; }   // era una esquiva
         W.pf.input("dodge", { dir: W.screenDirToHeading(dx, dy) });
         W.lastSwipe = { dx, dy, ms: el, dir: W.screenDirToHeading(dx, dy) };
         return;
@@ -7373,7 +7523,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       if (ptr.foe && !following) {
         if (e.type === "pointercancel") return;
         if (ptr.select) { W.setTarget(ptr.foe, "tap"); W.lastFoeTap = "select"; return; }
-        W.lastFoeTap = attackFoe(ptr.foe, ptr.t0);
+        W.lastFoeTap = W.attackRelease("touch");
         return;
       }
       if (following) {
@@ -7409,8 +7559,9 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       if (e.code === "Tab") { e.preventDefault(); if (W.cycleTarget) W.cycleTarget(); return; }   // objetivo siguiente
       if (e.code === "KeyJ") {
         e.preventDefault();
+        // J tocada = LIGERO, J mantenida ≥ 0,4 s = FUERTE con carga
         const f = (W.getTarget && W.getTarget()) || (W.nearestFoe ? W.nearestFoe(W.pf, 3.4, 2.0) : null);
-        W.pf.input("attack", f ? { dir: Math.atan2(f.body.z - W.player.z, f.body.x - W.player.x), hold: true, ts: e.timeStamp } : { dir: kbDir(), hold: true, ts: e.timeStamp });
+        W.attackPress("key", e.timeStamp, f, f ? null : kbDir());
       } else if (e.code === "KeyK") { e.preventDefault(); W.pf.input("guardDown", { ts: e.timeStamp }); }
       else if (e.code === "Space") {
         e.preventDefault();
@@ -7422,9 +7573,9 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       if (MOVE[e.code]) { keys[e.code] = false; return; }
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") { keys.shift = false; return; }
       if (e.code === "KeyK") W.pf.input("guardUp");
-      if (e.code === "KeyJ") W.pf.input("attackUp");
+      if (e.code === "KeyJ") W.attackRelease("key");
     });
-    addEventListener("blur", () => { for (const k in keys) keys[k] = false; if (W.pf) { W.pf.input("guardUp"); W.pf.input("attackUp"); } });
+    addEventListener("blur", () => { for (const k in keys) keys[k] = false; if (W.pf) { W.pf.input("guardUp"); W.pf.input("attackUp"); if (atk) W.attackRelease(atk.src); } });
     function kbDir() {
       let sx = 0, sy = 0;
       for (const k in MOVE) if (keys[k]) { sx += MOVE[k][0]; sy += MOVE[k][1]; }
@@ -7438,8 +7589,35 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     document.addEventListener("touchmove", (e) => { if (e.target === canvas) e.preventDefault(); }, { passive: false });
   };
 
+  // ---- pulsación de ataque (toque sobre el objetivo, J o el botón ATACAR): L o H según cuánto se mantiene ----------
+  // se mide en tiempo de juego (W.ct): las pruebas a paso fijo y el juego real ven lo mismo
+  let atk = null;
+  W.attackPress = function (src, ts, foe, dir) {
+    if (atk) return;
+    atk = { src, ts, foe: foe || null, dir: dir == null ? null : dir, ct0: W.ct, charging: false };
+  };
+  W.attackRelease = function (src) {
+    if (!atk || atk.src !== src) return null;
+    const A = atk; atk = null;
+    if (A.charging) { W.pf.input("chargeRelease"); return "heavy"; }
+    if (A.foe && A.foe.alive) return attackFoe(A.foe, A.ts);
+    W.pf.input("attack", { dir: A.dir != null ? A.dir : W.player.heading, ts: A.ts, kind: "L" });
+    return "attack";
+  };
+  W.attackHold = () => (atk ? { src: atk.src, held: W.ct - atk.ct0, charging: atk.charging } : null);
+  function attackHoldStep() {
+    if (!atk || atk.charging) return;
+    if (W.ct - atk.ct0 < W.MOVES.holdH) return;
+    const f = atk.foe, p = W.player;
+    if (f && (!f.alive || (Math.hypot(f.body.x - p.x, f.body.z - p.z) > 3.4 && !W.pf.act))) return;   // lejos: al soltar irá a por él
+    const dir = f ? Math.atan2(f.body.z - p.z, f.body.x - p.x) : atk.dir != null ? atk.dir : p.heading;
+    atk.charging = true;
+    W.pf.input("attack", { dir, ts: atk.ts, kind: "H", pressCt: atk.ct0 });
+  }
+
   let kbMoving = false;
   W.controlsUpdate = function (dt) {
+    attackHoldStep();
     if (following) followTick(dt);
     const p = W.player, pf = W.pf;
     // teclado: un punto de destino siempre un poco por delante en la dirección pulsada
@@ -7459,7 +7637,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       pendingAttack.t += dt;
       const f = pendingAttack.f, d = Math.hypot(f.body.x - p.x, f.body.z - p.z);
       if (!f.alive || pendingAttack.t > 5) pendingAttack = null;
-      else if (d <= 2.4 || (!p.path.length && d <= 3.4)) { pf.input("attack", { dir: Math.atan2(f.body.z - p.z, f.body.x - p.x) }); pendingAttack = null; }
+      else if (d <= 2.4 || (!p.path.length && d <= 3.4)) { pf.input("attack", { dir: Math.atan2(f.body.z - p.z, f.body.x - p.x), kind: "L" }); pendingAttack = null; }
       else if (!p.path.length) pendingAttack = null;
     }
     if (pendingMove && pf && !pf.act) { const m = pendingMove; pendingMove = null; W.goTo(m.x, m.z); }

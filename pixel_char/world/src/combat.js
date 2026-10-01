@@ -29,6 +29,9 @@
     // Duelo 3 (duel.js decide daño, postura y sensación de cada golpe; aquí, el alcance)
     riposte: { dmg: 8, reach: 1.95, arc: 80, stop: 0.07, kb: 0.2, post: 22 },
     deathblow: { dmg: 100, reach: 2.2, arc: 120, stop: 0.18, kb: 0.6, heavy: true, post: 0 },
+    // Combate completo: el FUERTE (carga; nivel 2 ×1,5 daño, ×1,6 postura) y el remate giratorio en 360°
+    heavy: { dmg: 22, reach: 2.05, arc: 80, stop: 0.13, kb: 0.75, heavy: true, post: 50, postK: 1.5 },
+    spin: { dmg: 15, reach: 2.25, arc: 180, stop: 0.12, kb: 0.6, heavy: true, post: 44, postK: 1.7 },
   };
   const STOP = { attack1: 0.075, attack2: 0.085, attack3: 0.12, parry: 0.11, parryHeavy: 0.13, perfect: 0.16, perfectHeavy: 0.18, block: 0.06, deathblow: 0.16 };
   // recompensas por nivel (postura al atacante: × su "post"; coste de postura para quien defiende)
@@ -254,7 +257,7 @@
       if (def === "partial") def = "block";                     // parry parcial = bloqueo
       const heavy = !!AT.heavy;
       const cx = (b.x + t.body.x) / 2, cz = (b.z + t.body.z) / 2, cy = Math.max(b.y, t.body.y) + 1.05;
-      const dmg = AT.dmg * (att.dmgK || 1);
+      const dmg = AT.dmg * (att.dmgK || 1) * (a.dmgK || 1);
       const toPlayer = t === W.pf && att.team !== "player";
       if (toPlayer) W.lastFoeImpact = { t: a.impactT != null ? a.impactT : W.ct, open: false };
       if (AT.perilous) {
@@ -359,7 +362,7 @@
         if (W.sfx) W.sfx.combat("armor");
       }
       if (AT.throw) log({ ev: "grab", who: t.name, from: att.name, anim: a.name, move: a.move });
-      const pg = dm * 0.7 * (counter ? W.COMBAT.counterPost : 1) * (exposed ? 1.5 : 1);
+      const pg = dm * 0.7 * (counter ? W.COMBAT.counterPost : 1) * (exposed ? 1.5 : 1) * (AT.postK || 1) * (a.postK || 1);
       if (!deathblow && t.alive) t.addPosture(pg);
       // tras el remate su postura queda como al acabar el aturdido (antes se quedaba llena y cualquier desvío
       // posterior lo volvía a aturdir al instante)
@@ -369,7 +372,7 @@
       W.fx.dust(t.body.x - Math.cos(dir) * 0.1, t.body.y + 0.9, t.body.z - Math.sin(dir) * 0.1, heavy ? 16 : 10, { pal: EMBER, spd: 1.8, up: 1.3, life: 0.35 });
       if (deathblow) flashLight(t.body.x, t.body.y + 1.1, t.body.z, 0xffd0a0, 6);
       star(t.body.x - Math.cos(dir) * 0.15, t.body.y + 1.0, t.body.z - Math.sin(dir) * 0.15, deathblow ? 1.8 : heavy ? 1.1 : 0.8, deathblow ? 0xfff4d8 : 0xffc890, deathblow ? 0.24 : 0.13);
-      stop(deathblow ? STOP.deathblow : AT.stop);
+      stop(deathblow ? STOP.deathblow : AT.stop * (a.stopK || 1));
       W.shakeCam(dx, dz, deathblow ? 0.14 : heavy ? 0.11 : 0.06, heavy || deathblow ? 0.32 : 0.22);
       if (W.sfx) W.sfx.combat(deathblow ? "deathblow" : heavy ? "hitHeavy" : "hit", kind);
       log({ ev: deathblow ? "deathblow" : "hit", who: t.name, from: att.name, anim: a.name, dmg: Math.round(dm), hp: Math.round(t.hp), res, surface: kind, exp: exposed, pg: +pg.toFixed(1) });
@@ -512,6 +515,7 @@
     }
     for (const f of fighters) if (f.ch) f.ch.uniforms.uFlash.value = f.flash;
     updateHud();
+    if (W.movesAfter) W.movesAfter(dt);               // brillo y brasas de la carga del fuerte (moves.js)
     if (W.duelAfter) W.duelAfter(dt);                 // riposte, ritmo, rebote, cámara del remate (duel.js)
     if (W.practiceAfter) W.practiceAfter(dt);         // barras de postura centrales, entrenamiento (practice.js)
   };

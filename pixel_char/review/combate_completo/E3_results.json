@@ -1,0 +1,230 @@
+{
+ "results": [
+  {
+   "name": "[escritorio] tocar el objetivo = LIGERO (attack1)",
+   "ok": true,
+   "info": {
+    "act": "attack1",
+    "seq": [
+     "L"
+    ],
+    "hits": [
+     "attack1"
+    ]
+   }
+  },
+  {
+   "name": "[escritorio] mantener ≥ 0,4 s = FUERTE: carga (a 0,35 s aún no); soltar lanza el golpe",
+   "ok": true,
+   "info": {
+    "at035": null,
+    "at045": "heavy",
+    "charging": false,
+    "f": 0,
+    "act": "heavy",
+    "level": 1,
+    "hits": [
+     {
+      "anim": "heavy",
+      "dmg": 22,
+      "res": "hit"
+     }
+    ],
+    "release": {
+     "ev": "heavyRelease",
+     "level": 1,
+     "held": 0.567,
+     "seq": "H",
+     "tired": false,
+     "t": 2.338
+    }
+   }
+  },
+  {
+   "name": "[escritorio] carga de NIVEL 2 a 1,2 s (×1,5 daño, más postura); a 1,8 s se suelta sola",
+   "ok": true,
+   "info": {
+    "n1": {
+     "level": 1,
+     "held": 0.617,
+     "dmg": 22,
+     "post": 23.1,
+     "charge2": 0
+    },
+    "n2": {
+     "level": 2,
+     "held": 1.367,
+     "dmg": 33,
+     "post": 55.4,
+     "charge2": 1
+    },
+    "auto": {
+     "level": 2,
+     "held": 1.8,
+     "dmg": 33,
+     "post": 55.4,
+     "charge2": 1
+    }
+   }
+  },
+  {
+   "name": "[escritorio] guardia durante la carga = finta (cancela, gasta stamina, pasa a guardia)",
+   "ok": true,
+   "info": {
+    "cargando": true,
+    "act": "parry",
+    "finta": 1,
+    "stamina": 14,
+    "heavy": 0
+   }
+  },
+  {
+   "name": "[escritorio] durante la carga eres vulnerable (su golpe la interrumpe)",
+   "ok": true,
+   "info": {
+    "act": "hit",
+    "golpes": 1,
+    "heavy": 0
+   }
+  },
+  {
+   "name": "[escritorio] stamina: ligero < fuerte < nivel 2; sin stamina el golpe sale más lento",
+   "ok": true,
+   "info": {
+    "L": 6,
+    "H": 18,
+    "H2": 27.9,
+    "ms_con": 205,
+    "ms_sin": 277,
+    "lento": true
+   }
+  },
+  {
+   "name": "[escritorio] teclado: J tocada = ligero, J mantenida = fuerte con carga",
+   "ok": true,
+   "info": {
+    "k1": "attack1",
+    "k2": true,
+    "k3": [
+     "heavy"
+    ]
+   }
+  },
+  {
+   "name": "[escritorio] tocar el suelo te mueve (no ataca)",
+   "ok": true,
+   "info": {
+    "moved": 1.04,
+    "act": null
+   }
+  },
+  {
+   "name": "[iphone] tocar el objetivo = LIGERO (attack1)",
+   "ok": true,
+   "info": {
+    "act": "attack1",
+    "seq": [
+     "L"
+    ],
+    "hits": [
+     "attack1"
+    ]
+   }
+  },
+  {
+   "name": "[iphone] mantener ≥ 0,4 s = FUERTE: carga (a 0,35 s aún no); soltar lanza el golpe",
+   "ok": true,
+   "info": {
+    "at035": null,
+    "at045": "heavy",
+    "charging": false,
+    "f": 0,
+    "act": "heavy",
+    "level": 1,
+    "hits": [
+     {
+      "anim": "heavy",
+      "dmg": 22,
+      "res": "hit"
+     }
+    ],
+    "release": {
+     "ev": "heavyRelease",
+     "level": 1,
+     "held": 0.567,
+     "seq": "H",
+     "tired": false,
+     "t": 2.289
+    }
+   }
+  },
+  {
+   "name": "[iphone] carga de NIVEL 2 a 1,2 s (×1,5 daño, más postura); a 1,8 s se suelta sola",
+   "ok": true,
+   "info": {
+    "n1": {
+     "level": 1,
+     "held": 0.617,
+     "dmg": 22,
+     "post": 23.1,
+     "charge2": 0
+    },
+    "n2": {
+     "level": 2,
+     "held": 1.367,
+     "dmg": 33,
+     "post": 55.4,
+     "charge2": 1
+    },
+    "auto": {
+     "level": 2,
+     "held": 1.8,
+     "dmg": 33,
+     "post": 55.4,
+     "charge2": 1
+    }
+   }
+  },
+  {
+   "name": "[iphone] guardia durante la carga = finta (cancela, gasta stamina, pasa a guardia)",
+   "ok": true,
+   "info": {
+    "cargando": true,
+    "act": "parry",
+    "finta": 1,
+    "stamina": 14,
+    "heavy": 0
+   }
+  },
+  {
+   "name": "[iphone] durante la carga eres vulnerable (su golpe la interrumpe)",
+   "ok": true,
+   "info": {
+    "act": "hit",
+    "golpes": 1,
+    "heavy": 0
+   }
+  },
+  {
+   "name": "[iphone] stamina: ligero < fuerte < nivel 2; sin stamina el golpe sale más lento",
+   "ok": true,
+   "info": {
+    "L": 6,
+    "H": 18,
+    "H2": 27.9,
+    "ms_con": 205,
+    "ms_sin": 277,
+    "lento": true
+   }
+  },
+  {
+   "name": "[iphone] tocar el suelo te mueve (no ataca)",
+   "ok": true,
+   "info": {
+    "moved": 1.04,
+    "act": null
+   }
+  }
+ ],
+ "errors": []
+}

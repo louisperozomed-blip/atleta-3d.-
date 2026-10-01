@@ -186,7 +186,7 @@
         // tus golpes: cada impacto es una ficha para el modelo
         for (let i = this.pAtks.length - 1; i >= 0; i--) {
           const a = this.pAtks[i];
-          if (a.impactT != null) { this.pAtks.splice(i, 1); this.addToken(a.name === "attack1" ? "a1" : a.name === "attack2" ? "a2" : "a3", a.impactT); }
+          if (a.impactT != null) { this.pAtks.splice(i, 1); this.addToken({ attack1: "a1", attack2: "a2", attack3: "a3", heavy: "aH", spin: "aS" }[a.name] || "a1", a.impactT); }
           else if (pl.act !== a) this.pAtks.splice(i, 1);
         }
         // defensa: compromiso por lectura y reacción humana
@@ -465,6 +465,7 @@
         const nx = g.next[best], conf = nx.n / g.n;
         this.predict = { key: best, conf, at: now + nx.gap, n: nx.n, ctx };
         const D = W.ENEMY_DIFF, parryConf = 1 - 0.5 * D.parry, blockConf = 0.9 - 0.6 * D.block;
+        if (this.training) return;                       // en entrenamiento no se defiende (ni se queda esperando)
         if (!/^a/.test(best) || nx.seen < 2 || conf < Math.min(parryConf, blockConf)) return;
         // la apertura de tu combo (tras una pausa: ritmo «s») la bloquea; los golpes encadenados, los desvía
         const lastK = T[T.length - 1].key, opener = lastK === "E" || lastK === "·" || /s$/.test(best) || nx.gap > 0.8;
@@ -535,6 +536,15 @@
         this.react1 = null;
         const pl = W.pf, a = pl.act;
         if (!a || a !== q.act || !this.freeToDefend() || this.commit) return;
+        // una carga del fuerte se ve venir: alza la guardia y aguanta hasta que salga (Combate completo, etapa 3)
+        if (a.charging) {
+          if (W.ENEMY_DIFF.block > 0 && Math.hypot(pl.body.x - f.body.x, pl.body.z - f.body.z) < 3.4) {
+            f.guardHeld = true; f.act = null; f.start("block"); f.act.tt = 0.07; this.stanceUntil = W.ct + 2.2;
+            this.commit = { kind: "block", at: W.ct + 2.0, stance: W.ct, press: 0, stanceOn: true, conf: 0, reactive: true, charge: true };
+            W.combatLog.push({ ev: "foeBlock", ct: +W.ct.toFixed(3), who: f.name, reactive: true, charge: true, t: +W.U.uTime.value.toFixed(3) });
+          }
+          return;
+        }
         const left = pl.toImpact(); if (left == null) return;
         // tras encajar un combo o con poca vida: se aparta de lado si le da tiempo
         this.lastHits = this.lastHits.filter((t) => this.t - t < 2.2);
@@ -568,7 +578,8 @@
 
   // ---- ganchos -----------------------------------------------------------------------------------------
   function onAct(f, actor, act) {
-    if (actor === W.pf && act.name.startsWith("attack") && f.ai) { f.ai.pAtks.push(act); if (f.ai.enabled) f.ai.onPlayerAttack(act); }
+    // tus golpes normales (ligeros y fuertes; el riposte y el remate no son hábitos que leer)
+    if (actor === W.pf && W.isAtk(act) && /^(attack|heavy|spin)/.test(act.name) && f.ai) { f.ai.pAtks.push(act); if (f.ai.enabled) f.ai.onPlayerAttack(act); }
   }
   function onFrame(f, a) {
     if (a.name === "hit" && a.f === 0 && f.ai) f.ai.lastHits.push(f.ai.t);

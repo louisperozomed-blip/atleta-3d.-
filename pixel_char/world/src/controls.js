@@ -84,7 +84,7 @@
     const p = W.player, pf = W.pf;
     const d = Math.hypot(f.body.x - p.x, f.body.z - p.z), dir = Math.atan2(f.body.z - p.z, f.body.x - p.x);
     // ts: instante del toque (para el ritmo del riposte cuenta cuándo bajó el dedo, no cuándo se levantó)
-    if (d <= 3.2 || pf.act) { pf.input("attack", { dir, ts }); pendingAttack = null; return "attack"; }
+    if (d <= 3.2 || pf.act) { pf.input("attack", { dir, ts, kind: "L" }); pendingAttack = null; return "attack"; }
     // lejos: va hacia él y ataca al llegar
     const path = W.findPath(p.x, p.z, f.body.x - Math.cos(dir) * 1.1, f.body.z - Math.sin(dir) * 1.1, undefined, { jump: true });
     if (path.length) { p.setPath(path, { noDelay: true }); pendingAttack = { f, t: 0 }; }
@@ -152,15 +152,8 @@
       ptr.atkHold = false;
       // tocar un enemigo que no es el objetivo lo SELECCIONA (target.js); tocar el objetivo, ataca
       ptr.select = !!ptr.foe && W.getTarget && W.getTarget() !== ptr.foe;
-      if (ptr.foe && !ptr.select) {
-        clearTimeout(ptr.holdTimer);
-        ptr.holdTimer = setTimeout(() => {
-          if (!ptr.down || !ptr.foe || Math.hypot(ptr.x - ptr.x0, ptr.y - ptr.y0) > 14) return;
-          const f = ptr.foe, d = Math.hypot(f.body.x - W.player.x, f.body.z - W.player.z);
-          if (d > 3.2 && !W.pf.act) return;
-          ptr.atkHold = true; W.pf.input("attack", { dir: Math.atan2(f.body.z - W.player.z, f.body.x - W.player.x), hold: true, ts: ptr.t0 });
-        }, 150);
-      }
+      // sobre el objetivo: tocar = LIGERO, mantener ≥ 0,4 s = FUERTE con carga (W.attackPress / attackRelease)
+      if (ptr.foe && !ptr.select) W.attackPress("touch", e.timeStamp, ptr.foe);
     });
     canvas.addEventListener("pointermove", (e) => {
       if (!ptr.down || e.pointerId !== ptr.id) return;
@@ -172,13 +165,13 @@
     const end = (e) => {
       if (!ptr.down || e.pointerId !== ptr.id) return;
       ptr.down = false; clearTimeout(ptr.timer); clearTimeout(ptr.holdTimer);
-      if (ptr.atkHold) { ptr.atkHold = false; W.pf.input("attackUp"); return; }   // suelta el golpe retenido
       // deslizar rápido: esquivar en esa dirección
       const dx = e.clientX - ptr.x0, dy = e.clientY - ptr.y0, el = performance.now() - ptr.t0;
       W.lastGesture = { dx, dy, ms: Math.round(el), following, foe: !!ptr.foe };
       if (e.type !== "pointercancel" && Math.hypot(dx, dy) > SWIPE_PX && el < SWIPE_MS) {
         if (following) { following = false; W.player.following = false; if (followMarker) followMarker.visible = false; }
         W.player.stop(); pendingAttack = null; pendingMove = null;
+        if (atk && atk.src === "touch") { if (atk.charging) W.pf.input("chargeRelease"); atk = null; }   // era una esquiva
         W.pf.input("dodge", { dir: W.screenDirToHeading(dx, dy) });
         W.lastSwipe = { dx, dy, ms: el, dir: W.screenDirToHeading(dx, dy) };
         return;
@@ -186,7 +179,7 @@
       if (ptr.foe && !following) {
         if (e.type === "pointercancel") return;
         if (ptr.select) { W.setTarget(ptr.foe, "tap"); W.lastFoeTap = "select"; return; }
-        W.lastFoeTap = attackFoe(ptr.foe, ptr.t0);
+        W.lastFoeTap = W.attackRelease("touch");
         return;
       }
       if (following) {
@@ -222,8 +215,9 @@
       if (e.code === "Tab") { e.preventDefault(); if (W.cycleTarget) W.cycleTarget(); return; }   // objetivo siguiente
       if (e.code === "KeyJ") {
         e.preventDefault();
+        // J tocada = LIGERO, J mantenida ≥ 0,4 s = FUERTE con carga
         const f = (W.getTarget && W.getTarget()) || (W.nearestFoe ? W.nearestFoe(W.pf, 3.4, 2.0) : null);
-        W.pf.input("attack", f ? { dir: Math.atan2(f.body.z - W.player.z, f.body.x - W.player.x), hold: true, ts: e.timeStamp } : { dir: kbDir(), hold: true, ts: e.timeStamp });
+        W.attackPress("key", e.timeStamp, f, f ? null : kbDir());
       } else if (e.code === "KeyK") { e.preventDefault(); W.pf.input("guardDown", { ts: e.timeStamp }); }
       else if (e.code === "Space") {
         e.preventDefault();
@@ -235,9 +229,9 @@
       if (MOVE[e.code]) { keys[e.code] = false; return; }
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") { keys.shift = false; return; }
       if (e.code === "KeyK") W.pf.input("guardUp");
-      if (e.code === "KeyJ") W.pf.input("attackUp");
+      if (e.code === "KeyJ") W.attackRelease("key");
     });
-    addEventListener("blur", () => { for (const k in keys) keys[k] = false; if (W.pf) { W.pf.input("guardUp"); W.pf.input("attackUp"); } });
+    addEventListener("blur", () => { for (const k in keys) keys[k] = false; if (W.pf) { W.pf.input("guardUp"); W.pf.input("attackUp"); if (atk) W.attackRelease(atk.src); } });
     function kbDir() {
       let sx = 0, sy = 0;
       for (const k in MOVE) if (keys[k]) { sx += MOVE[k][0]; sy += MOVE[k][1]; }
@@ -251,8 +245,35 @@
     document.addEventListener("touchmove", (e) => { if (e.target === canvas) e.preventDefault(); }, { passive: false });
   };
 
+  // ---- pulsación de ataque (toque sobre el objetivo, J o el botón ATACAR): L o H según cuánto se mantiene ----------
+  // se mide en tiempo de juego (W.ct): las pruebas a paso fijo y el juego real ven lo mismo
+  let atk = null;
+  W.attackPress = function (src, ts, foe, dir) {
+    if (atk) return;
+    atk = { src, ts, foe: foe || null, dir: dir == null ? null : dir, ct0: W.ct, charging: false };
+  };
+  W.attackRelease = function (src) {
+    if (!atk || atk.src !== src) return null;
+    const A = atk; atk = null;
+    if (A.charging) { W.pf.input("chargeRelease"); return "heavy"; }
+    if (A.foe && A.foe.alive) return attackFoe(A.foe, A.ts);
+    W.pf.input("attack", { dir: A.dir != null ? A.dir : W.player.heading, ts: A.ts, kind: "L" });
+    return "attack";
+  };
+  W.attackHold = () => (atk ? { src: atk.src, held: W.ct - atk.ct0, charging: atk.charging } : null);
+  function attackHoldStep() {
+    if (!atk || atk.charging) return;
+    if (W.ct - atk.ct0 < W.MOVES.holdH) return;
+    const f = atk.foe, p = W.player;
+    if (f && (!f.alive || (Math.hypot(f.body.x - p.x, f.body.z - p.z) > 3.4 && !W.pf.act))) return;   // lejos: al soltar irá a por él
+    const dir = f ? Math.atan2(f.body.z - p.z, f.body.x - p.x) : atk.dir != null ? atk.dir : p.heading;
+    atk.charging = true;
+    W.pf.input("attack", { dir, ts: atk.ts, kind: "H", pressCt: atk.ct0 });
+  }
+
   let kbMoving = false;
   W.controlsUpdate = function (dt) {
+    attackHoldStep();
     if (following) followTick(dt);
     const p = W.player, pf = W.pf;
     // teclado: un punto de destino siempre un poco por delante en la dirección pulsada
@@ -272,7 +293,7 @@
       pendingAttack.t += dt;
       const f = pendingAttack.f, d = Math.hypot(f.body.x - p.x, f.body.z - p.z);
       if (!f.alive || pendingAttack.t > 5) pendingAttack = null;
-      else if (d <= 2.4 || (!p.path.length && d <= 3.4)) { pf.input("attack", { dir: Math.atan2(f.body.z - p.z, f.body.x - p.x) }); pendingAttack = null; }
+      else if (d <= 2.4 || (!p.path.length && d <= 3.4)) { pf.input("attack", { dir: Math.atan2(f.body.z - p.z, f.body.x - p.x), kind: "L" }); pendingAttack = null; }
       else if (!p.path.length) pendingAttack = null;
     }
     if (pendingMove && pf && !pf.act) { const m = pendingMove; pendingMove = null; W.goTo(m.x, m.z); }

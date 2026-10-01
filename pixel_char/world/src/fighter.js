@@ -20,8 +20,11 @@
 //  · plan de golpe (enemigos): CARGA (frames 0-1) → RETENCIÓN (frame 1 fijo) → SUELTA (frame 2) → impacto, con
 //    duraciones propias (act.plan = {wind, hold, rel}); avisa de las fases con this.onPhase(act, "hold"|"release")
 //  · tras saltar un barrido, contraataque en el aire (airCounterT)
-//  · herramientas para ganar la lectura: FINTA (guardia durante la preparación de tu ataque: lo cancela, gasta
-//    stamina) y RETRASO (mantener pulsado el ataque: la preparación se queda en la pose de carga hasta soltar)
+//  · herramientas para ganar la lectura: FINTA (guardia durante la preparación de tu ataque o la carga del fuerte:
+//    lo cancela, gasta stamina) y RETRASO (mantener pulsado el ataque: la preparación se queda en la pose de carga
+//    hasta soltar; Combate completo: en el jugador lo sustituye la CARGA del fuerte, moves.js)
+//  · jugador (moves.js): ataques L/H con su secuencia de combo; el fuerte se CARGA mientras se mantiene (frames de
+//    carga en bucle; a 1,2 s nivel 2) y sale al soltar
 (function () {
   "use strict";
   const W = (window.W = window.W || {});
@@ -119,7 +122,7 @@
     // segundos que faltan para el impacto del ataque en curso (null si no está preparando un ataque)
     toImpact() {
       const a = this.act;
-      if (!a || !isAtk(a) || a.f >= HF(a)) return null;
+      if (!a || !isAtk(a) || a.f >= HF(a) || a.charging) return null;   // (la carga del fuerte: no se sabe cuándo saldrá)
       const P = a.plan;
       if (P && !P.done) return (P.wind + P.hold + P.rel - P.t) / (a.speed || 1);
       const c = cumOf(this.M(), an(a));
@@ -151,6 +154,9 @@
       }
       if (type === "guardUp") { this.guardHeld = false; return true; }
       if (type === "attackUp") { this.atkHeld = false; return true; }          // suelta el golpe retenido
+      // suelta la carga del fuerte (moves.js): si aún no ha empezado (en cola), sale con la carga mínima
+      if (type === "chargeRelease") { this.chargeRel = true; return true; }
+      if (type === "attack" && data && data.kind === "H") this.chargeRel = false;
       if (type === "attack" && data && data.hold) this.atkHeld = true;
       this.buf = { type, t: this.time, data, pt: type === "attack" ? W.pressTime(data && data.ts, this.team === "player") : undefined };
       this.tryBuffered();
@@ -181,6 +187,8 @@
           // riposte encadenado y remate: los decide duel.js (null = regla normal)
           const r = W.duelCan ? W.duelCan(this, a) : null;
           if (r != null) return r;
+          // jugador con L/H (moves.js): en la ventana de encadenado de cualquier golpe que no cierre su combo
+          if (a.comboSeq != null) return !a.noChain && !(a.step && a.step.end) && !a.charging && f >= HF(a);
           return !!cm.next && !a.noChain && f >= HF(a);               // ventana de encadenado: IMPACT..RECOVERY
         }
         if (type === "dodge") return (cancel.dodge || []).indexOf(f) >= 0 && this.st >= C.dodgeCost * 0.5;
@@ -207,6 +215,12 @@
         if (dn === "queued" || dn === "none") return;
         if (dn) { this.act = null; this.startAttack(dn, data); return; }
         const a = this.act;
+        if (data && data.kind && W.movesNext) {
+          // L/H: la tabla de combos decide el golpe; pulsado antes de la recuperación queda en cola
+          const mv = W.movesNext(this, data.kind, t0);
+          if (a && isAtk(a) && a.f < HF(a) + 1) { a.chain = true; a.chainName = mv.step.anim; a.chainData = data; a.chainMv = mv; a.chainPt = t0; return; }
+          this.act = null; this.startAttack(mv.step.anim, data, mv, t0); return;
+        }
         const next = a && isAtk(a) && !a.noChain ? (this.M().animations[an(a)] || {}).next : null;
         // pulsado en IMPACT: queda marcado y el golpe siguiente empieza al entrar en FOLLOW THROUGH
         if (next && a.f < HF(a) + 1) { a.chain = true; a.chainData = data; return; }
@@ -225,15 +239,30 @@
       if (W.onCombatAct) W.onCombatAct(this, this.act);
       return this.act;
     }
-    startAttack(name, data) {
+    startAttack(name, data, mv, pt) {
       const k = name === "attack3" || name === "deathblow" ? 2 : name === "attack2" ? 1 : 0;
-      this.st = Math.max(0, this.st - C.attackCost[k] * (name === "riposte" ? 0.5 : 1)); this.stT = 0;
+      // coste de stamina: el de su paso del combo (moves.js) o el de siempre; sin stamina, preparación más lenta
+      const cost = mv && W.movesCost ? W.movesCost(mv.step, 1) : C.attackCost[k] * (name === "riposte" ? 0.5 : 1);
+      const tired = !!mv && this.st < cost;
+      this.st = Math.max(0, this.st - cost); this.stT = 0;
       const a = this.start(name, { chain: false, atk: true });
       a.slow = this.prepK;
       // hoja propia o sustituto (W.DUEL): riposte → attack1 ×1.4, deathblow → attack3, counter → attack1 rápido
       const R = W.duelSheet ? W.duelSheet(this, name) : null;
       if (R) { a.sheet = R.sheet; a.speed = R.speed; a.fb = R.fb; if (R.trail) a.trail = R.trail; if (R.fb || R.noChain) a.noChain = true; a.slow = 1; }
       a.hf = hitFrame(this.M(), an(a));
+      if (tired) { a.slow = (a.slow || 1) * W.MOVES.tiredSlow; a.tired = true; }
+      if (mv && W.movesStarted) {
+        W.movesStarted(this, a, mv.seq, mv.step);
+        if (mv.step.charge) {
+          // FUERTE: carga mientras se mantiene (frames de carga de su hoja en bucle; el sustituto, su frame de carga)
+          const A = this.M().animations[an(a)] || {};
+          // la carga cuenta desde la pulsación (en tiempo de juego, la da controls.js); 0,4 s ya pasaron al empezar
+          a.charging = true; a.press = data && data.pressCt != null ? data.pressCt : pt != null ? pt : W.ct; a.chargeK = 0; a.level = 1;
+          a.cl = A.carga && A.carga.length && an(a) === name ? A.carga : [Math.max(0, a.hf - 2)];
+          a.lungeFrom = "release";
+        }
+      }
       if (data) {
         if (data.plan) { a.plan = Object.assign({ t: 0, hold: 0 }, data.plan); a.slow = 1; }
         if (data.move) a.move = data.move;
@@ -380,6 +409,24 @@
           else if (P.t < t3) a.tt = c[h - 1] + (P.t - t2) / P.rel * (c[h] - c[h - 1]);
           else { a.tt = c[h] + (P.t - t3); P.done = true; over = (P.t - t3) / (a.speed || 1); }
         }
+      } else if (a.charging) {
+        // carga del fuerte: CROUCH y luego los frames de carga en bucle; a 1,2 s nivel 2; a 1,8 s se suelta solo
+        const c = cumOf(this.M(), an(a)), l0 = c[a.cl[0]], l1 = c[a.cl[a.cl.length - 1] + 1], M = W.MOVES;
+        let nt = (a.tt || 0) + dt * sp;
+        if (nt >= l1) nt = l0 + ((nt - l0) % Math.max(1e-3, l1 - l0));
+        a.tt = nt;
+        this.stT = 0;                                              // cargar también gasta: la stamina no se recupera
+        const held = W.ct - a.press;
+        a.chargeK = Math.max(0, Math.min(1, held / M.holdH2));
+        if (a.level < 2 && held >= M.holdH2) { a.level = 2; if (W.onCharge2) W.onCharge2(this, a); }
+        if (this.chargeRel || held >= M.holdMax) {
+          // suelta: RELEASE → IMPACT → RECOVERY; el nivel 2 cuesta más stamina y pega más
+          this.chargeRel = false; a.charging = false; a.held = +held.toFixed(3);
+          if (a.level === 2) { const ex = W.movesCost(a.step, 2) - W.movesCost(a.step, 1); if (this.st < ex) { a.slow = (a.slow || 1) * M.tiredSlow; a.tired = true; } this.st = Math.max(0, this.st - ex); this.stT = 0;
+            a.dmgK = M.level2.dmg; a.postK = M.level2.post; a.stopK = M.level2.stop; }
+          a.tt = c[HF(a) - 1];
+          if (W.onChargeRelease) W.onChargeRelease(this, a);
+        }
       } else {
         if (a.slow && a.slow !== 1 && isAtk(a) && a.f < HF(a)) sp /= a.slow;
         let nt = (a.tt || 0) + dt * sp;
@@ -407,6 +454,7 @@
       }
       if (f >= 6 || (a.flinchEnd != null && f >= a.flinchEnd)) {
         if (a.name === "death") { a.f = 5; return; }
+        if (a.comboSeq != null && W.movesEnded) W.movesEnded(this, a);
         this.act = null;
         return;
       }
@@ -421,7 +469,7 @@
         if (W.onCombatFrame) W.onCombatFrame(this, a);
       }
       // combo: pulsación dentro de la ventana de encadenado
-      if (isAtk(a) && a.chain && a.f >= HF(a) + 1) { a.chain = false; const nx = a.chainName || this.M().animations[an(a)].next; this.act = null; this.startAttack(nx, a.chainData); return; }
+      if (isAtk(a) && a.chain && a.f >= HF(a) + 1) { a.chain = false; const nx = a.chainName || this.M().animations[an(a)].next; const mv = a.chainMv, pt = a.chainPt; this.act = null; this.startAttack(nx, a.chainData, mv, pt != null ? Math.max(pt, W.ct - 0.05) : null); return; }
       this.motion(a, dt);
     }
     // desplazamientos del cuerpo durante las acciones (estocada, esquiva, retroceso)
