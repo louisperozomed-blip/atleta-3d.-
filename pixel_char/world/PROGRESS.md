@@ -1365,3 +1365,25 @@ detrás) y su recuperación dura 800 ms frente a 295 del ligero; el doble cargad
 búfer de 3 toques; ritmo (en el pulso: ×1,20 daño y postura; 120 ms tarde o 100 ms pronto: sin bonus); **cada combo
 en las 8 direcciones** (todos los golpes aciertan y cada dirección pinta su fila: 8 distintas). Regresión: E3 15/15,
 combate con el eco 31/31, duelo 22/22, parry2_ui 10/10. Capturas: `review/combate_completo/E4_*.png`.
+
+## Etapa 5 — Parry, riposte y reacciones (con los controles nuevos)
+Todo lo que pide esta etapa ya estaba del Duelo 3 y se **conserva**: niveles de parry (perfecto ≤ 70 ms, normal,
+bloqueo), postura Sekiro, penalización por spam; tras tu perfecto el enemigo queda **DEFLECTED ~0,7 s** (707 ms
+medidos) y se abre el **RIPOSTE** de hasta 3 golpes (hoja riposte; sustituto attack1 ×1,4 con estela), con el 3.º
+solo **en ritmo** (si no, lo desvía); parry normal = 1 golpe; postura rota en el riposte = **DEATHBLOW**; reacción
+por peso (ligero = respingo corto; fuerte = tambaleo con retroceso; sus golpes de nivel ≥ 2 con **hyper armor**); su
+**COUNTER** tras desviarte y el **intercambio de desvíos**; el **choque** si los dos golpeáis a la vez.
+
+Integración con L/H: los toques de ataque (L) durante la ventana abren el riposte antes que cualquier combo; los
+golpes del jugador que encadena el riposte no pasan por la tabla de combos; el fuerte (heavy, spin) cuenta como
+golpe pesado para la reacción del enemigo.
+
+**Corregido** (lo encontró la prueba nueva): si el autómata te hacía un parry **perfecto**, su COUNTER heredaba la
+ventana de contraataque **indefendible** que gana quien desvía perfecto (pensada para el jugador) y no se podía
+desviar: el intercambio de desvíos era imposible tras su perfecto. Ahora esa ventana solo la gana el jugador.
+
+**Pruebas** (`tests/cc_e5.mjs`, con toques L y objetivo fijado): **8/8**, sin errores JS — perfecto → DEFLECTED →
+riposte de 3 en ritmo; DEFLECTED dura ~0,7 s; el 3.º fuera de ritmo lo desvía; parry normal = 1 golpe; postura rota
+→ DEATHBLOW; reacción por peso (ligero: respingo; fuerte: tambaleo con más retroceso; su barrido amplio aguanta tu
+ligero con hyper armor); te desvía → desequilibrado + COUNTER → lo desvías con un perfecto (intercambio); choque.
+Regresión: duelo 22/22, parry 50/50.

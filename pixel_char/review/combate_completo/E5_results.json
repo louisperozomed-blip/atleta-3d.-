@@ -1,0 +1,103 @@
+{
+ "results": [
+  {
+   "name": "parry perfecto: el enemigo queda DEFLECTED y el riposte (con toques) da 3 golpes con el 3.º en ritmo",
+   "ok": true,
+   "info": {
+    "parry": "perfect",
+    "deflected": "deflected",
+    "rip": [
+     1,
+     2,
+     3
+    ],
+    "defl": 0,
+    "deathblow": 0
+   }
+  },
+  {
+   "name": "DEFLECTED dura ~0,7 s",
+   "ok": true,
+   "info": {
+    "ms": 707
+   }
+  },
+  {
+   "name": "riposte: el 3.º fuera de ritmo lo desvía el enemigo",
+   "ok": true,
+   "info": {
+    "rip": [
+     1,
+     2
+    ],
+    "defl": 1,
+    "deathblow": 0
+   }
+  },
+  {
+   "name": "parry normal: riposte de un solo golpe",
+   "ok": true,
+   "info": {
+    "parry": "normal",
+    "rip": [
+     1
+    ],
+    "defl": 0,
+    "deathblow": 0
+   }
+  },
+  {
+   "name": "si la postura se rompe en el riposte: DEATHBLOW",
+   "ok": true,
+   "info": {
+    "rip": [
+     1,
+     2
+    ],
+    "defl": 0,
+    "deathblow": 1
+   }
+  },
+  {
+   "name": "reacción por peso: ligero = respingo corto; fuerte = tambaleo con retroceso; su golpe fuerte aguanta (hyper armor)",
+   "ok": true,
+   "info": {
+    "ligero": {
+     "res": "flinch",
+     "flinch": true,
+     "retroceso": 0.03
+    },
+    "fuerte": {
+     "res": "hit",
+     "flinch": false,
+     "retroceso": 0.42
+    },
+    "armadura": {
+     "res": "armor",
+     "sigue": true
+    }
+   }
+  },
+  {
+   "name": "si el enemigo te desvía: quedas desequilibrado y lanza su COUNTER; con un perfecto lo desvías (intercambio)",
+   "ok": true,
+   "info": {
+    "tu": "hit",
+    "desequilibrado": true,
+    "counter": true,
+    "xchg": [
+     "again"
+    ]
+   }
+  },
+  {
+   "name": "choque: los dos golpeáis a la vez → chispas y retroceso sin daño",
+   "ok": true,
+   "info": {
+    "clash": 1,
+    "hits": 0
+   }
+  }
+ ],
+ "errors": []
+}

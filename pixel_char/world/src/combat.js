@@ -311,7 +311,9 @@
         // quien desvía: un parry nunca le rompe la postura
         const cost = heavy ? L.defPostHeavy : L.defPost;
         if (cost) t.addPosture(cost, { noBreak: true });
-        if (perfect && !t.rip) t.counterT = W.ct + W.COMBAT.counterWin;
+        // (solo el jugador gana la ventana de contraataque indefendible: el COUNTER del autómata tras desviarte se puede
+        //  desviar con un perfecto — el intercambio de desvíos —; antes, tras su parry perfecto, salía indefendible)
+        if (perfect && !t.rip && t.team === "player") t.counterT = W.ct + W.COMBAT.counterWin;
         if (perfect && t.team === "player" && W.slowmo) W.slowmo(W.DUEL ? W.DUEL.slowmo[0] : 0.12, W.DUEL ? W.DUEL.slowmo[1] : 0.3);
         t.parries = (t.parries || 0) + 1; t.lastDefT = W.ct;
         if (att.ai && att.ai.onDeflected) att.ai.onDeflected(perfect ? "perfect" : "normal");
