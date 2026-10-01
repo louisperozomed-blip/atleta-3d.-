@@ -26,7 +26,7 @@ from combat_emission import emission
 from common import DIRS, NFRAMES, OUT, ROOT, frame_name
 from normals import height_map, normal_from_height, specular_map
 
-ANIMS = ["attack1", "attack2", "attack3", "parry", "block", "dodge", "hit", "death"]
+ANIMS = ["attack1", "attack2", "attack3", "parry", "block", "dodge", "hit", "death", "riposte", "deathblow"]
 COUT = os.path.join(OUT, "combat")
 WASSETS = os.path.join(ROOT, "world", "assets")
 MAPS = os.path.join(CBUILD, "maps")
@@ -44,6 +44,9 @@ DUR = {
     "dodge":   [45, 55, 70, 70, 70, 90],
     "hit":     [60, 70, 80, 80, 90, 100],
     "death":   [90, 110, 130, 140, 160, 400],
+    # Duelo 3: contraataque rápido tras el parry (encadenable hasta 3 veces) y remate con la cuchilla clavada
+    "riposte":   [40, 45, 50, 60, 80, 110],
+    "deathblow": [110, 140, 90, 170, 150, 190],
 }
 # Fases por frame: prep = preparación, activo, rec = recuperación. "cancel" = frames en los que se
 # puede cancelar (esquiva, o encadenar el siguiente ataque del combo), "chain" = ventana de encadenado.
@@ -64,6 +67,10 @@ PHASES = {
                 "cancel": {"dodge": [4, 5], "attack": [5]}, "next": None},
     "death":   {"fase": ["activo", "rec", "rec", "rec", "rec", "rec"], "activo": [0],
                 "cancel": {}, "hold_last": True, "next": None},
+    "riposte": {"fase": ["prep", "prep", "prep", "activo", "rec", "rec"], "activo": [3],
+                "cancel": {"dodge": [4, 5], "chain": [3, 4, 5]}, "next": "riposte"},
+    "deathblow": {"fase": ["prep", "prep", "prep", "activo", "rec", "rec"], "activo": [3],
+                  "cancel": {}, "next": None},
 }
 LOOP = {"block": True}
 NAMES = {"prep": "preparación", "activo": "activo", "rec": "recuperación"}

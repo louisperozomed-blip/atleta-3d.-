@@ -1,5 +1,5 @@
 {
- "source": "Leído visualmente de las etiquetas de cada hoja (título, rótulo de dirección a la izquierda de cada fila y texto bajo cada frame). Todas las filas coinciden con el orden por defecto; ninguna hoja lo cambia.",
+ "source": "Leído visualmente de las etiquetas de cada hoja (título, rótulo de dirección a la izquierda de cada fila y texto bajo cada frame). Todas las filas coinciden con el orden por defecto; ninguna hoja lo cambia. riposte y deathblow (Duelo 3) leídas igual: _1 = N, NE, E, SE; _2 = S, SW, W, NW.",
  "format": {
   "size": [
    1225,
@@ -72,6 +72,22 @@
    "COLLAPSE",
    "DOWN",
    "DOWN"
+  ],
+  "riposte": [
+   "PARRY POSE",
+   "SNAP",
+   "LUNGE",
+   "CUT",
+   "CUT FOLLOW",
+   "READY"
+  ],
+  "deathblow": [
+   "STEP IN",
+   "RAISE",
+   "PLUNGE",
+   "IMPACT",
+   "PULL OUT",
+   "RECOVER"
   ]
  },
  "sheets": {
@@ -820,6 +836,184 @@
      "COLLAPSE",
      "DOWN",
      "DOWN"
+    ]
+   }
+  },
+  "riposte_1": {
+   "anim": "riposte",
+   "title": "RIPOSTE",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "PARRY POSE",
+     "SNAP",
+     "LUNGE",
+     "CUT",
+     "CUT FOLLOW",
+     "READY"
+    ],
+    "NE": [
+     "PARRY POSE",
+     "SNAP",
+     "LUNGE",
+     "CUT",
+     "CUT FOLLOW",
+     "READY"
+    ],
+    "E": [
+     "PARRY POSE",
+     "SNAP",
+     "LUNGE",
+     "CUT",
+     "CUT FOLLOW",
+     "READY"
+    ],
+    "SE": [
+     "PARRY POSE",
+     "SNAP",
+     "LUNGE",
+     "CUT",
+     "CUT FOLLOW",
+     "READY"
+    ]
+   },
+   "nota": "hoja de 1312x1199 (las demás 1225x1284): el extractor la reescala x0.934 al leerla"
+  },
+  "riposte_2": {
+   "anim": "riposte",
+   "title": "RIPOSTE",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "PARRY POSE",
+     "SNAP",
+     "LUNGE",
+     "CUT",
+     "CUT FOLLOW",
+     "READY"
+    ],
+    "SW": [
+     "PARRY POSE",
+     "SNAP",
+     "LUNGE",
+     "CUT",
+     "CUT FOLLOW",
+     "READY"
+    ],
+    "W": [
+     "PARRY POSE",
+     "SNAP",
+     "LUNGE",
+     "CUT",
+     "CUT FOLLOW",
+     "READY"
+    ],
+    "NW": [
+     "PARRY POSE",
+     "SNAP",
+     "LUNGE",
+     "CUT",
+     "CUT FOLLOW",
+     "READY"
+    ]
+   },
+   "nota": "hoja de 1312x1199 (las demás 1225x1284): el extractor la reescala x0.934 al leerla"
+  },
+  "deathblow_1": {
+   "anim": "deathblow",
+   "title": "DEATHBLOW",
+   "rows": [
+    "N",
+    "NE",
+    "E",
+    "SE"
+   ],
+   "phase_labels": {
+    "N": [
+     "STEP IN",
+     "RAISE",
+     "PLUNGE",
+     "IMPACT",
+     "PULL OUT",
+     "RECOVER"
+    ],
+    "NE": [
+     "STEP IN",
+     "RAISE",
+     "PLUNGE",
+     "IMPACT",
+     "PULL OUT",
+     "RECOVER"
+    ],
+    "E": [
+     "STEP IN",
+     "RAISE",
+     "PLUNGE",
+     "IMPACT",
+     "PULL OUT",
+     "RECOVER"
+    ],
+    "SE": [
+     "STEP IN",
+     "RAISE",
+     "PLUNGE",
+     "IMPACT",
+     "PULL OUT",
+     "RECOVER"
+    ]
+   }
+  },
+  "deathblow_2": {
+   "anim": "deathblow",
+   "title": "DEATHBLOW",
+   "rows": [
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "phase_labels": {
+    "S": [
+     "STEP IN",
+     "RAISE",
+     "PLUNGE",
+     "IMPACT",
+     "PULL OUT",
+     "RECOVER"
+    ],
+    "SW": [
+     "STEP IN",
+     "RAISE",
+     "PLUNGE",
+     "IMPACT",
+     "PULL OUT",
+     "RECOVER"
+    ],
+    "W": [
+     "STEP IN",
+     "RAISE",
+     "PLUNGE",
+     "IMPACT",
+     "PULL OUT",
+     "RECOVER"
+    ],
+    "NW": [
+     "STEP IN",
+     "RAISE",
+     "PLUNGE",
+     "IMPACT",
+     "PULL OUT",
+     "RECOVER"
     ]
    }
   }

@@ -40,7 +40,7 @@ PIVOT = (128, 264)
 
 COLOR = os.path.join(CBUILD, "color")
 NORM = os.path.join(BUILD, "norm")
-ANIMS = ["attack1", "attack2", "attack3", "parry", "block", "dodge", "hit", "death"]
+ANIMS = ["attack1", "attack2", "attack3", "parry", "block", "dodge", "hit", "death", "riposte", "deathblow"]
 
 
 def load(d, n):
@@ -195,6 +195,13 @@ def main():
                   "fix": "IMPACT de frente -> pose FOLLOW THROUGH de la misma fila + estallido de fuego del IMPACT S "
                          "(el golpe con la cuchilla clavada se pierde: regenerar esas 5 filas). S, SE y SW se "
                          "conservan (de frente o casi)"})
+    # riposte (Duelo 3): la fila SW es la de S sin girar (de frente, tajo a la derecha) y la NW corta hacia
+    # atrás a la derecha (como NE): espejos de SE y NE, como attack1
+    for i in range(NFRAMES):
+        out[frame_name("riposte", "SW", i)] = out[frame_name("riposte", "SE", i)][:, ::-1].copy()
+        out[frame_name("riposte", "NW", i)] = out[frame_name("riposte", "NE", i)][:, ::-1].copy()
+    fixes.append({"frames": "riposte_SW_0..5", "tipo": "a", "fix": "espejo horizontal de riposte_SE (la fila SW era la de S, sin girar)"})
+    fixes.append({"frames": "riposte_NW_0..5", "tipo": "a", "fix": "espejo horizontal de riposte_NE (la fila NW cortaba hacia atrás a la derecha)"})
     for n, img in out.items():
         Image.fromarray(img).save(os.path.join(CFIX, n + ".png"))
     json.dump({"canvas": CANVAS, "pivot": PIVOT, "scale": report, "pivots": piv, "fixes": fixes,

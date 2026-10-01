@@ -21,7 +21,7 @@
  "sheet_layout": "cada hoja <anim>_<mapa>.png: fila = dirección (orden de 'directions'), columna = frame",
  "normal_map_convention": "tangent space, OpenGL / Unity (+X right, +Y up = green up), RGB = n*0.5+0.5",
  "specular": "gris 0..1: metal oxidado alto, juntas medio, musgo casi nulo",
- "emission": "gris 0..1: el ojo cian",
+ "emission": "gris 0..1: el ojo cian y la estela cian del counter",
  "animations": {
   "idle": {
    "frames": [
@@ -670,6 +670,136 @@
     "COLLAPSE",
     "DOWN",
     "DOWN"
+   ]
+  },
+  "deflected": {
+   "frames": [
+    {
+     "frame": 0,
+     "etiqueta": "CLASH",
+     "fase": "activo",
+     "ms": 60,
+     "t0_ms": 0,
+     "activo": true
+    },
+    {
+     "frame": 1,
+     "etiqueta": "RECOIL",
+     "fase": "recuperación",
+     "ms": 100,
+     "t0_ms": 60,
+     "activo": false
+    },
+    {
+     "frame": 2,
+     "etiqueta": "OFF BALANCE",
+     "fase": "recuperación",
+     "ms": 170,
+     "t0_ms": 160,
+     "activo": false
+    },
+    {
+     "frame": 3,
+     "etiqueta": "OFF BALANCE",
+     "fase": "recuperación",
+     "ms": 170,
+     "t0_ms": 330,
+     "activo": false
+    },
+    {
+     "frame": 4,
+     "etiqueta": "REGAIN",
+     "fase": "recuperación",
+     "ms": 120,
+     "t0_ms": 500,
+     "activo": false
+    },
+    {
+     "frame": 5,
+     "etiqueta": "READY",
+     "fase": "recuperación",
+     "ms": 90,
+     "t0_ms": 620,
+     "activo": false
+    }
+   ],
+   "total_ms": 710,
+   "loop": false,
+   "activo": [
+    0
+   ],
+   "etiquetas": [
+    "CLASH",
+    "RECOIL",
+    "OFF BALANCE",
+    "OFF BALANCE",
+    "REGAIN",
+    "READY"
+   ]
+  },
+  "counter": {
+   "frames": [
+    {
+     "frame": 0,
+     "etiqueta": "CATCH",
+     "fase": "preparación",
+     "ms": 70,
+     "t0_ms": 0,
+     "activo": false
+    },
+    {
+     "frame": 1,
+     "etiqueta": "TWIST",
+     "fase": "preparación",
+     "ms": 80,
+     "t0_ms": 70,
+     "activo": false
+    },
+    {
+     "frame": 2,
+     "etiqueta": "LUNGE",
+     "fase": "preparación",
+     "ms": 70,
+     "t0_ms": 150,
+     "activo": false
+    },
+    {
+     "frame": 3,
+     "etiqueta": "SLASH",
+     "fase": "activo",
+     "ms": 75,
+     "t0_ms": 220,
+     "activo": true
+    },
+    {
+     "frame": 4,
+     "etiqueta": "FOLLOW THROUGH",
+     "fase": "recuperación",
+     "ms": 110,
+     "t0_ms": 295,
+     "activo": false
+    },
+    {
+     "frame": 5,
+     "etiqueta": "READY",
+     "fase": "recuperación",
+     "ms": 140,
+     "t0_ms": 405,
+     "activo": false
+    }
+   ],
+   "total_ms": 545,
+   "loop": false,
+   "activo": [
+    3
+   ],
+   "etiquetas": [
+    "CATCH",
+    "TWIST",
+    "LUNGE",
+    "SLASH",
+    "FOLLOW THROUGH",
+    "READY"
    ]
   }
  },
@@ -2189,6 +2319,314 @@
    null,
    null,
    null
+  ],
+  "deflected_S": [
+   [
+    5.3,
+    -134.0
+   ],
+   [
+    -1.9,
+    -135.1
+   ],
+   [
+    -0.2,
+    -134.1
+   ],
+   [
+    -12.2,
+    -139.5
+   ],
+   [
+    -3.5,
+    -133.4
+   ],
+   [
+    1.1,
+    -133.9
+   ]
+  ],
+  "deflected_SW": [
+   [
+    -23.0,
+    -127.6
+   ],
+   [
+    -26.5,
+    -132.5
+   ],
+   [
+    -16.8,
+    -134.7
+   ],
+   [
+    -5.8,
+    -134.1
+   ],
+   [
+    -23.1,
+    -126.9
+   ],
+   [
+    -24.5,
+    -127.0
+   ]
+  ],
+  "deflected_W": [
+   [
+    -14.3,
+    -140.3
+   ],
+   [
+    -20.6,
+    -143.9
+   ],
+   [
+    -17.0,
+    -145.3
+   ],
+   [
+    -15.5,
+    -139.0
+   ],
+   [
+    -28.9,
+    -138.4
+   ],
+   [
+    -28.7,
+    -138.3
+   ]
+  ],
+  "deflected_NW": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ],
+  "deflected_N": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ],
+  "deflected_NE": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ],
+  "deflected_E": [
+   [
+    13.3,
+    -140.3
+   ],
+   [
+    19.6,
+    -143.9
+   ],
+   [
+    16.0,
+    -145.3
+   ],
+   [
+    14.5,
+    -139.0
+   ],
+   [
+    27.9,
+    -138.4
+   ],
+   [
+    27.7,
+    -138.3
+   ]
+  ],
+  "deflected_SE": [
+   [
+    22.0,
+    -127.6
+   ],
+   [
+    25.5,
+    -132.5
+   ],
+   [
+    15.8,
+    -134.7
+   ],
+   [
+    4.8,
+    -134.1
+   ],
+   [
+    22.1,
+    -126.9
+   ],
+   [
+    23.5,
+    -127.0
+   ]
+  ],
+  "counter_S": [
+   [
+    -4.8,
+    -113.9
+   ],
+   [
+    2.9,
+    -114.8
+   ],
+   [
+    -0.4,
+    -113.9
+   ],
+   [
+    -2.4,
+    -110.0
+   ],
+   [
+    -2.1,
+    -113.9
+   ],
+   [
+    1.4,
+    -114.0
+   ]
+  ],
+  "counter_SW": [
+   [
+    -30.1,
+    -128.6
+   ],
+   [
+    -48.4,
+    -128.0
+   ],
+   [
+    -42.2,
+    -128.4
+   ],
+   [
+    -37.8,
+    -128.8
+   ],
+   [
+    -42.6,
+    -128.3
+   ],
+   [
+    -41.7,
+    -129.1
+   ]
+  ],
+  "counter_W": [
+   [
+    -20.3,
+    -127.9
+   ],
+   [
+    -33.1,
+    -128.3
+   ],
+   [
+    -30.6,
+    -128.1
+   ],
+   [
+    -36.6,
+    -126.1
+   ],
+   [
+    -28.1,
+    -128.7
+   ],
+   [
+    -34.8,
+    -128.3
+   ]
+  ],
+  "counter_NW": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ],
+  "counter_N": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ],
+  "counter_NE": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ],
+  "counter_E": [
+   [
+    5.9,
+    -130.7
+   ],
+   [
+    23.1,
+    -135.1
+   ],
+   [
+    38.3,
+    -136.0
+   ],
+   [
+    20.2,
+    -136.1
+   ],
+   [
+    19.4,
+    -135.6
+   ],
+   [
+    21.9,
+    -133.3
+   ]
+  ],
+  "counter_SE": [
+   [
+    29.1,
+    -128.6
+   ],
+   [
+    47.4,
+    -128.0
+   ],
+   [
+    41.2,
+    -128.4
+   ],
+   [
+    36.8,
+    -128.8
+   ],
+   [
+    41.6,
+    -128.3
+   ],
+   [
+    40.7,
+    -129.1
+   ]
   ]
  },
  "feet": {
@@ -10591,6 +11029,1686 @@
    ],
    "f_screen": 1.0,
    "art_cycle_u": 0.0
+  },
+  "deflected_S": {
+   "frames": [
+    {
+     "feet": [
+      {
+       "x": -45.5,
+       "y": -1.0
+      },
+      {
+       "x": 45.5,
+       "y": -2.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": -1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -45.5,
+       "y": -1.0
+      },
+      {
+       "x": 32.0,
+       "y": 0.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -44.0,
+       "y": -1.0
+      },
+      {
+       "x": 39.5,
+       "y": 0.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -47.7,
+       "y": -3.0
+      },
+      {
+       "x": 40.5,
+       "y": 0.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -47.5,
+       "y": -2.0
+      },
+      {
+       "x": 40.0,
+       "y": 0.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -44.5,
+       "y": -3.0
+      },
+      {
+       "x": 40.0,
+       "y": 0.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 0.0
+    }
+   ],
+   "ground": 0.0,
+   "contact": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "f_screen": 1.0,
+   "art_cycle_u": 0.0
+  },
+  "deflected_SW": {
+   "frames": [
+    {
+     "feet": [
+      {
+       "x": -52.5,
+       "y": -4.0
+      },
+      {
+       "x": 44.8,
+       "y": -3.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": -3.0
+    },
+    {
+     "feet": [
+      {
+       "x": -49.5,
+       "y": -2.0
+      },
+      {
+       "x": 44.7,
+       "y": -1.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": -1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -51.0,
+       "y": -2.0
+      },
+      {
+       "x": 41.5,
+       "y": 1.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -56.0,
+       "y": -1.0
+      },
+      {
+       "x": 41.2,
+       "y": 1.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -49.5,
+       "y": -1.0
+      },
+      {
+       "x": 37.5,
+       "y": 2.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 2.0
+    },
+    {
+     "feet": [
+      {
+       "x": -50.5,
+       "y": -4.0
+      },
+      {
+       "x": 40.1,
+       "y": 0.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 0.0
+    }
+   ],
+   "ground": 2.0,
+   "contact": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "f_screen": 1.0,
+   "art_cycle_u": 0.0
+  },
+  "deflected_W": {
+   "frames": [
+    {
+     "feet": [
+      {
+       "x": -4.6,
+       "y": 2.0
+      },
+      {
+       "x": -4.6,
+       "y": 2.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 2.0
+    },
+    {
+     "feet": [
+      {
+       "x": -12.3,
+       "y": 1.0
+      },
+      {
+       "x": -12.3,
+       "y": 1.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -36.7,
+       "y": -3.0
+      },
+      {
+       "x": 57.5,
+       "y": -8.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": -3.0
+    },
+    {
+     "feet": [
+      {
+       "x": -41.0,
+       "y": -2.0
+      },
+      {
+       "x": 57.5,
+       "y": -10.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": -2.0
+    },
+    {
+     "feet": [
+      {
+       "x": -28.3,
+       "y": 0.0
+      },
+      {
+       "x": 48.9,
+       "y": -8.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -29.2,
+       "y": -1.0
+      },
+      {
+       "x": 47.1,
+       "y": -7.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": -1.0
+    }
+   ],
+   "ground": 2.0,
+   "contact": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "f_screen": 1.0,
+   "art_cycle_u": 0.0
+  },
+  "deflected_NW": {
+   "frames": [
+    {
+     "feet": [
+      {
+       "x": -6.5,
+       "y": 1.0
+      },
+      {
+       "x": 70.0,
+       "y": -14.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -26.6,
+       "y": 0.0
+      },
+      {
+       "x": 62.6,
+       "y": -11.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -22.0,
+       "y": 0.0
+      },
+      {
+       "x": 71.0,
+       "y": -14.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -21.0,
+       "y": 0.0
+      },
+      {
+       "x": 69.5,
+       "y": -14.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -20.8,
+       "y": 1.0
+      },
+      {
+       "x": 61.5,
+       "y": -13.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -25.9,
+       "y": 0.0
+      },
+      {
+       "x": 63.5,
+       "y": -12.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 0.0
+    }
+   ],
+   "ground": 1.0,
+   "contact": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "f_screen": 1.0,
+   "art_cycle_u": 0.0
+  },
+  "deflected_N": {
+   "frames": [
+    {
+     "feet": [
+      {
+       "x": -52.0,
+       "y": -14.0
+      },
+      {
+       "x": 23.9,
+       "y": -1.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": -1.0
+    },
+    {
+     "feet": [
+      {
+       "x": 21.8,
+       "y": 0.0
+      },
+      {
+       "x": 21.8,
+       "y": 0.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -44.0,
+       "y": -12.0
+      },
+      {
+       "x": 18.5,
+       "y": 0.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -54.9,
+       "y": -8.0
+      },
+      {
+       "x": 43.8,
+       "y": 4.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 4.0
+    },
+    {
+     "feet": [
+      {
+       "x": -46.5,
+       "y": -4.0
+      },
+      {
+       "x": 25.0,
+       "y": -6.0
+      }
+     ],
+     "plant": 0,
+     "grounded": false,
+     "lowest": -4.0
+    },
+    {
+     "feet": [
+      {
+       "x": -49.8,
+       "y": -10.0
+      },
+      {
+       "x": 39.5,
+       "y": -2.0
+      }
+     ],
+     "plant": 1,
+     "grounded": false,
+     "lowest": -2.0
+    }
+   ],
+   "ground": 4.0,
+   "contact": [
+    1,
+    1,
+    1,
+    1,
+    0,
+    0
+   ],
+   "f_screen": 1.0,
+   "art_cycle_u": 0.0
+  },
+  "deflected_NE": {
+   "frames": [
+    {
+     "feet": [
+      {
+       "x": -71.0,
+       "y": -14.0
+      },
+      {
+       "x": 5.5,
+       "y": 1.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -63.6,
+       "y": -11.0
+      },
+      {
+       "x": 25.6,
+       "y": 0.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -72.0,
+       "y": -14.0
+      },
+      {
+       "x": 21.0,
+       "y": 0.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -70.5,
+       "y": -14.0
+      },
+      {
+       "x": 20.0,
+       "y": 0.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -62.5,
+       "y": -13.0
+      },
+      {
+       "x": 19.8,
+       "y": 1.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -64.5,
+       "y": -12.0
+      },
+      {
+       "x": 24.9,
+       "y": 0.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 0.0
+    }
+   ],
+   "ground": 1.0,
+   "contact": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "f_screen": 1.0,
+   "art_cycle_u": 0.0
+  },
+  "deflected_E": {
+   "frames": [
+    {
+     "feet": [
+      {
+       "x": 3.6,
+       "y": 2.0
+      },
+      {
+       "x": 3.6,
+       "y": 2.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 2.0
+    },
+    {
+     "feet": [
+      {
+       "x": 11.3,
+       "y": 1.0
+      },
+      {
+       "x": 11.3,
+       "y": 1.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -58.5,
+       "y": -8.0
+      },
+      {
+       "x": 35.7,
+       "y": -3.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": -3.0
+    },
+    {
+     "feet": [
+      {
+       "x": -58.5,
+       "y": -10.0
+      },
+      {
+       "x": 40.0,
+       "y": -2.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": -2.0
+    },
+    {
+     "feet": [
+      {
+       "x": -49.9,
+       "y": -8.0
+      },
+      {
+       "x": 27.3,
+       "y": 0.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -48.1,
+       "y": -7.0
+      },
+      {
+       "x": 28.2,
+       "y": -1.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": -1.0
+    }
+   ],
+   "ground": 2.0,
+   "contact": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "f_screen": 1.0,
+   "art_cycle_u": 0.0
+  },
+  "deflected_SE": {
+   "frames": [
+    {
+     "feet": [
+      {
+       "x": -45.8,
+       "y": -3.0
+      },
+      {
+       "x": 51.5,
+       "y": -4.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": -3.0
+    },
+    {
+     "feet": [
+      {
+       "x": -45.7,
+       "y": -1.0
+      },
+      {
+       "x": 48.5,
+       "y": -2.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": -1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -42.5,
+       "y": 1.0
+      },
+      {
+       "x": 50.0,
+       "y": -2.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -42.2,
+       "y": 1.0
+      },
+      {
+       "x": 55.0,
+       "y": -1.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -38.5,
+       "y": 2.0
+      },
+      {
+       "x": 48.5,
+       "y": -1.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 2.0
+    },
+    {
+     "feet": [
+      {
+       "x": -41.1,
+       "y": 0.0
+      },
+      {
+       "x": 49.5,
+       "y": -4.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 0.0
+    }
+   ],
+   "ground": 2.0,
+   "contact": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "f_screen": 1.0,
+   "art_cycle_u": 0.0
+  },
+  "counter_S": {
+   "frames": [
+    {
+     "feet": [
+      {
+       "x": -52.0,
+       "y": -2.0
+      },
+      {
+       "x": 39.5,
+       "y": 0.0
+      }
+     ],
+     "plant": 1,
+     "grounded": false,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -49.5,
+       "y": -5.0
+      },
+      {
+       "x": 46.0,
+       "y": -1.0
+      }
+     ],
+     "plant": 1,
+     "grounded": false,
+     "lowest": -1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -46.5,
+       "y": -5.0
+      },
+      {
+       "x": 60.5,
+       "y": 6.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 6.0
+    },
+    {
+     "feet": [
+      {
+       "x": -51.0,
+       "y": -1.0
+      },
+      {
+       "x": 46.5,
+       "y": -1.0
+      }
+     ],
+     "plant": 0,
+     "grounded": false,
+     "lowest": -1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -49.0,
+       "y": -1.0
+      },
+      {
+       "x": 45.0,
+       "y": -2.0
+      }
+     ],
+     "plant": 0,
+     "grounded": false,
+     "lowest": -1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -46.2,
+       "y": -5.0
+      },
+      {
+       "x": 43.5,
+       "y": -1.0
+      }
+     ],
+     "plant": 1,
+     "grounded": false,
+     "lowest": -1.0
+    }
+   ],
+   "ground": 6.0,
+   "contact": [
+    0,
+    0,
+    1,
+    0,
+    0,
+    0
+   ],
+   "f_screen": 1.0,
+   "art_cycle_u": 0.0
+  },
+  "counter_SW": {
+   "frames": [
+    {
+     "feet": [
+      {
+       "x": -63.4,
+       "y": -14.0
+      },
+      {
+       "x": 24.8,
+       "y": 3.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 3.0
+    },
+    {
+     "feet": [
+      {
+       "x": -71.0,
+       "y": -14.0
+      },
+      {
+       "x": 28.5,
+       "y": 2.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 2.0
+    },
+    {
+     "feet": [
+      {
+       "x": -71.0,
+       "y": 1.0
+      },
+      {
+       "x": 38.1,
+       "y": -19.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -69.5,
+       "y": -12.0
+      },
+      {
+       "x": 44.5,
+       "y": -1.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": -1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -62.5,
+       "y": -15.0
+      },
+      {
+       "x": 41.0,
+       "y": 0.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -68.0,
+       "y": -11.0
+      },
+      {
+       "x": 7.5,
+       "y": 0.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 0.0
+    }
+   ],
+   "ground": 3.0,
+   "contact": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "f_screen": 1.0,
+   "art_cycle_u": 0.0
+  },
+  "counter_W": {
+   "frames": [
+    {
+     "feet": [
+      {
+       "x": -3.3,
+       "y": 1.0
+      },
+      {
+       "x": 76.5,
+       "y": -17.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -17.2,
+       "y": 0.0
+      },
+      {
+       "x": 58.0,
+       "y": -22.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -11.5,
+       "y": -17.0
+      },
+      {
+       "x": 100.5,
+       "y": -22.0
+      }
+     ],
+     "plant": 0,
+     "grounded": false,
+     "lowest": -17.0
+    },
+    {
+     "feet": [
+      {
+       "x": -11.0,
+       "y": 2.0
+      },
+      {
+       "x": 50.5,
+       "y": -23.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 2.0
+    },
+    {
+     "feet": [
+      {
+       "x": -10.5,
+       "y": 0.0
+      },
+      {
+       "x": 80.0,
+       "y": -19.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -24.2,
+       "y": 1.0
+      },
+      {
+       "x": 54.0,
+       "y": -13.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 1.0
+    }
+   ],
+   "ground": 2.0,
+   "contact": [
+    1,
+    1,
+    0,
+    1,
+    1,
+    1
+   ],
+   "f_screen": 1.0,
+   "art_cycle_u": 0.0
+  },
+  "counter_NW": {
+   "frames": [
+    {
+     "feet": [
+      {
+       "x": -22.0,
+       "y": 1.0
+      },
+      {
+       "x": 58.5,
+       "y": -12.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -27.4,
+       "y": 0.0
+      },
+      {
+       "x": 48.0,
+       "y": -9.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -24.5,
+       "y": -11.0
+      },
+      {
+       "x": 86.5,
+       "y": 1.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -22.5,
+       "y": 1.0
+      },
+      {
+       "x": 51.2,
+       "y": -5.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -32.0,
+       "y": -2.0
+      },
+      {
+       "x": 64.0,
+       "y": -10.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": -2.0
+    },
+    {
+     "feet": [
+      {
+       "x": -23.5,
+       "y": -1.0
+      },
+      {
+       "x": 52.6,
+       "y": -7.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": -1.0
+    }
+   ],
+   "ground": 1.0,
+   "contact": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "f_screen": 1.0,
+   "art_cycle_u": 0.0
+  },
+  "counter_N": {
+   "frames": [
+    {
+     "feet": [
+      {
+       "x": -48.5,
+       "y": -5.0
+      },
+      {
+       "x": 38.5,
+       "y": 1.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -44.5,
+       "y": -7.0
+      },
+      {
+       "x": 39.5,
+       "y": -2.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": -2.0
+    },
+    {
+     "feet": [
+      {
+       "x": -69.5,
+       "y": 3.0
+      },
+      {
+       "x": 40.5,
+       "y": -18.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 3.0
+    },
+    {
+     "feet": [
+      {
+       "x": -40.5,
+       "y": -3.0
+      },
+      {
+       "x": 45.0,
+       "y": -4.0
+      }
+     ],
+     "plant": 0,
+     "grounded": false,
+     "lowest": -3.0
+    },
+    {
+     "feet": [
+      {
+       "x": -61.5,
+       "y": 2.0
+      },
+      {
+       "x": 43.5,
+       "y": -2.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 2.0
+    },
+    {
+     "feet": [
+      {
+       "x": -46.5,
+       "y": -4.0
+      },
+      {
+       "x": 37.5,
+       "y": -3.0
+      }
+     ],
+     "plant": 1,
+     "grounded": false,
+     "lowest": -3.0
+    }
+   ],
+   "ground": 3.0,
+   "contact": [
+    1,
+    1,
+    1,
+    0,
+    1,
+    0
+   ],
+   "f_screen": 1.0,
+   "art_cycle_u": 0.0
+  },
+  "counter_NE": {
+   "frames": [
+    {
+     "feet": [
+      {
+       "x": -59.5,
+       "y": -12.0
+      },
+      {
+       "x": 21.0,
+       "y": 1.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -49.0,
+       "y": -9.0
+      },
+      {
+       "x": 26.4,
+       "y": 0.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -87.5,
+       "y": 1.0
+      },
+      {
+       "x": 23.5,
+       "y": -11.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -52.2,
+       "y": -5.0
+      },
+      {
+       "x": 21.5,
+       "y": 1.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -65.0,
+       "y": -10.0
+      },
+      {
+       "x": 31.0,
+       "y": -2.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": -2.0
+    },
+    {
+     "feet": [
+      {
+       "x": -53.6,
+       "y": -7.0
+      },
+      {
+       "x": 22.5,
+       "y": -1.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": -1.0
+    }
+   ],
+   "ground": 1.0,
+   "contact": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "f_screen": 1.0,
+   "art_cycle_u": 0.0
+  },
+  "counter_E": {
+   "frames": [
+    {
+     "feet": [
+      {
+       "x": -24.9,
+       "y": 2.0
+      },
+      {
+       "x": 16.5,
+       "y": -24.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 2.0
+    },
+    {
+     "feet": [
+      {
+       "x": -51.5,
+       "y": -16.0
+      },
+      {
+       "x": 12.7,
+       "y": 1.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -59.5,
+       "y": -14.0
+      },
+      {
+       "x": 27.0,
+       "y": -16.0
+      }
+     ],
+     "plant": 0,
+     "grounded": false,
+     "lowest": -14.0
+    },
+    {
+     "feet": [
+      {
+       "x": -50.0,
+       "y": -15.0
+      },
+      {
+       "x": 1.5,
+       "y": 3.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 3.0
+    },
+    {
+     "feet": [
+      {
+       "x": -47.0,
+       "y": -15.0
+      },
+      {
+       "x": 17.2,
+       "y": 1.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -41.0,
+       "y": -2.0
+      },
+      {
+       "x": 29.5,
+       "y": -14.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": -2.0
+    }
+   ],
+   "ground": 3.0,
+   "contact": [
+    1,
+    1,
+    0,
+    1,
+    1,
+    1
+   ],
+   "f_screen": 1.0,
+   "art_cycle_u": 0.0
+  },
+  "counter_SE": {
+   "frames": [
+    {
+     "feet": [
+      {
+       "x": -25.8,
+       "y": 3.0
+      },
+      {
+       "x": 62.4,
+       "y": -14.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 3.0
+    },
+    {
+     "feet": [
+      {
+       "x": -29.5,
+       "y": 2.0
+      },
+      {
+       "x": 70.0,
+       "y": -14.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 2.0
+    },
+    {
+     "feet": [
+      {
+       "x": -39.1,
+       "y": -19.0
+      },
+      {
+       "x": 70.0,
+       "y": 1.0
+      }
+     ],
+     "plant": 1,
+     "grounded": true,
+     "lowest": 1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -45.5,
+       "y": -1.0
+      },
+      {
+       "x": 68.5,
+       "y": -12.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": -1.0
+    },
+    {
+     "feet": [
+      {
+       "x": -42.0,
+       "y": 0.0
+      },
+      {
+       "x": 61.5,
+       "y": -15.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 0.0
+    },
+    {
+     "feet": [
+      {
+       "x": -8.5,
+       "y": 0.0
+      },
+      {
+       "x": 67.0,
+       "y": -11.0
+      }
+     ],
+     "plant": 0,
+     "grounded": true,
+     "lowest": 0.0
+    }
+   ],
+   "ground": 3.0,
+   "contact": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "f_screen": 1.0,
+   "art_cycle_u": 0.0
   }
  },
  "corrections": [
@@ -10659,6 +12777,36 @@
    "tipo": "a",
    "problema": "dibujada como un SW; espejo de block_1 E",
    "arreglo": "espejo horizontal de block E"
+  },
+  {
+   "frames": "deflected_E_1..6",
+   "tipo": "a",
+   "problema": "deflected_1 E mira a la izquierda (ojo y brazo del choque a la izquierda); espejo de deflected_2 W",
+   "arreglo": "espejo horizontal de deflected W"
+  },
+  {
+   "frames": "deflected_SE_1..6",
+   "tipo": "a",
+   "problema": "deflected_1 SE dibujada como un SW (ojo a la izquierda); espejo de deflected_2 SW",
+   "arreglo": "espejo horizontal de deflected SW"
+  },
+  {
+   "frames": "deflected_NE_1..6",
+   "tipo": "a",
+   "problema": "deflected_1 NE gira a la izquierda (se ve el ojo arriba a la izquierda); espejo de deflected_2 NW",
+   "arreglo": "espejo horizontal de deflected NW"
+  },
+  {
+   "frames": "counter_SW_1..6",
+   "tipo": "a",
+   "problema": "counter_2 SW dibujada como un SE (ojo a la derecha); espejo de counter_1 SE",
+   "arreglo": "espejo horizontal de counter SE"
+  },
+  {
+   "frames": "counter_NW_1..6",
+   "tipo": "a",
+   "problema": "counter_2 NW corta hacia la derecha, como NE; espejo de counter_1 NE",
+   "arreglo": "espejo horizontal de counter NE"
   },
   {
    "frames": "hit_N_5..6",

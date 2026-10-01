@@ -47,6 +47,10 @@ DUR = {
     "dodge": [70, 80, 90, 90, 100, 120],
     "hit": [70, 90, 110, 110, 120, 130],
     "death": [110, 130, 160, 180, 220, 700],
+    # Duelo 3: desequilibrado ~0,7 s tras tu parry perfecto (CLASH, RECOIL, OFF BALANCE x2, REGAIN, READY);
+    # counter = respuesta rápida a tu golpe desviado (SLASH activo a los ~220 ms)
+    "deflected": [60, 100, 170, 170, 120, 90],
+    "counter": [70, 80, 70, 75, 110, 140],
 }
 PH = {
     "idle": (["rec"] * 6, []), "walk": (["rec"] * 6, []), "run": (["rec"] * 6, []),
@@ -57,6 +61,8 @@ PH = {
     "dodge": (["prep", "prep", "activo", "activo", "rec", "rec"], [2, 3]),
     "hit": (["activo", "rec", "rec", "rec", "rec", "rec"], [0]),
     "death": (["activo", "rec", "rec", "rec", "rec", "rec"], [0]),
+    "deflected": (["activo", "rec", "rec", "rec", "rec", "rec"], [0]),
+    "counter": (["prep", "prep", "prep", "activo", "rec", "rec"], [3]),
 }
 NAMES = {"prep": "preparación", "activo": "activo", "rec": "recuperación"}
 LOOP = {"idle": True, "walk": True, "run": True}
@@ -81,6 +87,36 @@ def eye_mask(rgba):
     return core
 
 
+def split_cyan(rgba):
+    """Ojo y estela cian (Duelo 3: la estela del SLASH de counter tiene el mismo cian que el ojo).
+    Estela = piezas cian grandes (> 200 px agrupando a 2 px) o que sobresalen del cuerpo grueso; ojo = la
+    pieza cian pequeña (< 200 px) con más núcleo que queda (los restos de la estela son más pequeños); así la luz del ojo no se va a la estela."""
+    core = eye_mask(rgba)
+    rgb = rgba[..., :3].astype(np.float32)
+    R, G, B = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    al = rgba[..., 3] > 60
+    cyan = al & (B > 110) & (G > 95) & (B - R > 45)
+    solid = rgba[..., 3] > 127
+    disk = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (19, 19)).astype(bool)
+    body = ndi.binary_opening(solid, disk)
+    lb, n = ndi.label(ndi.binary_dilation(cyan, iterations=2))
+    trail = np.zeros_like(cyan)
+    eye = np.zeros_like(core)
+    best = None
+    for k in range(1, n + 1):
+        m = (lb == k)
+        cm, cc = (m & cyan), (m & core)
+        out = (cm & ~ndi.binary_dilation(body, iterations=2)).sum()
+        if cm.sum() > 200 or out > 25:
+            trail |= cm
+        elif cc.sum() >= 6:
+            if best is None or cc.sum() > best[0]:
+                best = (cc.sum(), cc)
+    if best is not None:
+        eye = best[1]
+    return eye, trail
+
+
 def specular(rgba, eye):
     al = rgba[..., 3].astype(np.float32) / 255
     L, C, H = lab(rgba[..., :3])
@@ -94,12 +130,15 @@ def specular(rgba, eye):
     return np.clip(spec, 0, 1)
 
 
-def emission(rgba, core):
+def emission(rgba, core, trail=None):
     al = rgba[..., 3].astype(np.float32) / 255
     L, C, H = lab(rgba[..., :3])
     near = ndi.binary_dilation(core, iterations=3)
     glow = near & (C > 12) & ((H < -90) | (H > 150)) & (al > 0.3)
     e = core.astype(np.float32) + glow * sm(40, 150, L) * 0.7
+    if trail is not None and trail.any():
+        # estela cian del zarpazo (counter): brilla entera, más en el núcleo claro
+        e = np.maximum(e, trail * (0.6 + 0.4 * sm(120, 230, L)))
     return ndi.gaussian_filter(e, 0.7).clip(0, 1) * (al > 0.02)
 
 
@@ -195,9 +234,11 @@ def main():
                 frames.append(rgba)
                 h, alpha = height_map(rgba)
                 nrm = normal_from_height(h, alpha)
-                core = eye_mask(rgba)
-                em = emission(rgba, core)
-                spec = specular(rgba, np.clip(ndi.gaussian_filter(core.astype(np.float32), 1.5) * 3, 0, 1))
+                # la estela cian solo existe en counter: en el resto, el ojo como siempre (mapas idénticos a los de antes)
+                core, trail = split_cyan(rgba) if an == "counter" else (eye_mask(rgba), None)
+                em = emission(rgba, core, trail)
+                glow = core if trail is None else (core | trail)
+                spec = specular(rgba, np.clip(ndi.gaussian_filter(glow.astype(np.float32), 1.5) * 3, 0, 1))
                 if core.sum() >= 6:
                     yy, xx = np.nonzero(core)
                     ey.append([round(float(xx.mean() - PVX), 1), round(float(yy.mean() - PVY), 1)])
@@ -219,6 +260,15 @@ def main():
                 Wn[wy:wy + fh, wx:wx + fw] = nh
                 Ws[wy:wy + fh, wx:wx + fw, 0] = half(spec[..., None].astype(np.float32))[..., 0]
                 Ws[wy:wy + fh, wx:wx + fw, 1] = half(em[..., None].astype(np.float32))[..., 0]
+            if an == "counter":
+                # coherencia de la fila: en las vistas de espaldas no hay ojo (un resto de estela no lo es) y un
+                # ojo que salta lejos del de los demás frames es la estela
+                ok = [e for e in ey if e is not None]
+                if len(ok) <= 2:
+                    ey = [None] * 6
+                else:
+                    mx, my = np.median([e[0] for e in ok]), np.median([e[1] for e in ok])
+                    ey = [e if e is not None and abs(e[0] - mx) + abs(e[1] - my) < 25 else [round(float(mx), 1), round(float(my), 1)] for e in ey]
             feet[f"{an}_{d}"] = feet_rec(frames, an)
             eyes[f"{an}_{d}"] = ey
         for k, img in sheets.items():
@@ -244,7 +294,7 @@ def main():
     full = {"frame_size": [FW, FH], "pivot": [PVX, PVY], "directions": DIRS, "standing_height_px": standing,
             "sheet_layout": "cada hoja <anim>_<mapa>.png: fila = dirección (orden de 'directions'), columna = frame",
             "normal_map_convention": "tangent space, OpenGL / Unity (+X right, +Y up = green up), RGB = n*0.5+0.5",
-            "specular": "gris 0..1: metal oxidado alto, juntas medio, musgo casi nulo", "emission": "gris 0..1: el ojo cian",
+            "specular": "gris 0..1: metal oxidado alto, juntas medio, musgo casi nulo", "emission": "gris 0..1: el ojo cian y la estela cian del counter",
             "animations": anims, "eye_px": eyes, "feet": feet, "corrections": fm["fixes"]}
     json.dump(full, open(os.path.join(EOUT, "enemy.json"), "w"), indent=1, ensure_ascii=False)
     wm = {"frame_size": [fw, fh], "pivot": [PVX * SC, PVY * SC], "columns": COLS, "atlas_size": [COLS * fw, ROWS * fh],

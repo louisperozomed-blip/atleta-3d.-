@@ -923,3 +923,50 @@ con toques reales por CDP): **10/10 OK, sin errores JS**. Comprueba:
   - autómata 21/21 y eco 31/31.
   - recorrido del mundo con `#enemy=none`: `stage5.mjs` 13/13 y `e2e.mjs` 33/33 (escritorio e iPhone).
 - **Publicado** en el mismo enlace (versión 7): https://claude.ai/artifact/ANHrkwwHE8urZjzme74NhG
+
+# Mejora del duelo: recompensa del parry perfecto, contraataques y reacciones del enemigo
+El eco sigue guardado en `src/enemies/echo/` (se elige en el panel ⚙ → Enemigo) y no se toca.
+
+## Etapa 0 — Hojas nuevas por el pipeline (riposte, deathblow, deflected, counter)
+Las cuatro hojas existen, así que se procesan por el mismo pipeline que las demás (los sustitutos de
+código siguen disponibles y configurables en `W.DUEL.sheets`, ver Etapa 1).
+
+**Hojas** (`ref/`, etiquetas de fase en cada `labels.json`; `_1` = N, NE, E, SE; `_2` = S, SW, W, NW):
+
+| animación | hoja | fases |
+|---|---|---|
+| riposte (personaje) | `sheets_combate/riposte_{1,2}.png` | PARRY POSE, SNAP, LUNGE, CUT, CUT FOLLOW, READY |
+| deathblow (personaje) | `sheets_combate/deathblow_{1,2}.png` | STEP IN, RAISE, PLUNGE, IMPACT, PULL OUT, RECOVER |
+| deflected (autómata) | `sheets_enemigo/deflected_{1,2}.png` | CLASH, RECOIL, OFF BALANCE ×2, REGAIN, READY |
+| counter (autómata) | `sheets_enemigo/counter_{1,2}.png` | CATCH, TWIST, LUNGE, SLASH, FOLLOW THROUGH, READY |
+
+**Pipeline del personaje** (`combat_extract` → `combat_color` → `combat_normalize` → `combat_maps`):
+- recorte: riposte llegó a 1312×1199 (las demás 1225×1284); se reescala ×0.934 al leerla para que la rejilla común
+  caiga en su sitio. Deathblow cierra la última fila con una raya: el extractor admite ese 5.º separador;
+- color: las dos ya tienen el color de los ataques (cuchilla L 141-143, croma 59-62, tono 55-56°, como attack1),
+  así que se copian sin tocar. Arreglado de paso: `deathblow` empezaba por `death` y se colaba en su recoloreado;
+- escala: casco y baldosa, como las demás (riposte ×1.06, deathblow ×1.08 frente al recorte);
+- congruencia (a, corregido con código): en riposte la fila SW era la de S sin girar y la NW cortaba hacia atrás
+  a la derecha → espejos de SE y NE (b: con el espejo la cuchilla cambia de mano, como en attack1 SW);
+- emisión: estela naranja del CUT y cuchilla del deathblow (la regla de las piezas que sobresalen del cuerpo);
+- fases y tiempos (`combat_maps.py`): riposte 40-45-50-60-80-110 ms (385 ms, golpe en el CUT a los 135 ms,
+  encadenable consigo misma); deathblow 110-140-90-170-150-190 ms (impacto en IMPACT a los 340 ms);
+- atlas del mundo: 4096×1728 → 4096×2160 (10 animaciones). Las celdas de antes no cambian ni un píxel.
+
+**Pipeline del autómata** (`enemy_grid` → `enemy_extract` → `enemy_color` → `enemy_normalize` → `enemy_maps`):
+- maquetación distinta (sin cabecera de números: número gris en cada celda y la fase debajo): nueva
+  `enemy_grid.grid_b` (filas por las líneas de etiquetas, columnas por sus 6 palabras) y el texto se quita por
+  cajas, así el brazo y las chispas del CLASH que asoman a la izquierda no se cortan;
+- color por zonas hacia idle/walk/run (counter era más cobrizo, croma 34-36 frente a 28);
+- congruencia (a): deflected_1 E, SE y NE miran a la izquierda → espejos de deflected_2 W, SW y NW;
+  counter_2 SW está dibujada como SE y NW corta a la derecha → espejos de counter_1 SE y NE;
+- las chispas del CLASH son motas sueltas que no sobreviven al recorte: las pone el juego en el punto de choque;
+- emisión: la estela cian del SLASH tiene el mismo cian que el ojo; `split_cyan` separa estela (piezas grandes o
+  fuera del cuerpo: emiten) y ojo (la pieza pequeña con más núcleo: lleva la luz). Solo en counter, así los
+  mapas de las demás animaciones salen idénticos;
+- pies anclados y ojo por frame en `enemy_atlas.json` (`feet`, `eye_px`), como el resto;
+- tiempos: deflected 60-100-170-170-120-90 ms (~0,7 s); counter 70-80-70-75-110-140 ms (SLASH a los 220 ms);
+- atlas: 3960×3190 → 3960×3915 (12 animaciones). Las celdas de antes no cambian.
+
+**Revisión** en `review/duel3/` (`tools/duel3_review_e0.py`): `E0_<anim>.png` antes | después con los problemas
+marcados, `E0_tamano.png` (junto a idle y attack1), `E0_emision.png` y `E0_revision.json`.

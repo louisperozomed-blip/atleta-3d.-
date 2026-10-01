@@ -1,0 +1,319 @@
+{
+ "problemas": [
+  {
+   "anim": "riposte",
+   "dirs": [
+    "SW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "fila SW igual que la S (de frente, sin girar a la izquierda)",
+   "arreglo": "espejo horizontal de riposte SE"
+  },
+  {
+   "anim": "riposte",
+   "dirs": [
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "fila NW corta hacia atrás a la derecha (como NE)",
+   "arreglo": "espejo horizontal de riposte NE"
+  },
+  {
+   "anim": "riposte",
+   "dirs": [
+    "SW",
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "b",
+   "problema": "con el espejo la cuchilla pasa a la otra mano",
+   "arreglo": "leve a la escala del juego (igual que attack1 SW); regenerar SW y NW si se quiere exacto"
+  },
+  {
+   "anim": "riposte",
+   "dirs": [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "hoja de 1312x1199 (las demás 1225x1284) y personaje algo más pequeño (casco -11 %)",
+   "arreglo": "se reescala x0.934 al leerla y la escala final sale del casco y la baldosa como en las demás"
+  },
+  {
+   "anim": "deathblow",
+   "dirs": [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "la hoja cierra la última fila con una raya (5 separadores)",
+   "arreglo": "la hoja se corta en esa raya"
+  },
+  {
+   "anim": "deathblow",
+   "dirs": [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "casco ~13 % más pequeño que idle a igual baldosa",
+   "arreglo": "escala casco/baldosa (+8 %)"
+  },
+  {
+   "anim": "deflected",
+   "dirs": [
+    "E"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "deflected_1 E mira a la izquierda (ojo y brazo del choque a la izquierda); espejo de deflected_2 W",
+   "arreglo": "espejo horizontal de deflected W"
+  },
+  {
+   "anim": "deflected",
+   "dirs": [
+    "SE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "deflected_1 SE dibujada como un SW (ojo a la izquierda); espejo de deflected_2 SW",
+   "arreglo": "espejo horizontal de deflected SW"
+  },
+  {
+   "anim": "deflected",
+   "dirs": [
+    "NE"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "deflected_1 NE gira a la izquierda (se ve el ojo arriba a la izquierda); espejo de deflected_2 NW",
+   "arreglo": "espejo horizontal de deflected NW"
+  },
+  {
+   "anim": "counter",
+   "dirs": [
+    "SW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "counter_2 SW dibujada como un SE (ojo a la derecha); espejo de counter_1 SE",
+   "arreglo": "espejo horizontal de counter SE"
+  },
+  {
+   "anim": "counter",
+   "dirs": [
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "counter_2 NW corta hacia la derecha, como NE; espejo de counter_1 NE",
+   "arreglo": "espejo horizontal de counter NE"
+  },
+  {
+   "anim": "deflected",
+   "dirs": [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    0
+   ],
+   "tipo": "a",
+   "problema": "las chispas del CLASH son motas sueltas y se pierden al recortar (y en la hoja asoman sobre el rótulo)",
+   "arreglo": "las chispas las pone el juego en el punto de choque (doradas en el parry perfecto)"
+  },
+  {
+   "anim": "deflected",
+   "dirs": [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "maquetación distinta: sin cabecera de números (número gris en cada celda, fase debajo)",
+   "arreglo": "cuadrícula por las líneas de etiquetas (enemy_grid.grid_b) y el texto se quita por cajas"
+  },
+  {
+   "anim": "counter",
+   "dirs": [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    3
+   ],
+   "tipo": "a",
+   "problema": "la estela cian del SLASH tiene el mismo color que el ojo (la luz del ojo saltaba a la estela)",
+   "arreglo": "enemy_maps.split_cyan: estela = piezas cian grandes o fuera del cuerpo (emiten); ojo = la pequeña más alta"
+  },
+  {
+   "anim": "counter",
+   "dirs": [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "a",
+   "problema": "más cobrizo y con menos musgo que idle/walk (croma 34-36 frente a 28)",
+   "arreglo": "color por zonas hacia idle/walk/run"
+  }
+ ],
+ "regenerar": [
+  {
+   "anim": "riposte",
+   "dirs": [
+    "SW",
+    "NW"
+   ],
+   "frames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "tipo": "b",
+   "problema": "con el espejo la cuchilla pasa a la otra mano",
+   "arreglo": "leve a la escala del juego (igual que attack1 SW); regenerar SW y NW si se quiere exacto"
+  }
+ ]
+}

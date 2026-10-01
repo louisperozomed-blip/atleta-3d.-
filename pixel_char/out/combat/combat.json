@@ -728,6 +728,170 @@
     "DOWN"
    ],
    "hold_last": true
+  },
+  "riposte": {
+   "frames": [
+    {
+     "frame": 0,
+     "etiqueta": "PARRY POSE",
+     "fase": "preparación",
+     "ms": 40,
+     "t0_ms": 0,
+     "activo": false,
+     "cancelable": []
+    },
+    {
+     "frame": 1,
+     "etiqueta": "SNAP",
+     "fase": "preparación",
+     "ms": 45,
+     "t0_ms": 40,
+     "activo": false,
+     "cancelable": []
+    },
+    {
+     "frame": 2,
+     "etiqueta": "LUNGE",
+     "fase": "preparación",
+     "ms": 50,
+     "t0_ms": 85,
+     "activo": false,
+     "cancelable": []
+    },
+    {
+     "frame": 3,
+     "etiqueta": "CUT",
+     "fase": "activo",
+     "ms": 60,
+     "t0_ms": 135,
+     "activo": true,
+     "cancelable": [
+      "chain"
+     ]
+    },
+    {
+     "frame": 4,
+     "etiqueta": "CUT FOLLOW",
+     "fase": "recuperación",
+     "ms": 80,
+     "t0_ms": 195,
+     "activo": false,
+     "cancelable": [
+      "chain",
+      "dodge"
+     ]
+    },
+    {
+     "frame": 5,
+     "etiqueta": "READY",
+     "fase": "recuperación",
+     "ms": 110,
+     "t0_ms": 275,
+     "activo": false,
+     "cancelable": [
+      "chain",
+      "dodge"
+     ]
+    }
+   ],
+   "total_ms": 385,
+   "loop": false,
+   "activo": [
+    3
+   ],
+   "ventanas_cancelacion": {
+    "dodge": [
+     4,
+     5
+    ],
+    "chain": [
+     3,
+     4,
+     5
+    ]
+   },
+   "siguiente_combo": "riposte",
+   "etiquetas": [
+    "PARRY POSE",
+    "SNAP",
+    "LUNGE",
+    "CUT",
+    "CUT FOLLOW",
+    "READY"
+   ]
+  },
+  "deathblow": {
+   "frames": [
+    {
+     "frame": 0,
+     "etiqueta": "STEP IN",
+     "fase": "preparación",
+     "ms": 110,
+     "t0_ms": 0,
+     "activo": false,
+     "cancelable": []
+    },
+    {
+     "frame": 1,
+     "etiqueta": "RAISE",
+     "fase": "preparación",
+     "ms": 140,
+     "t0_ms": 110,
+     "activo": false,
+     "cancelable": []
+    },
+    {
+     "frame": 2,
+     "etiqueta": "PLUNGE",
+     "fase": "preparación",
+     "ms": 90,
+     "t0_ms": 250,
+     "activo": false,
+     "cancelable": []
+    },
+    {
+     "frame": 3,
+     "etiqueta": "IMPACT",
+     "fase": "activo",
+     "ms": 170,
+     "t0_ms": 340,
+     "activo": true,
+     "cancelable": []
+    },
+    {
+     "frame": 4,
+     "etiqueta": "PULL OUT",
+     "fase": "recuperación",
+     "ms": 150,
+     "t0_ms": 510,
+     "activo": false,
+     "cancelable": []
+    },
+    {
+     "frame": 5,
+     "etiqueta": "RECOVER",
+     "fase": "recuperación",
+     "ms": 190,
+     "t0_ms": 660,
+     "activo": false,
+     "cancelable": []
+    }
+   ],
+   "total_ms": 850,
+   "loop": false,
+   "activo": [
+    3
+   ],
+   "ventanas_cancelacion": {},
+   "siguiente_combo": null,
+   "etiquetas": [
+    "STEP IN",
+    "RAISE",
+    "PLUNGE",
+    "IMPACT",
+    "PULL OUT",
+    "RECOVER"
+   ]
   }
  },
  "root_motion_px": {
@@ -1242,6 +1406,134 @@
    24.0,
    23.9,
    21.1
+  ],
+  "riposte_S": [
+   -41.5,
+   38.1,
+   12.2,
+   34.5,
+   -29.0,
+   26.3
+  ],
+  "riposte_SW": [
+   12.8,
+   26.7,
+   34.1,
+   55.5,
+   30.4,
+   22.6
+  ],
+  "riposte_W": [
+   25.8,
+   32.3,
+   47.1,
+   60.8,
+   58.5,
+   -5.5
+  ],
+  "riposte_NW": [
+   -2.8,
+   11.7,
+   34.2,
+   -20.2,
+   -24.9,
+   -1.9
+  ],
+  "riposte_N": [
+   19.0,
+   6.2,
+   10.6,
+   29.4,
+   25.7,
+   11.1
+  ],
+  "riposte_NE": [
+   1.8,
+   -12.7,
+   -35.2,
+   19.2,
+   23.9,
+   0.9
+  ],
+  "riposte_E": [
+   -27.2,
+   -38.1,
+   -60.8,
+   32.0,
+   28.7,
+   -1.1
+  ],
+  "riposte_SE": [
+   -13.8,
+   -27.7,
+   -35.1,
+   -56.5,
+   -31.4,
+   -23.6
+  ],
+  "deathblow_S": [
+   -13.7,
+   -16.7,
+   10.2,
+   12.8,
+   14.8,
+   -16.2
+  ],
+  "deathblow_SW": [
+   -29.0,
+   -26.6,
+   -5.5,
+   -13.4,
+   -5.5,
+   -0.8
+  ],
+  "deathblow_W": [
+   -3.7,
+   -35.8,
+   -15.7,
+   -15.2,
+   -9.0,
+   -3.4
+  ],
+  "deathblow_NW": [
+   64.4,
+   48.5,
+   45.7,
+   52.8,
+   55.3,
+   32.3
+  ],
+  "deathblow_N": [
+   12.1,
+   5.7,
+   0.7,
+   10.8,
+   14.2,
+   12.0
+  ],
+  "deathblow_NE": [
+   -20.4,
+   -8.3,
+   -29.8,
+   -19.2,
+   -17.5,
+   -8.6
+  ],
+  "deathblow_E": [
+   -45.8,
+   -47.6,
+   -78.5,
+   -57.3,
+   -39.2,
+   -30.2
+  ],
+  "deathblow_SE": [
+   -25.4,
+   -39.1,
+   43.1,
+   49.7,
+   -37.2,
+   -26.1
   ]
  },
  "root_motion_nota": "x medio de los pies respecto al pivote por frame (px de la hoja completa): desplazamiento pintado de la estocada/retroceso",
@@ -1260,6 +1552,16 @@
    "frames": "attack3_{N,NE,E,W,NW}_3",
    "tipo": "a provisional / b",
    "fix": "IMPACT de frente -> pose FOLLOW THROUGH de la misma fila + estallido de fuego del IMPACT S (el golpe con la cuchilla clavada se pierde: regenerar esas 5 filas). S, SE y SW se conservan (de frente o casi)"
+  },
+  {
+   "frames": "riposte_SW_0..5",
+   "tipo": "a",
+   "fix": "espejo horizontal de riposte_SE (la fila SW era la de S, sin girar)"
+  },
+  {
+   "frames": "riposte_NW_0..5",
+   "tipo": "a",
+   "fix": "espejo horizontal de riposte_NE (la fila NW cortaba hacia atrás a la derecha)"
   }
  ]
 }

@@ -14,6 +14,9 @@ todos: sin parpadeo):
 Además el reborde rojo encendido que rodea la silueta en esas hojas (en walk
 el contorno es oscuro) se apaga hacia el contorno cálido oscuro.
 
+riposte y deathblow (Duelo 3) ya llegan con el color de las hojas de ataque (cuchilla L 141-143,
+croma 59-62, tono 55-56°, como attack1): se copian sin tocar.
+
 Entrada: build/combat/raw  ->  salida: build/combat/color (mismos nombres)
 """
 import json
@@ -171,7 +174,7 @@ def main():
     tg = hot_stats(att_files, 70)
     report = {"objetivo_cuchilla": {k: [round(float(tg[k][i]), 1) for i in (2, 12, 22)] for k in ("L", "C", "H")}}
     for f in sorted(os.listdir(CRAW)):
-        if not f.startswith(tuple(RECOLOR)):
+        if not f.startswith(tuple(a + "_" for a in RECOLOR)):   # deathblow no es death
             Image.fromarray(np.asarray(Image.open(os.path.join(CRAW, f)))).save(os.path.join(COLOR, f))
     for an in RECOLOR:
         files = sorted(x for x in os.listdir(CRAW) if x.startswith(an + "_"))

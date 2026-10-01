@@ -129,14 +129,22 @@ def run(only=None):
         # texto: cabecera y rótulos de la izquierda
         text = np.zeros((H, W), bool)
         text[:g["rows"][0] - 2] = True
-        text[:, :g["cols"][0] - 4] = True
+        xmin = g["cols"][0] - 4
+        if g.get("layout") == "b":
+            # hojas del Duelo 3 (enemy_grid.grid_b): el texto va dentro de las celdas (número arriba, fase debajo)
+            # y las chispas del CLASH asoman a la izquierda de la primera columna: se quita solo el texto
+            for x0_, y0_, x1_, y1_ in g["text_boxes"]:
+                text[max(0, y0_):y1_, max(0, x0_):x1_] = True
+            xmin = 0      # los rótulos ya están en text_boxes
+        else:
+            text[:, :g["cols"][0] - 4] = True
         bg, tile_l, bglike, tile, ls = classify(a, text)
         core_all = cores(a, ls, bglike)
         for r, d in enumerate(sh["rows"]):
             ry0, ry1 = g["rows"][r], g["rows"][r + 1]
             for i in range(6):
                 xl, xr = g["cols"][i], g["cols"][i + 1]
-                bx0, bx1 = max(xl - MARGIN, g["cols"][0] - 4), min(xr + MARGIN, W)
+                bx0, bx1 = max(xl - MARGIN, xmin), min(xr + MARGIN, W)
                 by0, by1 = max(ry0 - 40, g["rows"][0]), min(ry1 + 20, H)
                 col, alpha, fg, tfit = extract_cell(a, bglike, tile, core_all, (bx0, by0, bx1, by1), (xl - bx0, xr - bx0, ry0 - by0, ry1 - by0))
                 name = f"{sh['anim']}_{d}_{i}"

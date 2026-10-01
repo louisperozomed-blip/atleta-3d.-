@@ -31,9 +31,11 @@ def main():
     }
     # hojas de combate (pixel_char/tools/combat_maps.py): color, normal y especular+emisión (R, G)
     if os.path.exists(os.path.join(A, "combat_atlas.json")):
-        assets["ccolor"] = webp(os.path.join(A, "combat_color.png"), quality=90, alpha_quality=100)
-        assets["cnormal"] = webp(os.path.join(A, "combat_normal.png"), quality=88)
-        assets["cspec"] = webp(os.path.join(A, "combat_spec.png"), quality=88)
+        # (Duelo 3: con riposte y deathblow el atlas crece un 25 %; normales y especular a 80 y el color a 87 para
+        #  que la página siga bien por debajo de 16 MB)
+        assets["ccolor"] = webp(os.path.join(A, "combat_color.png"), quality=87, alpha_quality=96)
+        assets["cnormal"] = webp(os.path.join(A, "combat_normal.png"), quality=80)
+        assets["cspec"] = webp(os.path.join(A, "combat_spec.png"), quality=80)
         assets["cmeta"] = json.load(open(os.path.join(A, "combat_atlas.json")))
     # el Autómata del bosque (pixel_char/tools/enemy_maps.py)
     if os.path.exists(os.path.join(A, "enemy_atlas.json")):

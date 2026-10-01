@@ -79,6 +79,60 @@ def grid(a):
             "label_right": label_right}
 
 
+def grid_b(a):
+    """Maquetación de las hojas del Duelo 3 (deflected, counter): sin cabecera de números; cada celda lleva
+    su número pequeño gris arriba a la izquierda y la etiqueta de fase debajo de la figura.
+      · filas: las 4 líneas de etiquetas de fase (cada fila acaba en su línea de etiquetas)
+      · columnas: las 6 palabras (o grupos de palabras) de cada línea, mediana de las 4 filas
+    Devuelve también las cajas de todo el texto (rótulos, etiquetas y números) para quitarlo del recorte."""
+    H, W = a.shape[:2]
+    tm = text_mask(a)
+    cs = [c for c in comps(tm) if c[4] > 6]
+    left = [c for c in cs if c[0] < 200 and c[1] > 90]
+    label_right = max(c[0] + c[2] for c in left)
+    title_bot = max(c[1] + c[3] for c in cs if c[1] < 40 and c[3] > 25)
+    lab = sorted([c for c in cs if c[0] > label_right + 20 and 7 <= c[3] <= 22 and c[1] > title_bot + 40],
+                 key=lambda c: c[1] + c[3])
+    lines = []
+    for c in lab:
+        if lines and (c[1] + c[3]) - (lines[-1][-1][1] + lines[-1][-1][3]) <= 6:
+            lines[-1].append(c)
+        else:
+            lines.append([c])
+    mx = max(len(L) for L in lines)
+    lines = [L for L in lines if len(L) >= 0.75 * mx]
+    assert len(lines) == 4, [len(L) for L in lines]
+    colcs, rows_b, boxes = [], [], []
+    for L in lines:
+        L = sorted(L)
+        words = [[L[0]]]
+        for c in L[1:]:
+            if c[0] - (words[-1][-1][0] + words[-1][-1][2]) > 30:
+                words.append([c])
+            else:
+                words[-1].append(c)
+        assert len(words) == 6, len(words)
+        colcs.append([(min(c[0] for c in w) + max(c[0] + c[2] for c in w)) / 2 for w in words])
+        rows_b.append(max(c[1] + c[3] for c in L) + 3)
+        boxes += [(min(c[0] for c in w) - 3, min(c[1] for c in w) - 3, max(c[0] + c[2] for c in w) + 3,
+                   max(c[1] + c[3] for c in w) + 3) for w in words]
+    boxes += [(c[0] - 3, c[1] - 3, c[0] + c[2] + 3, c[1] + c[3] + 3) for c in left]
+    # números grises pequeños de cada celda
+    lum = a.mean(2); ch = a.max(2) - a.min(2)
+    g = (lum > 90) & (lum < 200) & (ch < 25)
+    for c in comps(g):
+        if 8 <= c[3] <= 22 and c[2] <= 16 and c[4] > 15 and c[0] > label_right:
+            near = any(abs(c[1] - (rb - 225)) < 60 for rb in [title_bot + 225] + rows_b[:3]) or c[1] < title_bot + 60
+            if near:
+                boxes.append((c[0] - 3, c[1] - 3, c[0] + c[2] + 3, c[1] + c[3] + 3))
+    colc = list(np.median(np.array(colcs), 0))
+    colb = [int(colc[0] - (colc[1] - colc[0]) / 2)] + [int((colc[i] + colc[i + 1]) / 2) for i in range(5)] + \
+           [int(min(W, colc[5] + (colc[5] - colc[4]) / 2))]
+    rowb = [title_bot + 6] + rows_b
+    return {"cols": colb, "rows": rowb, "colc": colc, "label_right": label_right, "layout": "b",
+            "text_boxes": [list(map(int, b)) for b in boxes]}
+
+
 if __name__ == "__main__":
     import glob, json, os, sys
     from PIL import ImageDraw

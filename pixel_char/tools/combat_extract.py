@@ -32,6 +32,22 @@ def sheet_bg(a, seps):
     return np.median(k, 0)
 
 
+def row_separators(a):
+    """Como extract.row_separators, pero admite una quinta raya al pie de la hoja (deathblow)."""
+    lum = a.mean(2)
+    prof = np.median(lum, axis=1)
+    ys = np.nonzero(prof < prof.mean() - 12)[0]
+    groups = []
+    for y in ys:
+        if groups and y - groups[-1][-1] <= 3:
+            groups[-1].append(y)
+        else:
+            groups.append([y])
+    seps = [int(np.mean(g)) for g in groups]
+    assert len(seps) in (4, 5), seps
+    return seps
+
+
 def classify_adaptive(a, c):
     mx, mn = a.max(2), a.min(2)
     ch = mx - mn
@@ -175,8 +191,17 @@ def run(only=None):
             continue
         path = os.path.join(CREF, sheet + ".png")
         a = X.load(path)
+        if a.shape[1] != 1225:
+            # riposte llegó a 1312x1199: se reescala (uniforme) al ancho de las demás, así la rejilla común
+            # (columnas, rótulos a la izquierda) cae en el mismo sitio; la escala final la decide el casco
+            k = 1225 / a.shape[1]
+            a = np.asarray(Image.fromarray(a.round().astype(np.uint8)).resize((1225, round(a.shape[0] * k)), Image.LANCZOS)).astype(np.float32)
         H, W = a.shape[:2]
-        seps = X.row_separators(a)
+        seps = row_separators(a)
+        if len(seps) == 5:
+            # deathblow cierra la última banda con una raya: la hoja acaba ahí
+            a = a[:seps[4] - 1]; seps = seps[:4]
+        H, W = a.shape[:2]
         c = sheet_bg(a, seps)
         sat, bglike = classify_adaptive(a, c)
         print(f"{sheet}: fondo {c.round()}")

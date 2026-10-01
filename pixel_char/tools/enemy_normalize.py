@@ -22,7 +22,7 @@ from enemy_extract import EBUILD, EREF
 ECOLOR = os.path.join(EBUILD, "color")
 EFIX = os.path.join(EBUILD, "fixed")
 os.makedirs(EFIX, exist_ok=True)
-ANIMS = ["idle", "walk", "run", "attack1", "attack2", "parry", "hit", "block", "dodge", "death"]
+ANIMS = ["idle", "walk", "run", "attack1", "attack2", "parry", "hit", "block", "dodge", "death", "deflected", "counter"]
 DIRS = ["S", "SW", "W", "NW", "N", "NE", "E", "SE"]
 CANVAS = (360, 330)
 PIVOT = (180, 300)
@@ -40,6 +40,12 @@ MIRROR = [
     ("parry", "SW", "parry", "SE", None, "a", "la fila mira al frente (S); espejo de parry_1 SE"),
     ("block", "SW", "block", "SE", None, "a", "igual que la fila S (de frente); espejo de block_1 SE"),
     ("block", "W", "block", "E", None, "a", "dibujada como un SW; espejo de block_1 E"),
+    # Duelo 3
+    ("deflected", "E", "deflected", "W", None, "a", "deflected_1 E mira a la izquierda (ojo y brazo del choque a la izquierda); espejo de deflected_2 W"),
+    ("deflected", "SE", "deflected", "SW", None, "a", "deflected_1 SE dibujada como un SW (ojo a la izquierda); espejo de deflected_2 SW"),
+    ("deflected", "NE", "deflected", "NW", None, "a", "deflected_1 NE gira a la izquierda (se ve el ojo arriba a la izquierda); espejo de deflected_2 NW"),
+    ("counter", "SW", "counter", "SE", None, "a", "counter_2 SW dibujada como un SE (ojo a la derecha); espejo de counter_1 SE"),
+    ("counter", "NW", "counter", "NE", None, "a", "counter_2 NW corta hacia la derecha, como NE; espejo de counter_1 NE"),
 ]
 
 
