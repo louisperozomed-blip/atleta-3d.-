@@ -1,0 +1,545 @@
+{
+ "results": [
+  {
+   "name": "hojas nuevas en uso (riposte, deathblow, deflected, counter) y sustitutos configurables (W.DUEL.sheets = \"sustituto\")",
+   "ok": true,
+   "info": {
+    "riposte": "riposte",
+    "deathblow": "deathblow",
+    "deflected": "deflected",
+    "counter": "counter",
+    "riposte_sust": "attack1×1.4",
+    "deathblow_sust": "attack3",
+    "deflected_sust": "hit",
+    "counter_sust": "attack1×1.35"
+   }
+  },
+  {
+   "name": "parry perfecto → DESEQUILIBRADO ~0,7 s (hoja deflected; sin hoja, frames de hit + rebote por código)",
+   "ok": true,
+   "info": {
+    "auto": {
+     "level": "perfect",
+     "sheet": "deflected",
+     "dur": 0.71,
+     "rebote": 0
+    },
+    "sustituto": {
+     "level": "perfect",
+     "sheet": "hit",
+     "dur": 0.71,
+     "rebote": 0.055
+    },
+    "attack2": {
+     "level": "perfect",
+     "act": "deflected"
+    },
+    "normal": {
+     "act": "hit",
+     "rip": 1
+    }
+   }
+  },
+  {
+   "name": "riposte: 3 golpes con buen ritmo (hoja riposte), daño, postura, hitstop y sacudida crecientes; desde postura 0 no la rompe (no es un premio automático)",
+   "ok": true,
+   "info": {
+    "rip": [
+     {
+      "n": 1,
+      "dmg": 8,
+      "post": 35,
+      "sheet": "riposte"
+     },
+     {
+      "n": 2,
+      "dmg": 10,
+      "post": 52,
+      "sheet": "riposte"
+     },
+     {
+      "n": 3,
+      "dmg": 13,
+      "post": 75,
+      "sheet": "riposte"
+     }
+    ],
+    "beat": {
+     "ev": "ripBeat",
+     "err": 0,
+     "ok": true,
+     "early": false,
+     "t": 7.786
+    },
+    "defl": false,
+    "db": false,
+    "dbStart": null,
+    "foe": null,
+    "me": null,
+    "imp": {
+     "1": 6.191433333333874,
+     "2": 6.541433333333873,
+     "3": 6.8581000000005385
+    },
+    "stops": [
+     0.07,
+     0.09,
+     0.13
+    ],
+    "dhp": 31
+   }
+  },
+  {
+   "name": "3.er golpe fuera de la ventana de ritmo (pronto, tarde o machacando): se recupera y lo desvía; dentro (±80 ms) entra",
+   "ok": true,
+   "info": {
+    "tarde": {
+     "golpes": 2,
+     "desviado": true,
+     "err": 160,
+     "yo": null
+    },
+    "pronto": {
+     "golpes": 2,
+     "desviado": true,
+     "err": -140,
+     "yo": null
+    },
+    "justo": {
+     "golpes": 3,
+     "desviado": false,
+     "err": 50,
+     "yo": null
+    },
+    "justo-": {
+     "golpes": 3,
+     "desviado": false,
+     "err": -60,
+     "yo": null
+    },
+    "machaca": {
+     "golpes": 2,
+     "desviado": true,
+     "err": null
+    }
+   }
+  },
+  {
+   "name": "parry normal: un solo golpe de riposte y ventana más corta (0,32 s frente a 0,7 s)",
+   "ok": true,
+   "info": {
+    "dos": 1,
+    "tarde": 0,
+    "perfectoTarde": 1,
+    "win": {
+     "perfect": 0.7,
+     "normal": 0.32
+    }
+   }
+  },
+  {
+   "name": "sin hoja: riposte = attack1 ×1,4 con estela naranja, y también encadena 3",
+   "ok": true,
+   "info": {
+    "sheet": "attack1",
+    "sp": 1.4,
+    "trail": true,
+    "golpes3": 3,
+    "hoja": [
+     "attack1",
+     "attack1",
+     "attack1"
+    ]
+   }
+  },
+  {
+   "name": "postura rota durante el riposte → DEATHBLOW directo (hoja deathblow; sin hoja, attack3) con cámara más cerca y destello",
+   "ok": true,
+   "info": {
+    "auto": {
+     "golpes": 2,
+     "deathblow": true,
+     "sheet": "deathblow",
+     "zoom": 0.16,
+     "flash": 0.62,
+     "dano": 118
+    },
+    "sustituto": {
+     "golpes": 2,
+     "deathblow": true,
+     "sheet": "attack3",
+     "zoom": 0.16,
+     "flash": 0.62,
+     "dano": 118
+    }
+   }
+  },
+  {
+   "name": "reacción según el peso: golpe ligero = respingo corto (1-2 frames de hit); pesado = tambaleo con retroceso",
+   "ok": true,
+   "info": {
+    "ligero": {
+     "dur": 0.15,
+     "frames": [
+      0,
+      1
+     ],
+     "kb": 0.04,
+     "res": "flinch"
+    },
+    "ligero2": {
+     "dur": 0.15,
+     "frames": [
+      0,
+      1
+     ],
+     "kb": 0.04,
+     "res": "flinch"
+    },
+    "pesado": {
+     "dur": 0.62,
+     "frames": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+     ],
+     "kb": 0.34,
+     "res": "hit"
+    }
+   }
+  },
+  {
+   "name": "hyper armor: durante sus golpes pesados aguanta sin interrumpirse (pero recibe el daño); el zarpazo ligero sí se interrumpe",
+   "ok": true,
+   "info": {
+    "attack2": {
+     "armadura": true,
+     "dano": 10,
+     "suGolpe": true
+    },
+    "attack1": {
+     "armadura": false,
+     "dano": 10,
+     "suGolpe": false
+    }
+   }
+  },
+  {
+   "name": "lee tu combo completo: repitiendo el ritmo (y fuera de su resoplido), bloquea tus aperturas y desvía el 2.º/3.º (≥ 50 %); variándolo, mucho menos",
+   "ok": true,
+   "info": {
+    "repite": {
+     "1": {
+      "bloquea": 90,
+      "desvia": 0,
+      "n": 14
+     },
+     "2-3": {
+      "desvia": 91,
+      "n": 19
+     },
+     "seq": [
+      "hit<j foeRead:parry foeGuard:block block<j foeRead:parry foeGuard:parry foeParryTry parry<j foeParriedYou block<a",
+      "foeRead:block foeGuard:block block<j foeRead:parry foeGuard:parry foeParryTry parry<j foeParriedYou foeRead:parry block<a foeRead:block",
+      "foeGuard:block block<j foeRead:parry foeGuard:parry foeParryTry parry<j foeParriedYou foeRead:block block<a foeRead:block",
+      "foeGuard:block block<j foeRead:parry foeGuard:parry foeParryTry parry<j foeParriedYou block<a foeRead:block",
+      "foeGuard:block block<j foeRead:parry foeGuard:parry foeParryTry parry<j foeParriedYou block<a foeRead:block"
+     ]
+    },
+    "varia": {
+     "1": {
+      "bloquea": 10,
+      "desvia": 0,
+      "n": 14
+     },
+     "2-3": {
+      "desvia": 20,
+      "n": 12
+     },
+     "seq": [
+      "hit<j hit<j hit<j",
+      "hit<j",
+      "hit<j",
+      "hit<j hit<j foeBlock block<j",
+      "hit<j hit<j"
+     ]
+    }
+   }
+  },
+  {
+   "name": "si te hace parry: quedas desequilibrado (tus frames de hit) y lanza su COUNTER (hoja counter; sin hoja, attack1 rápido) con preparación visible ≥ 350 ms",
+   "ok": true,
+   "info": {
+    "auto": {
+     "desvia": "autómata",
+     "yo": "hit",
+     "desequilibrado": true,
+     "counter": true,
+     "empieza_ms": 133,
+     "sheet": "counter",
+     "prep": 0.44,
+     "resultado": "hit"
+    },
+    "sustituto": {
+     "desvia": "autómata",
+     "yo": "hit",
+     "desequilibrado": true,
+     "counter": true,
+     "empieza_ms": 133,
+     "sheet": "attack1",
+     "prep": 0.44,
+     "resultado": "hit"
+    }
+   }
+  },
+  {
+   "name": "intercambio de desvíos (clin-clin): cada counter desviado con un perfecto puede traer otro; pierde quien falla primero (si falla él, queda desequilibrado y te toca el riposte)",
+   "ok": true,
+   "info": {
+    "largos": [
+     1,
+     3,
+     1,
+     2,
+     2,
+     1,
+     3,
+     1,
+     1,
+     1,
+     2,
+     1
+    ],
+    "ganas": 12,
+    "pierdes": 0,
+    "riposte": 12,
+    "postura": 1,
+    "sin_pulsar": 1
+   }
+  },
+  {
+   "name": "choque: si los dos golpeáis a la vez (±80 ms) chispas grandes y ambos retrocedéis sin daño; con 150 ms de diferencia, no",
+   "ok": true,
+   "info": {
+    "a_la_vez": {
+     "choque": true,
+     "danoEl": 0,
+     "danoTu": 0,
+     "el": null,
+     "yo": null
+    },
+    "40ms": {
+     "choque": true,
+     "danoEl": 0,
+     "danoTu": 0,
+     "el": null,
+     "yo": null
+    },
+    "150ms": {
+     "choque": false,
+     "danoEl": 10,
+     "danoTu": 0,
+     "el": null,
+     "yo": null
+    }
+   }
+  },
+  {
+   "name": "ramas: desvías el 1.º → el siguiente va RETRASADO; esquivas → te persigue con la ESTOCADA; bloqueas → ROMPEGUARDIAS; te alcanza → sigue igual",
+   "ok": true,
+   "info": {
+    "desvia": [
+     "attack2(retrasado) [attack1, attack2(ret)] prep≥0.68 trucos 1 resoplido 0.93",
+     "attack2(retrasado) [attack1, attack2(ret)] prep≥0.68 trucos 1 resoplido 0.93",
+     "attack2(retrasado) [attack1, attack2(ret)] prep≥0.68 trucos 1 resoplido 0.93",
+     "attack2(retrasado) [attack1, attack2(ret)] prep≥0.68 trucos 1 resoplido 0.93"
+    ],
+    "esquiva": [
+     "thrust [attack1, thrust] prep≥0.68 trucos 0 resoplido 0.93",
+     "thrust [attack1, thrust] prep≥0.68 trucos 0 resoplido 0.93",
+     "thrust [attack1, thrust] prep≥0.68 trucos 0 resoplido 0.93",
+     "thrust [attack1, thrust] prep≥0.68 trucos 0 resoplido 0.93"
+    ],
+    "bloquea": [
+     "breaker [attack1, breaker] prep≥0.68 trucos 0 resoplido 0.93",
+     "breaker [attack1, breaker] prep≥0.68 trucos 0 resoplido 0.93",
+     "breaker [attack1, breaker] prep≥0.68 trucos 0 resoplido 0.93",
+     "breaker [attack1, breaker] prep≥0.68 trucos 0 resoplido 0.93"
+    ],
+    "recibe": [
+     "— [attack1, attack2] prep≥0.68 trucos 0 resoplido 0.93",
+     "— [attack1, attack2] prep≥0.68 trucos 0 resoplido 0.93",
+     "— [attack1, attack2] prep≥0.68 trucos 0 resoplido 0.93",
+     "— [attack1, attack2] prep≥0.68 trucos 0 resoplido 0.93"
+    ]
+   }
+  },
+  {
+   "name": "justicia: preparación visible ≥ 350 ms en todas las ramas, como mucho un truco por cadena (si ya lleva uno, la rama no añade otro) y ventana de castigo tras cada cadena",
+   "ok": true,
+   "info": {
+    "con_truco": [
+     "igual (ya lleva truco) [attack1, attack2(ret)] prep≥0.68 trucos 1 resoplido 0.93",
+     "igual (ya lleva truco) [attack1, attack2(ret)] prep≥0.68 trucos 1 resoplido 0.93"
+    ],
+    "prep_min": 0.68
+   }
+  },
+  {
+   "name": "ROMPEGUARDIAS: carga larga visible (≥ 350 ms, aviso fuerte); si lo bloqueas te rompe la guardia, si lo desvías no",
+   "ok": true,
+   "info": {
+    "bloqueado": {
+     "prep": 0.97,
+     "nivel": 2,
+     "ev": [
+      "guardbreak"
+     ]
+    },
+    "desviado": {
+     "prep": 0.97,
+     "nivel": 2,
+     "ev": [
+      "parry/perfect"
+     ]
+    }
+   }
+  },
+  {
+   "name": "parry perfecto: instante de cámara lenta (~120 ms reales al 30 %), sonido metálico agudo y chispas doradas",
+   "ok": true,
+   "info": {
+    "nivel": "perfect",
+    "lento_real_ms": 133,
+    "juego_ms": 40,
+    "sonidos": [
+     "swing",
+     "swing",
+     "parryPerfect"
+    ]
+   }
+  },
+  {
+   "name": "riposte con sonido de corte creciente (1, 2, 3) y deathblow con su golpe grave",
+   "ok": true,
+   "info": {
+    "riposte": [
+     "riposte1",
+     "riposte2",
+     "riposte3"
+    ],
+    "deathblow": true
+   }
+  },
+  {
+   "name": "entrenamiento RIPOSTE (panel ⚙): siempre la misma cadena y tras el 3.er golpe dice si acertaste el ritmo (✓, PRONTO o TARDE y los ms)",
+   "ok": true,
+   "info": {
+    "cadenas": [
+     "dos",
+     "dos",
+     "dos",
+     "dos",
+     "dos",
+     "dos",
+     "dos"
+    ],
+    "textos": [
+     "RITMO ✓ +0 ms · 1/1",
+     "RITMO · TARDE +150 ms · 1/2",
+     "RITMO · PRONTO -140 ms · 1/3",
+     "RITMO ✓ +30 ms · 2/4"
+    ],
+    "opcion": true
+   }
+  },
+  {
+   "name": "bot humano (reacción 250 ± 40 ms): con buen ritmo encadena el riposte completo en ≥ 60 % de sus parries perfectos",
+   "ok": true,
+   "info": {
+    "perfectos": 18,
+    "completos": 18,
+    "pct_completo": 100,
+    "intentos_3": 18,
+    "pct_3": 100
+   }
+  },
+  {
+   "name": "pulsando el 3.er golpe al azar, la mayoría falla (≤ 40 % entra) y siempre peor que con ritmo",
+   "ok": true,
+   "info": {
+    "perfectos": 18,
+    "completos": 4,
+    "pct_completo": 22,
+    "intentos_3": 16,
+    "pct_3": 25
+   }
+  },
+  {
+   "name": "deathblow en las 8 direcciones: cada una con su fila de la hoja (8 direcciones distintas) y el remate entra",
+   "ok": true,
+   "info": [
+    {
+     "ang": 0,
+     "dir": "NW",
+     "sheet": "deathblow",
+     "frames": 6,
+     "deathblow": true
+    },
+    {
+     "ang": 45,
+     "dir": "N",
+     "sheet": "deathblow",
+     "frames": 6,
+     "deathblow": true
+    },
+    {
+     "ang": 90,
+     "dir": "NE",
+     "sheet": "deathblow",
+     "frames": 6,
+     "deathblow": true
+    },
+    {
+     "ang": 135,
+     "dir": "E",
+     "sheet": "deathblow",
+     "frames": 6,
+     "deathblow": true
+    },
+    {
+     "ang": 180,
+     "dir": "SE",
+     "sheet": "deathblow",
+     "frames": 6,
+     "deathblow": true
+    },
+    {
+     "ang": 225,
+     "dir": "S",
+     "sheet": "deathblow",
+     "frames": 6,
+     "deathblow": true
+    },
+    {
+     "ang": 270,
+     "dir": "SW",
+     "sheet": "deathblow",
+     "frames": 6,
+     "deathblow": true
+    },
+    {
+     "ang": 315,
+     "dir": "W",
+     "sheet": "deathblow",
+     "frames": 6,
+     "deathblow": true
+    }
+   ]
+  }
+ ],
+ "errors": []
+}

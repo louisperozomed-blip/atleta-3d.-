@@ -1089,3 +1089,32 @@ la cadena decide cómo sigue (`CFG.branch`):
 
 **Pruebas** (`tests/duel3.mjs`, etapa 4): 3/3 — cámara lenta medida (133 ms reales, 40 ms de juego), sonidos
 riposte1-2-3 y deathblow, y el entrenamiento (7 cadenas iguales; ✓, TARDE, PRONTO, ✓).
+
+## Etapa 5 — Pruebas y publicación
+**Bot con reacción humana** (`tests/duel3.mjs`, etapa 5): desvía los golpes de la IA real (cadena «dos», 90 duelos)
+reaccionando a la suelta con 250 ms ± 40 ms; tras cada PERFECTO lanza el riposte: 1.ª pulsación a su reacción al
+desvío, 2.ª a su reacción al impacto del 1.º y la 3.ª…
+- **con buen ritmo** (el momento ideal ± 40 ms de error humano): riposte completo en **18 de 18** parries
+  perfectos (100 %, se pedía ≥ 60 %);
+- **al azar** (en cualquier momento de los 0,6 s siguientes): el 3.er golpe entra en **4 de 16** (25 %) y el resto
+  lo desvía él.
+
+**Ramas, intercambio, choque y deathblow**: las cuatro ramas de cadena con el bot y su justicia (etapa 3),
+el intercambio de desvíos y el choque (etapa 2), y el deathblow con la IA en las **8 direcciones** (cada una con
+su fila de la hoja; `review/duel3/E5_deathblow_8dir.png`, capturado en el impacto, con su destello).
+
+**Batería completa** (todas sin errores JS):
+
+| prueba | resultado |
+|---|---|
+| `duel3.mjs` (etapas 1-5) | 22/22 |
+| `parry2.mjs` (duelo de timing, etapas 1-6) | 50/50 |
+| `parry2_ui.mjs` (escritorio y móvil) | 10/10 |
+| `enemy.mjs` (autómata) | 21/21 |
+| `combat.mjs` con el eco (`#enemy=echo`) | 31/31 |
+| `stage5.mjs` y `e2e.mjs` (mundo, `#enemy=none`) | ver abajo |
+
+**Revisión** en `review/duel3/`: E0 (hojas antes/después, tamaño, emisión, lista de problemas), E1-E4 (capturas de
+cada etapa), `E5_duelo.gif` (duelo con la IA: perfectos con cámara lenta, riposte de 3 con el anillo del ritmo,
+deathblow; te desvía → counter → clin-clin ×3 → se le rompe la postura → remate; choque), `E5_*.png` y
+`E5_results.json`. El GIF se graba con `tests/record_duel3.mjs`.
