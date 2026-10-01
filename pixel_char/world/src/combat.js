@@ -50,7 +50,10 @@
   };
   const breakStreak = (att) => { if (att._defl) att._defl.n = 0; };
   W.combatLog = [];
-  function log(e) { e.t = W.U ? +W.U.uTime.value.toFixed(3) : 0; W.combatLog.push(e); if (W.combatLog.length > 400) W.combatLog.shift(); feedback(e); }
+  // resolución en curso: cada evento que se registra mientras tanto es el resultado de ese golpe (para la IA)
+  let curRes = null;
+  function log(e) { e.t = W.U ? +W.U.uTime.value.toFixed(3) : 0; W.combatLog.push(e); if (W.combatLog.length > 400) W.combatLog.shift(); feedback(e);
+    if (curRes && curRes.att.ai && curRes.att.ai.onResult) curRes.att.ai.onResult(curRes.a, e); }
   // aviso sobre el personaje de lo que acaba de pasar (¡PARRY!, BLOQUEO...): así se ve si ha salido
   const FB = {
     parry: ["PARRY", "#ffe08a", "who"], block: ["BLOQUEO", "#b8d8ff", "who"], guardbreak: ["GUARDIA ROTA", "#ff6a4a", "who"],
@@ -221,7 +224,8 @@
     if (a.name === "death" && a.f === 3) { groundBurst(f.body.x, f.body.z, 16, true); if (W.sfx) W.sfx.combat("death"); }
     if (W.onCombatFrameExtra) W.onCombatFrameExtra(f, a);
   };
-  function resolve(att, a) {
+  function resolve(att, a) { curRes = { att, a }; try { resolve0(att, a); } finally { curRes = null; } }
+  function resolve0(att, a) {
     const AT = (att.attacks || PLAYER_ATTACKS)[a.move || a.name] || PLAYER_ATTACKS.attack1;
     const b = att.body, reach = AT.reach, arc = AT.arc * Math.PI / 180;
     let any = false;
@@ -312,6 +316,7 @@
         breakStreak(att); t.lastDefT = W.ct;
         const L = LEVEL.block, cost = heavy ? L.stHeavy : L.st;
         t.st -= cost; t.stT = 0;
+        if (AT.breaker) t.st = 0;                               // golpe que rompe la guardia (Duelo 3)
         if (t.st <= 0) {
           t.st = 0;
           t.hurt({ dmg: dmg * 0.5, dir, kb: 0.45, guardBreak: true });

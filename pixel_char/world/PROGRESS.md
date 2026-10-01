@@ -1052,3 +1052,22 @@ de su counter tras ser desviado (como una persona) y se repone su postura y stam
 bloquear aperturas acaba aturdido y se mide eso); «te lee si te repites» pasa a ≥ 50 % de golpes defendidos y
 ≥ 30 % desviados (tras su counter resopla y, por justicia, en ese rato tus aperturas entran); y «si lo engañas» se
 hace retrasando el 2.º golpe, que es el que ahora desvía (la apertura la bloquea).
+
+## Etapa 3 — Combos del enemigo que se adaptan (`automaton.js`, `combat.js`)
+Cada golpe que resuelve `combat.js` avisa a la IA de su resultado (`ai.onResult`); tu respuesta a su 1.er golpe de
+la cadena decide cómo sigue (`CFG.branch`):
+
+| tu respuesta al 1.º | la cadena sigue con |
+|---|---|
+| lo desvías | el siguiente golpe RETRASADO (retiene la carga 0,32-0,5 s con el ojo fijo: castiga el parry de memoria) |
+| lo esquivas | la ESTOCADA, persiguiéndote (peligrosa: esquiva hacia él = contraataque) |
+| lo bloqueas | el ROMPEGUARDIAS: carga larga (0,55 + 0,42 s) con el ojo naranja y «¡ROMPEGUARDIAS!»; si lo vuelves a bloquear te rompe la guardia aunque te quede stamina; se desvía o se esquiva |
+| te alcanza | lo que tenía previsto |
+
+**Reglas de justicia que se siguen cumpliendo**: preparación visible ≥ 350 ms en todas las ramas (mínimo medido
+0,68 s); como mucho un truco por cadena: el golpe retrasado de la rama cuenta como truco y, si la cadena ya traía uno
+(retraso o finta), o la anterior lo trajo, o los trucos están desactivados, la rama no añade otro («igual»); y ventana de castigo tras cada cadena
+(resopla 0,95 s). En entrenamiento las cadenas no se ramifican (siempre la misma).
+
+**Pruebas** (`tests/duel3.mjs`, etapa 3): 3/3 — las cuatro ramas con el bot (4 veces cada una), justicia en todas
+(también con truco previo) y el rompeguardias: bloqueado = guardia rota, desviado = parry perfecto.

@@ -4047,7 +4047,10 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
   };
   const breakStreak = (att) => { if (att._defl) att._defl.n = 0; };
   W.combatLog = [];
-  function log(e) { e.t = W.U ? +W.U.uTime.value.toFixed(3) : 0; W.combatLog.push(e); if (W.combatLog.length > 400) W.combatLog.shift(); feedback(e); }
+  // resolución en curso: cada evento que se registra mientras tanto es el resultado de ese golpe (para la IA)
+  let curRes = null;
+  function log(e) { e.t = W.U ? +W.U.uTime.value.toFixed(3) : 0; W.combatLog.push(e); if (W.combatLog.length > 400) W.combatLog.shift(); feedback(e);
+    if (curRes && curRes.att.ai && curRes.att.ai.onResult) curRes.att.ai.onResult(curRes.a, e); }
   // aviso sobre el personaje de lo que acaba de pasar (¡PARRY!, BLOQUEO...): así se ve si ha salido
   const FB = {
     parry: ["PARRY", "#ffe08a", "who"], block: ["BLOQUEO", "#b8d8ff", "who"], guardbreak: ["GUARDIA ROTA", "#ff6a4a", "who"],
@@ -4218,7 +4221,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     if (a.name === "death" && a.f === 3) { groundBurst(f.body.x, f.body.z, 16, true); if (W.sfx) W.sfx.combat("death"); }
     if (W.onCombatFrameExtra) W.onCombatFrameExtra(f, a);
   };
-  function resolve(att, a) {
+  function resolve(att, a) { curRes = { att, a }; try { resolve0(att, a); } finally { curRes = null; } }
+  function resolve0(att, a) {
     const AT = (att.attacks || PLAYER_ATTACKS)[a.move || a.name] || PLAYER_ATTACKS.attack1;
     const b = att.body, reach = AT.reach, arc = AT.arc * Math.PI / 180;
     let any = false;
@@ -4309,6 +4313,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         breakStreak(att); t.lastDefT = W.ct;
         const L = LEVEL.block, cost = heavy ? L.stHeavy : L.st;
         t.st -= cost; t.stT = 0;
+        if (AT.breaker) t.st = 0;                               // golpe que rompe la guardia (Duelo 3)
         if (t.st <= 0) {
           t.st = 0;
           t.hurt({ dmg: dmg * 0.5, dir, kb: 0.45, guardBreak: true });
@@ -5270,6 +5275,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       grab: { dmg: 30, reach: 2.15, arc: 70, stop: 0.15, kb: 1.3, heavy: true, perilous: "side", throw: true, post: 0 },
       // Duelo 3: su contraataque tras desviarte (hoja counter o attack1 rápido); se puede desviar
       counter: { dmg: 16, reach: 2.25, arc: 85, stop: 0.09, kb: 0.45, post: 20 },
+      // rompeguardias: si lo bloqueas, te rompe la guardia (se desvía con parry o se esquiva)
+      breaker: { dmg: 28, reach: 2.5, arc: 110, stop: 0.13, kb: 0.8, heavy: true, breaker: true, post: 26 },
     },
     // golpes: animación, pose (frames de otras hojas), aviso (1 leve, 2 fuerte, 3 peligroso) y tiempo de SUELTA (s)
     moves: {
@@ -5281,12 +5288,20 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       grab: { anim: "attack1", level: 3, rel: 0.46, want: 1.2, cap: 2.4, track: true, seek: 4.4,
         show: [["block", 0], ["block", 1], ["parry", 1], ["attack1", 3], ["attack1", 4], ["attack1", 5]] },
       counter: { anim: "counter", level: 1, rel: 0.34, want: 1.5 },
+      // carga larga con el brazo atrás (frame de carga de attack2 sostenido) y ojo ámbar: «voy a romper tu guardia»
+      breaker: { anim: "attack2", level: 2, rel: 0.42, want: 1.75, breaker: true },
     },
     wind: { f: 0.12, n: 0.32, s: 0.55, feint: 0.16, c: 0.1 },   // carga según el ritmo (rápido, normal, lento; c = counter)
     // Duelo 3: counter tras desviarte (empieza a los 120 ms; carga 0,1 s + suelta 0,34 s: se puede desviar) e
     // intercambio de desvíos: cada desvío perfecto tuyo, otro counter más rápido; su probabilidad de fallar crece
     counter: { delay: 0.12, vent: 0.5, xchgDelay: 0.06, xchgRel: [0.34, 0.31, 0.28, 0.26], fail: [0.3, 0.5, 0.75, 1] },
     armorLevel: 2,               // hyper armor en sus golpes de nivel ≥ 2 (barrido amplio y peligrosos)
+    // Duelo 3 · las cadenas se ramifican según tu respuesta a su 1.er golpe (como mucho un truco por cadena):
+    //   lo desvías  → el siguiente golpe va RETRASADO (castiga el parry de memoria; cuenta como el truco)
+    //   lo esquivas → te persigue con la ESTOCADA (peligrosa: esquiva hacia él)
+    //   lo bloqueas → carga un ROMPEGUARDIAS (si lo vuelves a bloquear, te rompe la guardia: desvíalo)
+    //   te alcanza  → sigue la cadena como estaba
+    branch: { parry: "delay", dodge: ["thrust", "n", 0.15], block: ["breaker", "s", 0.25] },
     hold: [0.32, 0.5],                                  // retención de un golpe retrasado
     // cadenas: [golpe, ritmo, pausa desde la recuperación del anterior (s)]
     chains: [
@@ -5465,6 +5480,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         // pasos: {m, r, gap, delay, feint}; como mucho un truco por cadena y nunca en dos cadenas seguidas
         const steps = def.steps.map(([m, r, gap]) => ({ m, r, gap }));
         let trick = null;
+        const prevTrick = this.lastTrick;
         const pT = CFG.trick * (1 + 0.5 * Math.max(0, this.adapt || 0));
         if (!this.lastTrick && !this.noTricks && (this.forcedTrick || rand() < pT)) {
           const kind = this.forcedTrick || (rand() < 0.5 ? "delay" : "feint");
@@ -5477,7 +5493,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
           }
         }
         this.lastTrick = !!trick;
-        this.chain = { uid: ++this.chainN, id: def.id, steps, i: 0, readyT: null, trick, t0: this.t };
+        this.chain = { uid: ++this.chainN, id: def.id, steps, i: 0, readyT: null, trick, t0: this.t, prevTrick };
         W.combatLog.push({ ev: "chainStart", who: f.name, chain: def.id, uid: this.chain.uid, steps: steps.map((s) => s.m + (s.delay ? "(retrasado)" : "") + (s.feint ? "(finta→" + s.feint + ")" : "")), t: +W.U.uTime.value.toFixed(3) });
         this.strike(steps[0].m, steps[0].r, steps[0]);
       },
@@ -5531,6 +5547,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         if (f.act && f.act.plan && f.act.speed && f.act.speed !== 1) { f.act.plan.wind *= f.act.speed; f.act.plan.rel *= f.act.speed; f.act.plan.hold *= f.act.speed; }
         const a = f.act; a.level = mv.level; a.chainId = this.chain ? this.chain.uid : null;
         a.armor = mv.level >= CFG.armorLevel;          // hyper armor: no se interrumpe (Duelo 3)
+        if (mv.breaker) { a.breaker = true; if (W.combatPop) W.combatPop("¡ROMPEGUARDIAS!", "#ffb050", f); }
         if (step && step.xchg) a.xchg = step.xchg;
         this.warnT = 0; this.warnKind = m;
         // aviso: más evidente cuanto más fuerte es el golpe (rojo en los peligrosos)
@@ -5570,6 +5587,30 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         return "again";
       },
       onClash() { if (this.chain) this.chain.readyT = this.t; },
+      // resultado de uno de sus golpes (combat.js): tu respuesta al 1.er golpe de la cadena decide la rama
+      onResult(a, e) {
+        const C = this.chain;
+        if (!C || a.chainId !== C.uid || C.i !== 0 || C.resp) return;
+        const k = { parry: "parry", block: "block", guardbreak: "block", hit: "hit", grab: "hit", evade: "dodge", mikiri: "dodge", clash: "clash" }[e.ev];
+        if (e.ev === "whiff") { const p = W.pf; C.resp = p && p.act && p.act.name === "dodge" ? "dodge" : "miss"; }
+        else if (k && (e.from === f.name || e.ev === "clash")) C.resp = k;
+        if (C.resp) this.branchChain(C);
+      },
+      branchChain(C) {
+        if (this.training || C.id === "counter" || C.id === "intercambio" || C.steps.length < 2 || C.branched) return;
+        const B = CFG.branch[C.resp]; if (!B) return;
+        C.branched = true;
+        const nx = C.steps[1], old = nx.m + (nx.delay ? "(retrasado)" : "");
+        if (B === "delay") {
+          // un solo truco por cadena: si ya lleva uno, sigue igual
+          if (C.trick || C.prevTrick || this.noTricks || CFG.attacks[nx.m].perilous) { W.combatLog.push({ ev: "branch", who: f.name, resp: C.resp, to: "igual (ya lleva truco)", t: +W.U.uTime.value.toFixed(3) }); return; }
+          nx.delay = CFG.hold[0] + rand() * (CFG.hold[1] - CFG.hold[0]); nx.feint = null;
+          C.trick = { kind: "delay", step: 1, branch: true }; this.lastTrick = true;
+        } else {
+          C.steps.splice(1, C.steps.length - 1, { m: B[0], r: B[1], gap: B[2] });
+        }
+        W.combatLog.push({ ev: "branch", who: f.name, chain: C.id, resp: C.resp, from: old, to: C.steps[1].m + (C.steps[1].delay ? "(retrasado)" : ""), t: +W.U.uTime.value.toFixed(3) });
+      },
       // un golpe suelto (pruebas y compatibilidad)
       attack(name, dir) { this.chain = { uid: ++this.chainN, id: "suelto", steps: [{ m: name, r: "n", gap: 0 }], i: 0, readyT: null }; this.strike(name, "n", null); },
       // ---- defensa: te LEE (modelo del jugador), no tira dados -----------------------------------------
@@ -5799,7 +5840,10 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     // guardia leída (se ve venir su parry): ojo ámbar
     const guardEye = ai && ai.commit && ai.commit.stanceOn && a && (a.name === "block" || a.name === "parry");
     if (guardEye) k = Math.max(k, 2.2);
-    const col = U.uEyeCol.value, want = red ? [1.0, 0.22, 0.14] : guardEye ? [1.0, 0.72, 0.22] : [0.35, 0.95, 1.0];
+    // rompeguardias cargando: ojo naranja intenso (distinto del ámbar de su guardia y del rojo de los peligrosos)
+    const brk = !!(a && a.breaker && a.f < 3);
+    if (brk) k = Math.max(k, 2.6);
+    const col = U.uEyeCol.value, want = red ? [1.0, 0.22, 0.14] : brk ? [1.0, 0.5, 0.08] : guardEye ? [1.0, 0.72, 0.22] : [0.35, 0.95, 1.0];
     col.set(want[0], want[1], want[2]);
     if (f.eyeLight) f.eyeLight.color.setRGB(want[0], want[1], want[2]);
     if (f.eyeHalo) f.eyeHalo.material.color.setRGB(red || guardEye ? 1 : 0.5, red ? 0.35 : guardEye ? 0.8 : 0.94, red ? 0.3 : guardEye ? 0.35 : 1);

@@ -372,6 +372,72 @@ if (STAGES.includes(2)) {
   await shot("E2_counter");
 }
 
+// =====================================================================================================
+// ETAPA 3 · combos del enemigo que se adaptan a tu respuesta
+// =====================================================================================================
+if (STAGES.includes(3)) {
+  await page.evaluate(() => {
+    // cadena «dos» (zarpazo → barrido); el bot responde al 1.º con `ans` y al resto desvía con reacción humana
+    window.branchRun = (ans, seed, trick) => {
+      // sin trucos al azar (probabilidad 0) pero permitidos: el retraso de la rama es el truco de la cadena
+      const kt = W.AUTOMATON.trick; W.AUTOMATON.trick = 0;
+      duel(0.6, 2.0, { chain: "dos", trick: trick || null, noTricks: false });
+      // bloquear = guardia mantenida desde antes del golpe (si se pulsa al verlo llegar sería un parry)
+      const a1 = ans === "none" || ans === "block" ? null : ans;
+      if (ans === "block") W.pf.input("guardDown");
+      Bot.reset({ react: 0.25, jit: 0.02, seed, answer: a1 ? { attack1: a1 } : null });
+      const e = E(); e.post = 0; let n = 0, vent = 0, first = true;
+      const k0 = Bot.respond;
+      if (ans === "none") Bot.respond = function (q) { if (first && q.move === "attack1") { first = false; return; } return k0.call(this, q); };
+      let blk = ans === "block";
+      if (blk) Bot.respond = function () {};
+      while (n++ < 60 * 7 && !W.combatLog.some((x) => x.ev === "chainEnd")) {
+        if (blk && W.combatLog.some((x) => x.ev === "block" && x.who === "jugador")) { blk = false; W.pf.input("guardUp"); Bot.respond = k0; }
+        TB(); }
+      for (let i = 0; i < 30; i++) { TB(); vent = Math.max(vent, e.ai.vent); }
+      Bot.respond = k0; W.AUTOMATON.trick = kt;
+      const b = lastOf("branch"), ws = W.combatLog.filter((x) => x.ev === "warn");
+      const tricks = ws.filter((w) => w.hold > 0).length + W.combatLog.filter((x) => x.ev === "feint" && x.who === "autómata").length;
+      return { rama: b ? b.to : "—", resp: b ? b.resp : null, golpes: ws.map((w) => w.move + (w.hold ? "(ret)" : "")), prepMin: Math.min(...ws.map((w) => w.prep)), trucos: tricks, vent: +vent.toFixed(2),
+        gb: W.combatLog.some((x) => x.ev === "guardbreak" && x.who === "jugador") };
+    };
+  });
+  const br = await page.evaluate(() => {
+    const out = {};
+    for (const [k, ans] of [["desvia", null], ["esquiva", "dodgeBack"], ["bloquea", "block"], ["recibe", "none"]]) { out[k] = []; for (let s = 0; s < 4; s++) out[k].push(branchRun(ans, 60 + s)); }
+    out.desvia_con_truco = [branchRun(null, 90, "delay"), branchRun(null, 91, "delay")];
+    return out;
+  });
+  const sum = (L) => L.map((r) => r.rama + " [" + r.golpes.join(", ") + "] prep≥" + r.prepMin + " trucos " + r.trucos + " resoplido " + r.vent);
+  check("ramas: desvías el 1.º → el siguiente va RETRASADO; esquivas → te persigue con la ESTOCADA; bloqueas → ROMPEGUARDIAS; te alcanza → sigue igual",
+    br.desvia.every((r) => r.rama === "attack2(retrasado)") && br.esquiva.every((r) => r.rama === "thrust") && br.bloquea.every((r) => r.rama === "breaker") && br.recibe.every((r) => r.rama === "—"),
+    { desvia: sum(br.desvia), esquiva: sum(br.esquiva), bloquea: sum(br.bloquea), recibe: sum(br.recibe) });
+  const all = [...br.desvia, ...br.esquiva, ...br.bloquea, ...br.recibe, ...br.desvia_con_truco];
+  check("justicia: preparación visible ≥ 350 ms en todas las ramas, como mucho un truco por cadena (si ya lleva uno, la rama no añade otro) y ventana de castigo tras cada cadena",
+    all.every((r) => r.prepMin >= 0.35 && r.trucos <= 1 && r.vent > 0.5), { con_truco: sum(br.desvia_con_truco), prep_min: Math.min(...all.map((r) => r.prepMin)) });
+  // el rompeguardias: bloquearlo rompe la guardia; desviarlo funciona
+  const bk = await page.evaluate(() => {
+    const o = {};
+    for (const [k, how] of [["bloqueado", "block"], ["desviado", "parry"]]) {
+      pair(0.6, 2.0); const e = E(), p = W.pf; p.hpMax = p.hp = 500; e.ai.enabled = true; e.ai.passive = true; e.ai.cool = 99;
+      e.ai.chain = { uid: 77, id: "prueba", steps: [{ m: "breaker", r: "s", gap: 0 }], i: 0, readyT: null }; e.ai.strike("breaker", "s", e.ai.chain.steps[0]);
+      const w = lastOf("warn"); let done = false;
+      for (let n = 0; n < 200; n++) { const l = e.toImpact();
+        if (!done && how === "block" && l != null && l < 0.6) { p.input("guardDown"); done = true; }
+        if (!done && how === "parry" && l != null && l <= 0.05) { p.input("guardDown", { ts: performance.now() + (l - 0.05) * 1000 }); p.input("guardUp"); done = true; }
+        T(1); }
+      p.input("guardUp");
+      o[k] = { prep: w.prep, nivel: w.level, ev: W.combatLog.filter((x) => ["guardbreak", "parry", "block", "hit"].includes(x.ev) && x.from === "autómata").map((x) => x.ev + (x.level ? "/" + x.level : "")) };
+    }
+    return o;
+  });
+  check("ROMPEGUARDIAS: carga larga visible (≥ 350 ms, aviso fuerte); si lo bloqueas te rompe la guardia, si lo desvías no",
+    bk.bloqueado.prep >= 0.35 && bk.bloqueado.nivel >= 2 && bk.bloqueado.ev.includes("guardbreak") && bk.desviado.ev.some((x) => x.startsWith("parry")), bk);
+  await page.evaluate(() => { pair(0.6, 2.0); const e = E(); e.ai.enabled = true; e.ai.passive = true; e.ai.cool = 99;
+    e.ai.chain = { uid: 78, id: "prueba", steps: [{ m: "breaker", r: "s", gap: 0 }], i: 0, readyT: null }; e.ai.strike("breaker", "s", e.ai.chain.steps[0]); T(30); });
+  await shot("E3_rompeguardias");
+}
+
 const okN = results.filter((r) => r.ok).length;
 console.log(`\n${okN}/${results.length} OK`, errors.length ? `, ${errors.length} errores JS` : ", sin errores JS");
 fs.writeFileSync(`${OUT}/results.json`, JSON.stringify({ results, errors }, null, 1));
