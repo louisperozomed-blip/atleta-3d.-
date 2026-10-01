@@ -59,7 +59,7 @@
     if (curRes && curRes.att.ai && curRes.att.ai.onResult) curRes.att.ai.onResult(curRes.a, e); }
   // aviso sobre el personaje de lo que acaba de pasar (¡PARRY!, BLOQUEO...): así se ve si ha salido
   const FB = {
-    parry: ["PARRY", "#ffe08a", "who"], block: ["BLOQUEO", "#b8d8ff", "who"], guardbreak: ["GUARDIA ROTA", "#ff6a4a", "who"],
+    parry: ["PARRY", "#9cc9ff", "who"], block: ["BLOQUEO", "#c4c4c4", "who"], guardbreak: ["GUARDIA ROTA", "#ff6a4a", "who"],
     counter: ["¡CONTRA!", "#ffd34a", "from"], mikiri: ["¡CONTRAATAQUE!", "#ffd34a", "who"], grab: ["¡ATRAPADO!", "#ff6a4a", "who"],
     evade: ["ESQUIVA", "#9fe8c8", "who"], playerPostureBreak: ["POSTURA ROTA", "#ff8a5a", "who"], stun: ["ATURDIDO", "#fff3b0", "who"], deathblow: ["¡REMATE!", "#ffb070", "who"],
   };
@@ -77,13 +77,23 @@
     if (e.ev === "parry" && e.level === "perfect") { el.textContent = "¡PERFECTO!"; el.style.color = "#ffd34a"; el.classList.add("gold"); }
     if (e.ev === "evade" && e.how === "jump") el.textContent = "¡SALTO!";
     if (e.ev === "mikiri") el.classList.add("gold");
-    document.getElementById("wrap").appendChild(el);
-    pops.push({ el, f, t: 0 });
+    addPop(el, f);
   }
-  function el0(txt, col, f) {
+  // varios textos sobre el mismo luchador: los anteriores suben una fila (no se pisan);
+  // «replace» quita los que nombra (¡DOBLE PERFECTO! sustituye a los ¡PERFECTO! recientes)
+  function addPop(el, f, replace) {
+    for (let i = pops.length - 1; i >= 0; i--) {
+      const q = pops[i]; if (q.f !== f) continue;
+      if (replace && replace.test(q.el.textContent) && q.t < 0.6) { q.el.remove(); pops.splice(i, 1); continue; }
+      if (q.t < 0.6) q.row = (q.row || 0) + 1;
+    }
+    document.getElementById("wrap").appendChild(el); pops.push({ el, f, t: 0, row: 0 });
+  }
+  function el0(txt, col, f, replace) {
     if (!hud) return;
     const el = document.createElement("div"); el.className = "cpop"; el.textContent = txt; el.style.color = col;
-    document.getElementById("wrap").appendChild(el); pops.push({ el, f, t: 0 });
+    if (/PERFECTO/.test(txt)) el.classList.add("gold");
+    addPop(el, f, replace);
   }
   W.combatPop = el0;
   function updatePops(dt) {
@@ -91,7 +101,8 @@
       const q = pops[i]; q.t += dt;
       if (q.t > 0.9) { q.el.remove(); pops.splice(i, 1); continue; }
       const b = q.f.body, s = W.toScreen(b.x, b.y + (q.f.ch && q.f.ch.height || W.CHAR_H) * 1.35, b.z);
-      q.el.style.left = s[0] + "px"; q.el.style.top = (s[1] - q.t * 26) + "px";
+      q.el.style.left = s[0] + "px"; q.ry = (q.ry || 0) + ((q.row || 0) * 22 - (q.ry || 0)) * Math.min(1, dt * 18);   // sube suave a su fila
+      q.el.style.top = (s[1] - q.t * 26 - q.ry) + "px";
       q.el.style.opacity = q.t < 0.6 ? 1 : 1 - (q.t - 0.6) / 0.3;
       q.el.style.transform = "translate(-50%,-100%) scale(" + (q.t < 0.08 ? 0.6 + q.t * 5 : 1) + ")";
     }

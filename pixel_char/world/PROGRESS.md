@@ -1449,3 +1449,10 @@ impactos a 400 ms: dos parries sin penalización; golpe por la espalda desviado 
 golpe fuera de pantalla con la flecha en el borde; «2 + eco» también con máx. 2 atacando. Regresión: autómata 21/21,
 parry 50/50, duelo 22/22, combate con el eco 31/31. Capturas: `review/combate_completo/E7_*.png` (en la del doble
 perfecto se pisan «¡PERFECTO!» y «¡DOBLE PERFECTO!»: lo resuelve el rediseño de avisos de la etapa 8).
+
+### Limpieza rápida (tras la maqueta de la etapa 8)
+- Textos de combate sin solaparse: si llegan varios sobre el mismo luchador, los anteriores suben una fila con suavidad.
+  «¡DOBLE/TRIPLE PERFECTO!» sustituye a los «¡PERFECTO!»/«PARRY» recientes en vez de pintarse encima
+  (`review/combate_completo/E7b_doble_perfecto_sin_solape.png`).
+- Colores de defensa como en la maqueta: PERFECTO dorado, PARRY normal azul, BLOQUEO gris.
+- Pruebas: multi-parry 11/11, parry/riposte 8/8, botón de guardia (móvil y escritorio) correcto.

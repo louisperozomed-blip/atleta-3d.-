@@ -86,7 +86,7 @@
     M.done = true;
     const n = M.list.length, all = M.list.every((x) => x.perfect), p = W.pf;
     log({ ev: "multiParry", n, perfect: all, levels: M.list.map((x) => (x.perfect ? "perfect" : "normal")) });
-    if (!all) { if (W.combatPop) W.combatPop(n === 2 ? "DOBLE PARRY" : "TRIPLE PARRY", "#ffe08a", p); return; }
+    if (!all) { if (W.combatPop) W.combatPop(n === 2 ? "DOBLE PARRY" : "TRIPLE PARRY", "#ffe08a", p, /PARRY|DESV/); return; }
     // DOBLE / TRIPLE PERFECTO: estallido dorado radial, cámara lenta, todos desequilibrados y bonus de postura
     const b = p.body, FX = W.combatFx;
     for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8; W.fx.dust(b.x + Math.cos(a) * 0.5, b.y + 1.0, b.z + Math.sin(a) * 0.5, 5, { pal: FX.GOLD, spd: 3.2, up: 1.4, life: 0.6 }); }
@@ -94,7 +94,7 @@
     if (W.slowmo) W.slowmo(G.slow[0], G.slow[1]);
     if (W.duelFlash) W.duelFlash(0.5);
     if (W.sfx) W.sfx.combat("multiPerfect", n);
-    if (W.combatPop) W.combatPop(n === 2 ? "¡DOBLE PERFECTO!" : "¡TRIPLE PERFECTO!", "#ffd34a", p);
+    if (W.combatPop) W.combatPop(n === 2 ? "¡DOBLE PERFECTO!" : "¡TRIPLE PERFECTO!", "#ffd34a", p, /PERFECTO|PARRY/);
     for (const x of M.list) {
       const f = x.att; if (!f.alive) continue;
       f.addPosture(G.mpBonus, { noBreak: false });
