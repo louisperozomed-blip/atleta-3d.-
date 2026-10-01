@@ -4,12 +4,22 @@
 // 1.4 veces la altura del personaje, pies anclados y sombras como el personaje, ojo cian emisivo con una
 // luz puntual que ilumina un poco su entorno (y lo delata en la oscuridad).
 //
-// Comportamiento (pesado y amenazante, pero legible):
+// Comportamiento (un duelista: pesado y amenazante, pero legible y justo):
 //   · patrulla lenta (walk) alrededor de su punto; al ver al jugador (8 u, o si le ataca) se acerca
 //     corriendo (run) por A* y se para a distancia de golpe
-//   · ataques: attack1 = zarpazo rápido, attack2 = barrido amplio (arco de 115°). Antes de cada uno, una
-//     preparación larga (×1.9 más lenta, ajustable) con el ojo parpadeando fuerte, un destello y un zumbido
-//     grave: se puede leer y desviar
+//   · ataca en CADENAS de 2-4 golpes (attack1 = zarpazo, attack2 = barrido amplio) con ritmos distintos
+//     (rápido-rápido-lento, lento-pausa-rápido...). Cada golpe tiene un plan en dos tiempos:
+//       CARGA (el ojo parpadea: aviso) → [RETENCIÓN: ojo fijo encendido, solo en los retrasados] →
+//       SUELTA (destello del ojo + chasquido: el golpe llega en 0.36-0.46 s) → impacto
+//     preparación visible ≥ 350 ms siempre; avisos más evidentes cuanto más fuerte es el golpe
+//   · trucos (como mucho uno por cadena y nunca en dos cadenas seguidas): golpe retrasado (castiga pulsar de
+//     memoria) o finta (corta la carga y cambia de golpe)
+//   · ataques PELIGROSOS (aviso rojo + sonido grave; no se desvían ni se bloquean), cada uno con su pose y su
+//     respuesta: BARRIDO bajo (agachado; se salta, y en el aire se contraataca), ESTOCADA (encogido y lanzado;
+//     esquivar HACIA él en el momento justo = contraataque que le quita mucha postura) y AGARRE (brazos en alto;
+//     se esquiva de lado)
+//   · nunca ataca si estás en el suelo o encajando un golpe; tras cada cadena, ventana de castigo clara (se
+//     queda resoplando: ni ataca ni se defiende)
 //   · defensa ante los golpes del jugador (dificultad del panel): a veces bloquea (block) y a veces hace
 //     parry (sobre todo si el jugador repite el mismo ataque); su parry quita postura al jugador
 //   · esquiva (dodge) de lado cuando está bajo de vida o tras encajar un combo
@@ -31,7 +41,37 @@
       // post = postura que gana al desviárselo (NORMAL; PERFECTO ×1.33): 18-24 y 21-28, + racha en la cadena
       attack1: { dmg: 18, reach: 2.2, arc: 75, stop: 0.09, kb: 0.45, post: 18 },
       attack2: { dmg: 26, reach: 2.5, arc: 115, stop: 0.12, kb: 0.7, heavy: true, post: 21 },
+      // peligrosos: no se desvían ni se bloquean; perilous = la respuesta correcta
+      sweep: { dmg: 24, reach: 2.7, arc: 150, stop: 0.12, kb: 0.8, heavy: true, perilous: "jump", post: 0 },
+      thrust: { dmg: 26, reach: 1.75, arc: 35, stop: 0.13, kb: 0.9, heavy: true, perilous: "mikiri", mikiriPost: 42, post: 0 },
+      grab: { dmg: 30, reach: 2.15, arc: 70, stop: 0.15, kb: 1.3, heavy: true, perilous: "side", throw: true, post: 0 },
     },
+    // golpes: animación, pose (frames de otras hojas), aviso (1 leve, 2 fuerte, 3 peligroso) y tiempo de SUELTA (s)
+    moves: {
+      attack1: { anim: "attack1", level: 1, rel: 0.36, want: 1.55 },
+      attack2: { anim: "attack2", level: 2, rel: 0.4, want: 1.75 },
+      sweep: { anim: "attack2", level: 3, rel: 0.46, want: 1.6, cap: 1.3, track: true, crouch: 0.2 },
+      thrust: { anim: "attack1", level: 3, rel: 0.46, want: 0.95, cap: 2.3, seek: 4.4, lungeFrom: "release",
+        show: [["dodge", 0], ["dodge", 1], ["dodge", 2], ["dodge", 3], ["dodge", 4], ["attack1", 5]] },
+      grab: { anim: "attack1", level: 3, rel: 0.46, want: 1.2, cap: 2.4, track: true, seek: 4.4,
+        show: [["block", 0], ["block", 1], ["parry", 1], ["attack1", 3], ["attack1", 4], ["attack1", 5]] },
+    },
+    wind: { f: 0.12, n: 0.32, s: 0.55, feint: 0.16 },   // carga según el ritmo (rápido, normal, lento)
+    hold: [0.32, 0.5],                                  // retención de un golpe retrasado
+    // cadenas: [golpe, ritmo, pausa desde la recuperación del anterior (s)]
+    chains: [
+      { id: "rrl", name: "rápido-rápido-lento", w: 3, steps: [["attack1", "f", 0], ["attack1", "f", 0.05], ["attack2", "s", 0.2]] },
+      { id: "lpr", name: "lento-pausa-rápido", w: 3, steps: [["attack2", "s", 0], ["attack1", "f", 0.6]] },
+      { id: "dos", name: "zarpazo y barrido", w: 3, steps: [["attack1", "n", 0], ["attack2", "n", 0.1]] },
+      { id: "cuatro", name: "cuatro golpes", w: 2, steps: [["attack1", "f", 0], ["attack1", "n", 0.08], ["attack2", "f", 0.25], ["attack1", "s", 0.05]] },
+      { id: "barrido", name: "zarpazo y barrido bajo", w: 1.2, steps: [["attack1", "n", 0], ["sweep", "n", 0.2]] },
+      { id: "estocada", name: "barrido y estocada", w: 1.2, steps: [["attack2", "n", 0], ["thrust", "n", 0.3]] },
+      { id: "agarre", name: "zarpazo y agarre", w: 1.2, steps: [["attack1", "f", 0], ["grab", "n", 0.25]] },
+    ],
+    trick: 0.4,                  // probabilidad de un truco (retraso o finta) en una cadena
+    vent: 0.95,                  // ventana de castigo tras cada cadena (resopla: ni ataca ni se defiende)
+    pause: [0.9, 1.6],           // pausa entre cadenas
+    lastRecK: 0.7,               // la recuperación del último golpe de la cadena, más lenta
     eyeLight: { color: 0x5fe8ff, intensity: 0.9, distance: 4.5 },
   });
   let seed = 4242;
@@ -62,6 +102,7 @@
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex(), color: 0x7ff0ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.6 }));
     halo.scale.set(0.9, 0.9, 1); halo.renderOrder = 4; W.scene.add(halo); f.eyeHalo = halo;
     f.ai = makeAI(f);
+    f.onPhase = (a, ph) => onPhase(f, a, ph);
     f.fade = 1; f.deadT = 0;
     ch.onStep = (e, kind, P) => heavyStep(f, e, kind, P);
     return f;
@@ -111,16 +152,19 @@
   function makeAI(f) {
     return {
       enabled: true, state: "patrol", t: 0, replan: 0, cool: 1.2, idleT: 0, warnT: -1, pending: null,
-      hold: 0, playerSeq: [], lastHits: [],
+      hold: 0, playerSeq: [], lastHits: [], chain: null, chainN: 0, vent: 0, lastTrick: false, forced: null,
       update(dt) {
         const b = f.body, pl = W.pf, D = W.ENEMY_DIFF;
         this.t += dt;
         if (this.warnT >= 0) this.warnT += dt;
+        if (this.vent > 0) this.vent = Math.max(0, this.vent - dt);
         if (!this.enabled || !f.alive || !pl) return;
         // reacciones programadas (bloqueo, parry, esquiva)
         if (this.pending && this.t >= this.pending.at) { const q = this.pending; this.pending = null; this.react(q); }
         if (this.hold > 0) { this.hold -= dt; if (this.hold <= 0 && f.act && f.act.name === "block") f.guardHeld = false; }
-        if (f.act) return;
+        // cadena en curso: el siguiente golpe sale en la recuperación del anterior (con su pausa)
+        if (this.chain) this.runChain(dt);
+        if (f.act || this.chain) return;
         const dx = pl.body.x - b.x, dz = pl.body.z - b.z, d = Math.hypot(dx, dz), toP = Math.atan2(dz, dx);
         const fromHome = Math.hypot(b.x - f.home.x, b.z - f.home.z);
         const plHome = Math.hypot(pl.body.x - f.home.x, pl.body.z - f.home.z);
@@ -144,15 +188,9 @@
           return;
         }
         // persecución y combate
-        this.cool -= dt * D.react;
+        if (this.vent <= 0) this.cool -= dt;
         if (d < 3.6) b.heading += norm(toP - b.heading) * Math.min(1, dt * 5);
-        if (this.cool <= 0 && d <= 2.5 && pl.alive) {
-          b.stop(); b.heading = toP;
-          const wide = d > 1.9 ? rand() < 0.7 : rand() < 0.3;
-          this.attack(wide ? "attack2" : "attack1", toP);
-          this.cool = (1.3 + rand() * 0.9 + (wide ? 0.4 : 0));
-          return;
-        }
+        if (this.cool <= 0 && this.vent <= 0 && d <= 2.6 && this.canStrike()) { b.stop(); b.heading = toP; this.startChain(this.pickChain(d)); return; }
         if (d > 1.9) {
           this.replan -= dt;
           if (this.replan <= 0 || !b.path.length) {
@@ -168,19 +206,97 @@
         this.replan -= 1 / 60;
         if (this.replan <= 0 || !b.path.length) { this.replan = 0.6; const p = W.findPath(b.x, b.z, x, z, 12000); if (p.length) { b.setPath(p, { noDelay: true }); b.gait = gait; } }
       },
-      attack(name, dir) {
-        f.startAttack(name, { dir });
-        // aviso: el ojo parpadea fuerte durante la preparación (update del tipo), destello y zumbido grave
-        this.warnT = 0; this.warnKind = name;
-        const e = eyeWorld(f);
-        if (W.combatStar) W.combatStar(e.p.x, e.p.y, e.p.z, name === "attack2" ? 1.1 : 0.85, 0x9ff4ff, 0.35);
-        if (W.sfx) W.sfx.combat(name === "attack2" ? "chargeHeavy" : "charge");
-        W.combatLog.push({ ev: "warn", who: f.name, anim: name, t: +W.U.uTime.value.toFixed(3) });
+      // ---- cadenas -------------------------------------------------------------------------------------
+      // nunca ataca si estás en el suelo o encajando un golpe
+      canStrike() { const p = W.pf; return !!p && p.alive && !(p.act && (p.act.name === "hit" || p.act.name === "death")); },
+      pauseK() { return 1 - 0.25 * Math.max(-1.2, Math.min(1, this.adapt || 0)); },   // dificultad adaptativa (etapa 4)
+      pickChain(d) {
+        const L = CFG.chains;
+        if (this.forced) { const c = L.find((x) => x.id === this.forced); if (c) return c; }
+        let tot = 0; for (const c of L) tot += c.w;
+        let r = rand() * tot;
+        for (const c of L) { r -= c.w; if (r <= 0) return c; }
+        return L[0];
       },
+      startChain(def) {
+        // pasos: {m, r, gap, delay, feint}; como mucho un truco por cadena y nunca en dos cadenas seguidas
+        const steps = def.steps.map(([m, r, gap]) => ({ m, r, gap }));
+        let trick = null;
+        const pT = CFG.trick * (1 + 0.5 * Math.max(0, this.adapt || 0));
+        if (!this.lastTrick && !this.noTricks && (this.forcedTrick || rand() < pT)) {
+          const kind = this.forcedTrick || (rand() < 0.5 ? "delay" : "feint");
+          const cand = steps.map((s, i) => i).filter((i) => !CFG.attacks[steps[i].m].perilous);
+          if (cand.length) {
+            const i = cand[Math.floor(rand() * cand.length)];
+            if (kind === "delay") steps[i].delay = CFG.hold[0] + rand() * (CFG.hold[1] - CFG.hold[0]);
+            else steps[i].feint = steps[i].m === "attack1" ? "attack2" : "attack1";
+            trick = { kind, step: i };
+          }
+        }
+        this.lastTrick = !!trick;
+        this.chain = { uid: ++this.chainN, id: def.id, steps, i: 0, readyT: null, trick, t0: this.t };
+        W.combatLog.push({ ev: "chainStart", who: f.name, chain: def.id, uid: this.chain.uid, steps: steps.map((s) => s.m + (s.delay ? "(retrasado)" : "") + (s.feint ? "(finta→" + s.feint + ")" : "")), t: +W.U.uTime.value.toFixed(3) });
+        this.strike(steps[0].m, steps[0].r, steps[0]);
+      },
+      endChain(clean) {
+        const C = this.chain; if (!C) return;
+        this.chain = null;
+        // ventana de castigo: resopla (ni ataca ni se defiende) y luego una pausa antes de la siguiente cadena
+        if (clean && f.alive) this.vent = CFG.vent;
+        this.cool = (CFG.pause[0] + rand() * (CFG.pause[1] - CFG.pause[0])) * this.pauseK();
+        W.combatLog.push({ ev: "chainEnd", who: f.name, chain: C.id, uid: C.uid, clean, t: +W.U.uTime.value.toFixed(3) });
+      },
+      runChain(dt) {
+        const C = this.chain, a = f.act;
+        if (!f.alive || f.stunned || !W.pf.alive) return this.endChain(false);
+        if (a && a.name === "hit") { if (!a.recoil) return this.endChain(false); C.readyT = this.t; return; }   // desviado: retrocede y sigue
+        if (a && a.name === "dodge") return;
+        if (a && a.name.startsWith("attack")) {
+          const st = C.steps[C.i], P = a.plan;
+          // finta: al terminar la carga, corta y cambia de golpe
+          if (st.feint && !C.feinted && P && P.feintNow) {
+            C.feinted = true; f.act = null;
+            W.combatLog.push({ ev: "feint", who: f.name, from: st.m, to: st.feint, chain: C.id, t: +W.U.uTime.value.toFixed(3) });
+            f.eyeBlink = 0.09;
+            this.strike(st.feint, "feint", st, true);
+            return;
+          }
+          if (a.f < 4) return;
+          if (C.i + 1 >= C.steps.length) { a.speed = CFG.lastRecK; return; }   // último golpe: recuperación más lenta
+          if (C.readyT == null) C.readyT = this.t;
+        } else if (a) return;
+        if (C.i + 1 >= C.steps.length) { if (!a) this.endChain(true); return; }
+        if (C.readyT == null) C.readyT = this.t;
+        const nx = C.steps[C.i + 1];
+        if (this.t - C.readyT < nx.gap * this.pauseK()) return;
+        if (!this.canStrike()) { if (this.t - C.readyT > 1.2) this.endChain(false); return; }
+        f.act = null; C.i++; C.readyT = null; C.feinted = false;
+        this.strike(nx.m, nx.r, nx);
+      },
+      // un golpe con su plan: CARGA (ojo parpadeando) → RETENCIÓN (si va retrasado) → SUELTA → impacto
+      strike(m, rhythm, step, afterFeint) {
+        const mv = CFG.moves[m], pl = W.pf, b = f.body;
+        const toP = Math.atan2(pl.body.z - b.z, pl.body.x - b.x);
+        b.stop(); b.heading = toP;
+        const plan = { wind: CFG.wind[rhythm] || CFG.wind.n, hold: step && step.delay && !afterFeint ? step.delay : 0, rel: mv.rel, feint: !!(step && step.feint && !afterFeint) };
+        f.startAttack(mv.anim, { dir: toP, plan, move: m, show: mv.show, crouch: mv.crouch, want: mv.want, cap: mv.cap, seek: mv.seek, lungeFrom: mv.lungeFrom, track: mv.track });
+        const a = f.act; a.level = mv.level; a.chainId = this.chain ? this.chain.uid : null;
+        this.warnT = 0; this.warnKind = m;
+        // aviso: más evidente cuanto más fuerte es el golpe (rojo en los peligrosos)
+        const e = eyeWorld(f), red = mv.level >= 3;
+        if (W.combatStar) W.combatStar(e.p.x, e.p.y, e.p.z, [0.85, 1.1, 1.4][mv.level - 1], red ? 0xff3a2a : 0x9ff4ff, red ? 0.5 : 0.35);
+        if (W.sfx) W.sfx.combat(red ? "perilous" : mv.level === 2 ? "chargeHeavy" : "charge");
+        if (red && W.combatPop) W.combatPop("¡PELIGRO!", "#ff4a3a", f);
+        W.combatLog.push({ ev: "warn", who: f.name, anim: mv.anim, move: m, level: mv.level, chain: this.chain ? this.chain.id : null,
+          step: this.chain ? this.chain.i : 0, wind: plan.wind, hold: +plan.hold.toFixed(3), rel: plan.rel, prep: +(plan.wind + plan.hold + plan.rel).toFixed(3), t: +W.U.uTime.value.toFixed(3) });
+      },
+      // un golpe suelto (pruebas y compatibilidad)
+      attack(name, dir) { this.chain = { uid: ++this.chainN, id: "suelto", steps: [{ m: name, r: "n", gap: 0 }], i: 0, readyT: null }; this.strike(name, "n", null); },
       // el jugador empieza un ataque cerca: decidir (con el tiempo de reacción de la dificultad)
       onPlayerAttack(act) {
         const pl = W.pf, b = f.body, D = W.ENEMY_DIFF;
         if (!f.alive || this.state !== "chase" && this.state !== "patrol") return;
+        if (this.vent > 0) return;                                        // resoplando: ventana de castigo
         const d = Math.hypot(pl.body.x - b.x, pl.body.z - b.z);
         if (d > 3.4) return;
         // en mitad del tambaleo (tras encajar golpes) solo puede esquivar
@@ -237,19 +353,51 @@
   }
   function onFrame(f, a) {
     if (a.name === "hit" && a.f === 0 && f.ai) f.ai.lastHits.push(f.ai.t);
-    if (a.name.startsWith("attack") && a.f === 2 && W.sfx) W.sfx.combat(a.name === "attack2" ? "swingHeavy" : "swing");
+    if (a.name.startsWith("attack") && a.f === 2 && W.sfx) W.sfx.combat(a.name === "attack2" || (a.level || 0) >= 2 ? "swingHeavy" : "swing");
+    if (a.name.startsWith("attack") && a.f === 3 && a.move === "sweep" && W.fx) {
+      // barrido bajo: tierra a ras de suelo a lo largo del arco
+      const b = f.body;
+      for (let k = -2; k <= 2; k++) { const h = b.heading + k * 0.45, x = b.x + Math.cos(h) * 1.6, z = b.z + Math.sin(h) * 1.6; W.fx.dust(x, W.heightAt(x, z), z, 5, { spd: 1.4, up: 0.5, life: 0.4 }); }
+    }
     if (a.name === "death" && a.f === 3 && W.sfx) W.sfx.combat("death");
+  }
+  // fases del plan de un golpe: retención (ojo fijo) y suelta (destello + chasquido: llega en rel s)
+  function onPhase(f, a, ph) {
+    const lvl = a.level || 1, red = lvl >= 3;
+    if (ph === "hold") { W.combatLog.push({ ev: "hold", who: f.name, move: a.move, t: +W.U.uTime.value.toFixed(3) }); return; }
+    if (ph === "release") {
+      f.relFlash = 1;
+      const e = eyeWorld(f);
+      if (W.combatStar) W.combatStar(e.p.x, e.p.y, e.p.z, 0.55 + 0.3 * lvl, red ? 0xff5040 : 0xd8fbff, 0.22);
+      if (W.sfx) W.sfx.combat("release", lvl);
+      W.combatLog.push({ ev: "release", who: f.name, move: a.move, level: lvl, rel: a.plan.rel, t: +W.U.uTime.value.toFixed(3) });
+    }
   }
   function update(f, dt) {
     const ch = f.ch, U = ch.uniforms, ai = f.ai;
     // ojo: parpadeo fuerte durante la preparación del ataque (aviso)
     let k = 1;
-    const a = f.act;
+    const a = f.act, tt = ai ? ai.t : 0;
+    let red = false;
+    f.relFlash = Math.max(0, (f.relFlash || 0) - dt / 0.18);
     if (a && a.name.startsWith("attack") && a.f < 3) {
-      const tt = ai ? ai.t : 0;
-      k = 1.6 + 1.8 * (0.5 + 0.5 * Math.sign(Math.sin(tt * 2 * Math.PI * 7)));
+      const P = a.plan;
+      red = (a.level || 0) >= 3;
+      if (!P || P.t < P.wind) k = 1.6 + 1.8 * (0.5 + 0.5 * Math.sign(Math.sin(tt * 2 * Math.PI * (red ? 9 : 7))));   // CARGA: parpadea
+      else if (P.t < P.wind + P.hold) k = 3.4;                                                                      // RETENCIÓN: fijo
+      else k = 3.0 + 3.0 * f.relFlash;                                                                             // SUELTA: destello
+    } else if (a && a.name.startsWith("attack") && (a.level || 0) >= 3) red = true;
+    if (a && a.name === "stun") k = 0.5 + 0.4 * Math.sin(tt * 10);
+    if (f.eyeBlink > 0) { f.eyeBlink -= dt; k = 0.25; }                                                           // finta: se apaga un instante
+    // resoplando tras la cadena (ventana de castigo): ojo apagado y vapor
+    if (ai && ai.vent > 0 && !a) {
+      k = 0.45;
+      if (W.fx && Math.floor(tt * 8) !== Math.floor((tt - dt) * 8)) { const b = f.body; W.fx.dust(b.x, b.y + W.CHAR_H * 1.15, b.z, 2, { pal: [[0.8, 0.82, 0.85], [0.65, 0.68, 0.72]], spd: 0.2, up: 0.8, life: 0.9 }); }
     }
-    if (a && a.name === "stun") k = 0.5 + 0.4 * Math.sin((ai ? ai.t : 0) * 10);
+    const col = U.uEyeCol.value, want = red ? [1.0, 0.22, 0.14] : [0.35, 0.95, 1.0];
+    col.set(want[0], want[1], want[2]);
+    if (f.eyeLight) f.eyeLight.color.setRGB(want[0], want[1], want[2]);
+    if (f.eyeHalo) f.eyeHalo.material.color.setRGB(red ? 1 : 0.5, red ? 0.35 : 0.94, red ? 0.3 : 1);
     if (!f.alive) k = Math.max(0, 1 - f.deadT / 1.2);
     U.uEyeK.value = k;
     // luz del ojo: sigue al ojo; más fuerte en el aviso; se apaga al morir
@@ -286,7 +434,7 @@
     f.respawn(f.home.x, f.home.z); f.body.heading = f.home.heading;
     f.deadT = 0; f.fade = 1; f.hidden = false; f.ch.uniforms.uFade.value = 1;
     const ch = f.ch; ch.mesh.visible = ch.caster.visible = ch.blob.visible = ch.ghost.visible = true;
-    if (f.ai) { f.ai.state = "patrol"; f.ai.cool = 1.2; f.ai.pending = null; f.ai.hold = 0; f.ai.warnT = -1; }
+    if (f.ai) { f.ai.state = "patrol"; f.ai.cool = 1.2; f.ai.pending = null; f.ai.hold = 0; f.ai.warnT = -1; f.ai.chain = null; f.ai.vent = 0; f.ai.lastTrick = false; }
   }
   function remove(f) { if (f.eyeLight) { f.eyeLight.intensity = 0; W.scene.remove(f.eyeLight); } if (f.eyeHalo) W.scene.remove(f.eyeHalo); }
 

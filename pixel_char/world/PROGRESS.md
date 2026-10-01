@@ -765,3 +765,46 @@ afectan las mecánicas del jugador, no su IA.
   - que con el 30 % de vida la recuperación es de 6 frente a 22.
 - **Regresión**: autómata 21/21 (con las expectativas nuevas: +18/+21 por parry, aturdido al desviar una cadena
   entera) y eco 31/31.
+
+## Etapa 3 — El autómata ataca como un duelista
+- **Plan de cada golpe** (`act.plan`, `Fighter.update`): **CARGA** (frames 0-1; el ojo parpadea) → **RETENCIÓN**
+  (solo en los retrasados: frame 1 fijo, ojo FIJO encendido) → **SUELTA** (frame 2; destello del ojo + chasquido
+  metálico) → impacto. La SUELTA dura 0.36 s (zarpazo), 0.40 s (barrido) o 0.46 s (peligrosos): es la señal que se
+  puede leer siempre. Carga según el ritmo: rápida 0.12 s, normal 0.32 s, lenta 0.55 s.
+- **Cadenas** (`W.AUTOMATON.chains`), de 2 a 4 golpes, cada una con sus ritmos y pausas:
+  - rápido-rápido-lento (a1 a1 a2);
+  - lento-pausa-rápido (a2 … a1);
+  - zarpazo y barrido (a1 a2);
+  - cuatro golpes (a1 a1 a2 a1);
+  - y tres con un peligroso al final: barrido bajo, estocada y agarre.
+
+  El siguiente golpe sale en la recuperación del anterior, más su pausa. Desviar una cadena entera suena «clin-clin-clin», y cada desvío suma racha de postura (etapa 2).
+- **Trucos** (40 %, como mucho uno por cadena y nunca en dos cadenas seguidas):
+  - *retraso*: retiene la carga 0.32-0.5 s con el ojo fijo, y castiga a quien pulsa de memoria;
+  - *finta*: al acabar la carga corta, sin destello de suelta, y cambia a otro golpe que vuelve a avisar con su preparación completa (≥ 0.52 s).
+- **Ataques peligrosos** (aviso ROJO: el ojo, su luz y el destello se vuelven rojos, «¡PELIGRO!» y una bocina
+  grave; no se desvían ni se bloquean). Se distinguen por la pose, hecha con frames de otras hojas y efectos por
+  código:
+  - **BARRIDO bajo**: hoja attack2, agachado ×0.8 y tierra a ras de suelo. Persigue al jugador, así que se **salta**; si lo saltas, en el aire puedes lanzar un golpe de salto que no se defiende (×1.6).
+  - **ESTOCADA**: frames de la esquiva, encogido y lanzándose 2.3 u. Si **esquivas HACIA él** en tus frames invulnerables, le pisas la estocada: +42 de postura, retrocede y abres ventana de contraataque. Cualquier otra esquiva a tiempo solo la evita.
+  - **AGARRE**: frames de bloqueo, con los brazos en alto, y persigue hasta 2.4 u. Se **esquiva de lado**; hacia atrás, saltando o con la guardia te atrapa y te lanza (30, tambaleo largo).
+- **Reglas de justicia**:
+  - preparación visible ≥ 350 ms en todo golpe (mínimo real 0.48 s);
+  - avisos más evidentes cuanto más fuerte es el golpe: nivel 1 cian pequeño, nivel 2 cian grande con zumbido más grave, nivel 3 rojo con bocina, y la suelta más larga cuanto más fuerte;
+  - **nunca ataca** si estás en el suelo o encajando un golpe (ni empieza cadena ni sigue: si pasa más de 1.2 s, abandona la cadena);
+  - tras cada cadena, **ventana de castigo** de 0.95 s: resopla vapor, el ojo se apaga y no ataca ni se defiende. Después, una pausa de 0.9-1.6 s.
+- **Pruebas** `tests/parry2.mjs` (STAGES=1,2,3): 36/36 OK, sin errores JS. Usan un **bot de duelo** que ve la
+  suelta de cada golpe y responde con reacción humana: guardia, salto, esquiva hacia él o esquiva de lado.
+  Comprueban:
+  - longitudes de cadena de 2 a 4 golpes, y un parry por golpe al desviar la cadena entera;
+  - ritmos (preparaciones 0.48/0.48/0.95 s y 0.95/0.48 s);
+  - el golpe retrasado: ojo fijo a 3.4; de memoria → golpe, esperando la suelta → 2 parries;
+  - la finta: sin suelta falsa y el golpe nuevo con 0.52 s de preparación;
+  - los trucos de 14 cadenas: «10101010101010», nunca dos seguidas;
+  - los tres peligrosos con todas las respuestas;
+  - la justicia: preparación mínima de 0.48 s en 52+ golpes, niveles de aviso y ojo rojo, nunca ataca en tu golpe recibido ni en el suelo, y la ventana de castigo.
+- **Regresión**: autómata 21/21 (avisos nuevos fuera del filtro; con golpes sueltos, sin racha, el aturdido llega
+  en 5-6 desvíos) y eco 31/31.
+- Capturas:
+  - `review/parry2/E3_poses.png`: carga, suelta e impacto de los cinco golpes;
+  - `E3_peligro_agarre.png` y `E3_peligro_barrido.png`.

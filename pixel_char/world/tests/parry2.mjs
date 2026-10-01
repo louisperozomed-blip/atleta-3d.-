@@ -40,6 +40,49 @@ await page.evaluate(() => {
   };
   // pulsa guardia (y suelta) exactamente L s antes del impacto: la marca de tiempo coloca la pulsación entre pasos
   window.pressAt = (L, hold) => { let done = false; return (l) => { if (!done && l <= L) { W.pf.input("guardDown", { ts: performance.now() + (l - L) * 1000 }); if (!hold) W.pf.input("guardUp"); done = true; } }; };
+  // BOT de duelo: ve la SUELTA de cada golpe (destello del ojo) y responde con reacción humana (react ± jit s):
+  // golpe normal → guardia (parry); barrido → salta (y contraataca en el aire); estocada → esquiva hacia él;
+  // agarre → esquiva de lado. mode "memory": pulsa a la hora "de siempre" contando desde el aviso (sin mirar la suelta)
+  let bs = 12345; const brand = () => ((bs = (bs * 16807) % 2147483647) / 2147483647);
+  const gauss = () => { let u = 0, v = 0; while (!u) u = brand(); while (!v) v = brand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  window.Bot = {
+    on: false, react: 0.25, jit: 0, mode: "react", seen: null, seenWarn: null, pending: null, out: [], airAttack: true,
+    reset(o) { Object.assign(this, { on: true, seen: null, seenWarn: null, pending: null, out: [] }, o || {}); bs = (o && o.seed) || 12345; },
+    step() {
+      if (!this.on) return;
+      const e = E(), a = e.act, p = W.pf;
+      if (this.mode === "memory" && a && a.plan && a !== this.seenWarn) {
+        // de memoria: impacto supuesto = aviso + carga + suelta (sin retención), pulsa 0.11 s antes
+        this.seenWarn = a; const P = a.plan, startCt = W.ct - P.t / (a.speed || 1);
+        this.pending = { at: startCt + P.wind + P.rel - 0.11, move: a.move, act: a };
+      }
+      if (this.mode === "react" && a && a.plan && a.plan.released && a !== this.seen) {
+        this.seen = a; const P = a.plan, relCt = W.ct - (P.t - P.wind - P.hold) / (a.speed || 1);
+        const err = this.jit ? Math.max(-3, Math.min(3, gauss())) * this.jit : 0;
+        this.pending = { at: relCt + this.react + err, move: a.move, act: a, err };
+      }
+      if (this.pending && W.ct >= this.pending.at - 1e-9) { const q = this.pending; this.pending = null; this.respond(q); }
+      // contraataque en el aire tras saltar el barrido
+      if (this.airAttack && p.airCounterT > W.ct && W.player.jump && W.player.jump.h > 0.2 * W.CHAR_H) p.input("attack", { dir: Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x) });
+    },
+    respond(q) {
+      const e = E(), b = W.player, toE = Math.atan2(e.body.z - b.z, e.body.x - b.x), mv = q.move;
+      const kind = this.answer ? this.answer[mv] || this.answer.all : null;
+      const act = kind || (mv === "sweep" ? "jump" : mv === "thrust" ? "dodgeToward" : mv === "grab" ? "dodgeSide" : "parry");
+      if (act === "jump") { W.pf.act = W.pf.act && W.pf.act.name === "parry" ? null : W.pf.act; b.doJump(); }
+      else if (act === "dodgeToward") W.pf.input("dodge", { dir: toE });
+      else if (act === "dodgeSide") W.pf.input("dodge", { dir: toE + Math.PI / 2 });
+      else if (act === "dodgeBack") W.pf.input("dodge", { dir: toE + Math.PI });
+      else if (act === "block") { W.pf.input("guardDown"); setTimeout(() => {}, 0); this.holdUntil = W.ct + 0.8; }
+      else { W.pf.input("guardDown", { ts: performance.now() + (q.at - W.ct) * 1000 }); W.pf.input("guardUp"); }
+      this.out.push({ move: mv, act, err: q.err });
+    },
+  };
+  // simulación con el bot: n pasos
+  window.TB = (n) => { for (let i = 0; i < (n || 1); i++) { Bot.step(); if (Bot.holdUntil && W.ct > Bot.holdUntil) { W.pf.input("guardUp"); Bot.holdUntil = 0; } T(); } };
+  // pelea con la IA de cadenas: el autómata 0 ataca solo; el jugador no muere
+  window.duel = (a, d, o) => { pair(a, d || 2.0); const e = E(); e.ai.enabled = true; e.ai.state = "chase"; e.ai.cool = 0.2; e.ai.vent = 0; e.ai.forced = (o && o.chain) || null; e.ai.forcedTrick = (o && o.trick) || null; e.ai.noTricks = !!(o && o.noTricks);
+    const p = W.pf; p.hpMax = p.hp = 1e6; W.combatLog.length = 0; };
 });
 const shot = async (name) => { await page.evaluate(() => { W.skipRender = false; T(1); }); await page.screenshot({ path: `${OUT}/${name}.png` }); await page.evaluate(() => { W.skipRender = true; }); };
 
@@ -233,6 +276,146 @@ if (STAGES.includes(2)) {
   });
   check("la recuperación de postura depende de la vida (dañar su vida la frena): con 30 % de vida, < 40 % de la recuperación con vida llena",
     hp.vida_30.enemigo < 0.4 * hp.vida_llena.enemigo && hp.vida_30.jugador < 0.4 * hp.vida_llena.jugador, hp);
+}
+
+// =====================================================================================================
+// ETAPA 3 · el enemigo ataca como un duelista
+// =====================================================================================================
+if (STAGES.includes(3)) {
+  // cadenas con el bot que lo desvía todo (sin error): longitudes, golpes y ritmos
+  const ch = await page.evaluate(() => {
+    duel(0.6, 2.0, { noTricks: true }); Bot.reset({ react: 0.25, jit: 0 }); const e = E();
+    const chains = {}; let n = 0;
+    while (n < 60 * 90) { TB(); n++; if (W.combatLog.filter((x) => x.ev === "chainEnd").length >= 16) break; }
+    for (const x of W.combatLog) {
+      if (x.ev === "chainStart") chains[x.uid] = { id: x.chain, steps: x.steps, warns: [], parries: [], imp: [], clean: null };
+      if (x.ev === "chainEnd" && chains[x.uid]) chains[x.uid].clean = x.clean;
+      if (x.ev === "warn" && chains[x.chain ? Object.keys(chains).pop() : 0]) chains[Object.keys(chains).pop()].warns.push(x.move);
+      if (x.ev === "parry" && x.who === "jugador") { const c = chains[Object.keys(chains).pop()]; if (c) { c.parries.push(x.level); c.imp.push(x.t); } }
+    }
+    const all = Object.values(chains).filter((c) => c.warns.length);
+    const list = all.filter((c) => c.clean || c.warns.length === c.steps.length);     // completas (las cortadas por aturdido no cuentan)
+    return { n: list.length, planned: all.map((c) => c.steps.length), list: list.map((c) => ({ id: c.id, golpes: c.warns.join(","), desvios: c.parries.length, intervalos: c.imp.slice(1).map((t, i) => +(t - c.imp[i]).toFixed(2)) })) };
+  });
+  const lens = ch.list.map((c) => c.golpes.split(",").length);
+  check("cadenas de 2 a 4 golpes que combinan attack1 y attack2 (y a veces un peligroso)",
+    ch.n >= 8 && Math.min(...lens, ...ch.planned) >= 2 && Math.max(...lens, ...ch.planned) === 4 && ch.list.some((c) => c.golpes.includes("attack1") && c.golpes.includes("attack2")),
+    { n: ch.n, planificadas: ch.planned.join(""), completas: lens.join(""), cadenas: ch.list.map((c) => c.id + ":" + c.golpes).slice(0, 10) });
+  const normal = ch.list.filter((c) => !/sweep|thrust|grab/.test(c.golpes) && c.desvios === c.golpes.split(",").length);
+  check("desviar la cadena completa = un parry por golpe («clin-clin-clin»)", normal.length >= 4, normal.slice(0, 5).map((c) => c.id + ": " + c.desvios + " desvíos, " + c.intervalos.join("/") + " s"));
+  const rr = ch.list.filter((c) => c.intervalos.length >= 2).map((c) => Math.max(...c.intervalos) - Math.min(...c.intervalos));
+  const rhythm = await page.evaluate(() => { const r = {}; for (const id of ["rrl", "lpr"]) { duel(0.6, 2.0, { chain: id, noTricks: true }); Bot.reset({ react: 0.25 });
+    let n = 0; while (n < 60 * 8 && !W.combatLog.some((x) => x.ev === "chainEnd")) { TB(); n++; }
+    const w = W.combatLog.filter((x) => x.ev === "warn").map((x) => x.prep), imp = W.combatLog.filter((x) => x.ev === "parry").map((x) => x.t);
+    r[id] = { preparaciones: w, entre_impactos: imp.slice(1).map((t, i) => +(t - imp[i]).toFixed(2)) }; } return r; });
+  check("ritmos distintos: rápido-rápido-lento y lento-pausa-rápido",
+    rhythm.rrl.preparaciones[2] > rhythm.rrl.preparaciones[0] + 0.3 && rhythm.lpr.preparaciones[0] > rhythm.lpr.preparaciones[1] + 0.3 && rhythm.lpr.entre_impactos[0] > 1.0, rhythm);
+
+  // golpe retrasado: retiene la pose con el ojo fijo; quien pulsa de memoria falla, quien espera la suelta no
+  const dl = await page.evaluate(() => {
+    const r = {};
+    for (const mode of ["memory", "react"]) {
+      duel(0.6, 2.0, { chain: "dos", trick: "delay" }); Bot.reset({ mode, react: 0.25 }); const e = E();
+      const eye = []; let n = 0;
+      while (n < 60 * 8 && !W.combatLog.some((x) => x.ev === "chainEnd")) { TB(); n++; const a = e.act; if (a && a.plan && a.plan.held && !a.plan.released) eye.push(+e.ch.uniforms.uEyeK.value.toFixed(2)); }
+      const L = W.combatLog; const held = L.find((x) => x.ev === "hold");
+      r[mode] = { retenido: !!held, ojo_en_retencion: [...new Set(eye)], res: L.filter((x) => ["parry", "hit", "block"].includes(x.ev)).map((x) => x.ev) };
+    }
+    return r;
+  });
+  check("golpe retrasado: retiene la preparación con el ojo FIJO encendido (no parpadea)", dl.react.retenido && dl.react.ojo_en_retencion.length === 1 && dl.react.ojo_en_retencion[0] >= 3, dl.react);
+  check("el retraso castiga a quien pulsa de memoria y no a quien espera la suelta", dl.memory.res.includes("hit") && dl.react.res.filter((x) => x === "parry").length === 2, { memoria: dl.memory.res, reaccion: dl.react.res });
+
+  // finta: corta la carga y cambia de golpe, sin falsa señal de suelta; el golpe nuevo tiene su preparación completa
+  const ft = await page.evaluate(() => {
+    duel(0.6, 2.0, { chain: "dos", trick: "feint" }); Bot.reset({ react: 0.25 }); let n = 0;
+    while (n < 60 * 8 && !W.combatLog.some((x) => x.ev === "chainEnd")) { TB(); n++; }
+    const L = W.combatLog.filter((x) => x.ev !== "swing"), i = L.findIndex((x) => x.ev === "feint");
+    let j = i; while (j > 0 && L[j].ev !== "warn") j--;                  // el aviso del golpe que se finta
+    const before = L.slice(j, i), after = L.slice(i + 1), w2 = after.find((x) => x.ev === "warn");
+    return { finta: L[i] && L[i].from + "→" + L[i].to, sueltasAntes: before.filter((x) => x.ev === "release").length, avisosAntes: before.filter((x) => x.ev === "warn").length, prepDelNuevo: w2 && w2.prep,
+      res: L.filter((x) => ["parry", "hit"].includes(x.ev)).map((x) => x.ev) };
+  });
+  check("finta: corta la carga sin destello de suelta y el golpe nuevo avisa de nuevo con ≥ 350 ms", ft.finta && ft.sueltasAntes === 0 && ft.prepDelNuevo >= 0.35 && ft.res.every((x) => x === "parry"), ft);
+
+  // como mucho un truco por cadena y nunca dos cadenas seguidas con truco
+  const tr = await page.evaluate(() => {
+    const keep = W.AUTOMATON.trick; W.AUTOMATON.trick = 1; duel(0.6, 2.0); Bot.reset({ react: 0.25 }); let n = 0;
+    while (n < 60 * 120 && W.combatLog.filter((x) => x.ev === "chainStart").length < 14) { TB(); n++; }
+    W.AUTOMATON.trick = keep;
+    const seq = W.combatLog.filter((x) => x.ev === "chainStart").map((x) => x.steps.filter((s) => /retrasado|finta/.test(s)).length);
+    return seq;
+  });
+  check("como mucho un truco (retraso o finta) por cadena y nunca en dos cadenas seguidas", tr.every((k) => k <= 1) && tr.every((k, i) => !(k && tr[i + 1])) && tr.filter((k) => k).length >= 5, { trucos_por_cadena: tr.join("") });
+
+  // ataques peligrosos: la respuesta correcta los evita; guardia y parry no sirven
+  const pe = await page.evaluate(() => {
+    const r = {};
+    const run = (chain, answer) => { duel(0.6, 2.0, { chain, noTricks: true }); Bot.reset({ react: 0.25, answer }); const e = E(); const p0 = e.post, hp0 = e.hp; let n = 0;
+      while (n < 60 * 8 && !W.combatLog.some((x) => x.ev === "chainEnd")) { TB(); n++; }
+      const L = W.combatLog.filter((x) => x.move && ["sweep", "thrust", "grab"].includes(x.move) || ["mikiri", "counter", "grab"].includes(x.ev));
+      const last = W.combatLog.filter((x) => ["evade", "mikiri", "hit", "grab", "whiff", "parry", "block"].includes(x.ev) && x.who === "jugador").pop();
+      return { res: last ? last.ev + (last.how ? ":" + last.how : "") : W.combatLog.filter((x) => x.ev === "whiff").length ? "whiff" : "?", contra: W.combatLog.filter((x) => x.ev === "counter").map((x) => x.dmg), postura: Math.round(e.post - p0) };
+    };
+    r.barrido_salto = run("barrido", null); r.barrido_parry = run("barrido", { sweep: "parry" }); r.barrido_bloqueo = run("barrido", { sweep: "block" });
+    r.estocada_hacia = run("estocada", null); r.estocada_lado = run("estocada", { thrust: "dodgeSide" }); r.estocada_parry = run("estocada", { thrust: "parry" });
+    r.agarre_lado = run("agarre", null); r.agarre_atras = run("agarre", { grab: "dodgeBack" }); r.agarre_salto = run("agarre", { grab: "jump" }); r.agarre_parry = run("agarre", { grab: "parry" });
+    return r;
+  });
+  check("BARRIDO bajo: se salta (y en el aire se contraataca con daño extra); guardia y parry no sirven",
+    pe.barrido_salto.res === "evade:jump" && pe.barrido_salto.contra.length && pe.barrido_salto.contra[0] >= 30 && pe.barrido_parry.res === "hit" && pe.barrido_bloqueo.res === "hit",
+    { salto: pe.barrido_salto, parry: pe.barrido_parry.res, bloqueo: pe.barrido_bloqueo.res });
+  check("ESTOCADA: esquivar HACIA él = contraataque que le quita mucha postura; de lado solo la evita; parry no sirve",
+    pe.estocada_hacia.res === "mikiri" && pe.estocada_hacia.postura >= 40 && ["evade:dodge", "whiff", "?"].includes(pe.estocada_lado.res) && pe.estocada_lado.postura < 30 && pe.estocada_parry.res === "hit",
+    { hacia: pe.estocada_hacia, lado: pe.estocada_lado, parry: pe.estocada_parry.res });
+  check("AGARRE: se esquiva de lado; hacia atrás, saltando o con parry te atrapa",
+    ["evade:side", "whiff", "?"].includes(pe.agarre_lado.res) && pe.agarre_atras.res === "hit" && pe.agarre_salto.res === "hit" && pe.agarre_parry.res === "hit",
+    { lado: pe.agarre_lado.res, atras: pe.agarre_atras.res, salto: pe.agarre_salto.res, parry: pe.agarre_parry.res });
+  await page.evaluate(() => { duel(Math.PI * 0.75, 2.0, { chain: "agarre", noTricks: true }); W.skipRender = true; let n = 0; const e = E();
+    while (n < 400 && !(e.act && e.act.move === "grab" && e.act.plan.t > 0.2)) { T(); n++; } });
+  await shot("E3_peligro_agarre");
+  await page.evaluate(() => { duel(Math.PI * 0.75, 2.0, { chain: "barrido", noTricks: true }); let n = 0; const e = E();
+    while (n < 400 && !(e.act && e.act.move === "sweep" && e.act.plan.released)) { T(); n++; } });
+  await shot("E3_peligro_barrido");
+
+  // reglas de justicia
+  const fj = await page.evaluate(() => {
+    const keep = W.AUTOMATON.trick; W.AUTOMATON.trick = 0.6;
+    duel(0.6, 2.0); Bot.reset({ react: 0.25 }); let n = 0;
+    while (n < 60 * 150 && W.combatLog.filter((x) => x.ev === "chainEnd").length < 22) { TB(); n++; }
+    W.AUTOMATON.trick = keep;
+    const W2 = W.combatLog.filter((x) => x.ev === "warn");
+    for (const id of ["barrido", "estocada", "agarre"]) { duel(0.6, 2.0, { chain: id }); Bot.reset({ react: 0.25 }); let k = 0; while (k < 60 * 6 && !W.combatLog.some((x) => x.ev === "chainEnd")) { TB(); k++; } W2.push(...W.combatLog.filter((x) => x.ev === "warn")); }
+    return { golpes: W2.length, prepMin: Math.min(...W2.map((x) => x.prep)), sueltaMin: Math.min(...W2.map((x) => x.rel)), niveles: [...new Set(W2.map((x) => x.move + ":" + x.level + ":" + x.rel))].sort() };
+  });
+  check("justicia: preparación visible ≥ 350 ms en todos los golpes y la suelta avisa ≥ 360 ms antes", fj.golpes >= 40 && fj.prepMin >= 0.35 && fj.sueltaMin >= 0.36, fj);
+  const lv = Object.fromEntries(fj.niveles.map((s) => { const [m, l, r] = s.split(":"); return [m, { l: +l, r: +r }]; }));
+  const eyeRed = await page.evaluate(() => { duel(0.6, 2.0, { chain: "estocada", noTricks: true }); const e = E(); let red = 0, cyan = 0, n = 0;
+    while (n < 60 * 4) { T(); n++; const a = e.act; if (a && a.plan && !a.plan.done) { const c = e.ch.uniforms.uEyeCol.value; if (a.move === "thrust" && c.x > 0.9 && c.y < 0.4) red++; if (a.move === "attack2" && c.x < 0.5) cyan++; } } return { red, cyan }; });
+  check("avisos más evidentes cuanto más fuerte: zarpazo (1) < barrido (2) < peligrosos (3, ojo ROJO); la suelta avisa antes en los fuertes",
+    lv.attack1 && lv.attack2 && lv.attack1.l < lv.attack2.l && lv.attack2.l < 3 && ["sweep", "thrust", "grab"].every((m) => !lv[m] || lv[m].l === 3) && lv.attack1.r < lv.attack2.r && eyeRed.red > 10 && eyeRed.cyan > 10, { niveles: fj.niveles, ojo: eyeRed });
+  const nd = await page.evaluate(() => {
+    const r = {}, e = E(), p = W.pf;
+    duel(0.6, 2.0); let warns = 0;
+    p.start("hit", { kb: 0, kdir: 0, moved: 0, speed: 0.12 }); for (let i = 0; i < 60 * 3; i++) T();      // tambaleo largo (4 s)
+    r.golpe_recibido = W.combatLog.filter((x) => x.ev === "warn").length;
+    duel(0.6, 2.0); p.hp = 0; p.start("death", { kb: 0, kdir: 0, moved: 0 }); T(180); r.en_el_suelo = W.combatLog.filter((x) => x.ev === "warn").length; p.respawn();
+    duel(0.6, 2.0); T(180); r.de_pie = W.combatLog.filter((x) => x.ev === "warn").length;
+    return r;
+  });
+  check("nunca ataca mientras estás en el suelo o en tu animación de golpe recibido", nd.golpe_recibido === 0 && nd.en_el_suelo === 0 && nd.de_pie > 0, nd);
+  const pw = await page.evaluate(() => {
+    const D = W.ENEMY_DIFF, k = [D.parry, D.block]; D.parry = 1; D.block = 1;
+    duel(0.6, 2.0, { chain: "dos", noTricks: true }); Bot.reset({ react: 0.25 }); const e = E(); let n = 0;
+    while (n < 60 * 8 && !W.combatLog.some((x) => x.ev === "chainEnd")) { TB(); n++; }
+    const endT = W.ct; Bot.on = false; const vent = e.ai.vent; T(6); const hp0 = e.hp;
+    W.pf.act = null; W.pf.input("attack", { dir: 0.6 + Math.PI }); T(40);
+    const after = W.combatLog.slice(W.combatLog.findIndex((x) => x.ev === "chainEnd"));
+    const warnSoon = after.find((x) => x.ev === "warn");
+    D.parry = k[0]; D.block = k[1];
+    return { ventana: +vent.toFixed(2), defensa: after.filter((x) => /^foe/.test(x.ev)).map((x) => x.ev), golpe: after.some((x) => x.ev === "hit" && x.who === "autómata"), dmg: Math.round(hp0 - e.hp) };
+  });
+  check("tras cada cadena, ventana de castigo clara (~1 s resoplando: ni ataca ni se defiende)", pw.ventana >= 0.8 && pw.defensa.length === 0 && pw.golpe && pw.dmg > 0, pw);
 }
 
 const okN = results.filter((r) => r.ok).length;

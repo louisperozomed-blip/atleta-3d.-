@@ -17,6 +17,9 @@
 //    + calibración de latencia (W.COMBAT.calib, ms): desplaza la ventana para pantallas táctiles lentas
 //  · bloqueo: mantener guardia; el daño se reduce y gasta stamina; sin stamina la guardia se rompe
 //  · esquiva: invulnerable en los frames DASH; cancela un ataque después de su frame de impacto
+//  · plan de golpe (enemigos): CARGA (frames 0-1) → RETENCIÓN (frame 1 fijo) → SUELTA (frame 2) → impacto, con
+//    duraciones propias (act.plan = {wind, hold, rel}); avisa de las fases con this.onPhase(act, "hold"|"release")
+//  · tras saltar un barrido, contraataque en el aire (airCounterT)
 (function () {
   "use strict";
   const W = (window.W = window.W || {});
@@ -83,6 +86,7 @@
       this.buf = null;                              // entrada en el búfer {type, t, data}
       this.guardHeld = false; this.guardT = -9; this.lastGuardT = -9; this.pen = 0;   // guardT, lastGuardT: en W.ct
       this.counterT = 0;                            // fin de la ventana de contraataque (W.ct)
+      this.airCounterT = 0;                         // fin de la ventana de contraataque en el aire (W.ct)
       this.flash = 0; this.time = 0;
       this.prepK = o.prepK || 1;                    // >1: preparación de los ataques más lenta (enemigo)
       this.cm = o.meta || null;                     // meta de animaciones propio (enemigos)
@@ -102,6 +106,8 @@
     toImpact() {
       const a = this.act;
       if (!a || !a.name.startsWith("attack") || a.f >= 3) return null;
+      const P = a.plan;
+      if (P && !P.done) return (P.wind + P.hold + P.rel - P.t) / (a.speed || 1);
       const c = cumOf(this.M(), a.name);
       return (c[3] - (a.tt || 0)) * (a.slow || 1) / (a.speed || 1);
     }
@@ -131,7 +137,8 @@
     }
     // ¿se puede empezar esa acción ahora?
     can(type) {
-      if (!this.alive || this.body.jump) return false;
+      if (!this.alive) return false;
+      if (this.body.jump) return type === "attack" && this.airCounterT > W.ct;   // contraataque en el aire
       const a = this.act;
       if (type === "jump") return !a;
       if (!a) {
@@ -156,6 +163,12 @@
       return false;
     }
     doAction(type, data, t0) {
+      if (type === "attack" && this.body.jump) {
+        // contraataque en el aire tras saltar un barrido: golpe de salto (attack3) que no se puede defender
+        this.body.jump = null; this.airCounterT = 0; this.counterT = W.ct + 0.1;
+        this.startAttack("attack3", data); this.act.air = true;
+        return;
+      }
       if (type === "attack") {
         const a = this.act;
         const next = a && a.name.startsWith("attack") ? this.M().animations[a.name].next : null;
@@ -179,17 +192,26 @@
       this.st = Math.max(0, this.st - C.attackCost[k]); this.stT = 0;
       const a = this.start(name, { chain: false });
       a.slow = this.prepK;
+      if (data) {
+        if (data.plan) { a.plan = Object.assign({ t: 0, hold: 0 }, data.plan); a.slow = 1; }
+        if (data.move) a.move = data.move;
+        if (data.show) a.show = data.show;
+        if (data.crouch) a.crouch = data.crouch;
+        if (data.lungeFrom) a.lungeFrom = data.lungeFrom;
+        if (data.track) a.track = true;                // persigue al objetivo hasta el impacto (agarre, barrido)
+      }
       if (this.counterT && W.ct <= this.counterT) { a.counter = true; this.counterT = 0; }   // contraataque
       // atracción suave hacia el enemigo más cercano (delante, a menos de 3.4 u): gira hacia él y se acerca
       // durante la preparación hasta quedar a distancia de golpe
-      const tgt = W.nearestFoe ? W.nearestFoe(this, 3.4, 2.0) : null;
+      const tgt = W.nearestFoe ? W.nearestFoe(this, (data && data.seek) || 3.4, 2.0) : null;
       const b = this.body;
       if (data && data.dir != null && !tgt) b.heading = data.dir;
       if (tgt) {
         const dx = tgt.body.x - b.x, dz = tgt.body.z - b.z, d = Math.hypot(dx, dz);
         a.aim = Math.atan2(dz, dx);
-        const want = this.attackWant[name] || 1.0;
-        a.lunge = Math.max(0, Math.min(d - want, name === "attack3" ? 1.6 : 0.9));
+        const want = (data && data.want) || this.attackWant[name] || 1.0;
+        a.want = want; a.cap = (data && data.cap) || (name === "attack3" ? 1.6 : 0.9);
+        a.lunge = Math.max(0, Math.min(d - want, a.cap));
         a.target = tgt;
       } else a.lunge = name === "attack3" ? 0.9 : name === "attack2" ? 0.35 : 0.25;   // estocada al aire
       a.moved = 0;
@@ -280,9 +302,26 @@
         return;
       }
       // preparación más lenta (enemigo): los frames anteriores al activo avanzan más despacio
-      let sp = a.speed;
-      if (a.slow && a.slow !== 1 && a.name.startsWith("attack") && a.f < 3) sp /= a.slow;
-      a.tt = (a.tt || 0) + dt * sp;
+      let sp = a.speed, over = null;
+      const P = a.plan;
+      if (P && !P.done && a.name.startsWith("attack")) {
+        // plan del golpe: CARGA (0-1) → RETENCIÓN (1 fijo) → SUELTA (2) → impacto
+        const c = cumOf(this.M(), a.name), t1 = P.wind, t2 = t1 + P.hold, t3 = t2 + P.rel;
+        if (P.feintNow) a.tt = c[2] - 1e-4;                       // finta: congelado al final de la carga
+        else if (P.feint && P.t + dt * a.speed >= t1) { P.t = t1; a.tt = c[2] - 1e-4; P.feintNow = true; if (this.onPhase) this.onPhase(a, "feint"); }
+        else {
+          P.t += dt * a.speed;
+          if (P.hold > 0 && !P.held && P.t >= t1) { P.held = true; if (this.onPhase) this.onPhase(a, "hold"); }
+          if (!P.released && P.t >= t2) { P.released = true; if (this.onPhase) this.onPhase(a, "release"); }
+          if (P.t < t1) a.tt = P.t / t1 * c[2];
+          else if (P.t < t2) a.tt = c[2] - 1e-4;
+          else if (P.t < t3) a.tt = c[2] + (P.t - t2) / P.rel * (c[3] - c[2]);
+          else { a.tt = c[3] + (P.t - t3); P.done = true; over = (P.t - t3) / (a.speed || 1); }
+        }
+      } else {
+        if (a.slow && a.slow !== 1 && a.name.startsWith("attack") && a.f < 3) sp /= a.slow;
+        a.tt = (a.tt || 0) + dt * sp;
+      }
       const f = frameAt(a.name, a.tt, this.M());
       if (a.name === "block") {
         // bucle de la guardia (HOLD 1-2) mientras se mantiene; 3 = recibe un golpe; 5 = baja
@@ -309,7 +348,7 @@
         // 50 ms de error si se midiera con el frame)
         if (a.name.startsWith("attack") && a.f >= 3 && a.fPrev < 3 && a.impactT == null) {
           const c = cumOf(this.M(), a.name);
-          a.impactT = W.ct - Math.max(0, (a.tt - c[3]) / Math.max(1e-6, sp));
+          a.impactT = W.ct - Math.max(0, over != null ? over : (a.tt - c[3]) / Math.max(1e-6, sp));
         }
         if (W.onCombatFrame) W.onCombatFrame(this, a);
       }
@@ -321,13 +360,18 @@
     motion(a, dt) {
       const b = this.body;
       if (a.name.startsWith("attack")) {
+        if (a.track && a.target && a.target.alive && a.f < 3) {
+          const tb = a.target.body, d = Math.hypot(tb.x - b.x, tb.z - b.z);
+          a.aim = Math.atan2(tb.z - b.z, tb.x - b.x);
+          a.lunge = Math.max(a.moved, Math.min(a.cap, a.moved + Math.max(0, d - a.want)));
+        }
         if (a.aim != null) {
           const d = norm(a.aim - b.heading);
           b.heading += d * Math.min(1, dt * 22);
         }
         // la estocada ocurre durante la preparación y el impacto (frames 1-3)
         const c = cumOf(this.M(), a.name);
-        const t0 = c[1], t1 = c[4];
+        const t0 = a.lungeFrom === "release" ? c[2] : c[1], t1 = c[4];
         const u = Math.min(1, Math.max(0, (a.tt - t0) / (t1 - t0)));
         const want = a.lunge * (1 - Math.pow(1 - u, 2));
         const step = want - a.moved;
@@ -356,7 +400,7 @@
     }
     respawn(x, z) {
       this.hp = this.hpMax; this.st = this.stMax; this.post = 0; this.act = null; this.buf = null; this.flash = 0;
-      this.guardHeld = false; this.pen = 0; this.counterT = 0; this._defl = null;
+      this.guardHeld = false; this.pen = 0; this.counterT = 0; this.airCounterT = 0; this._defl = null;
       if (x != null) { const b = this.body; b.x = x; b.z = z; b.y = b.ground = W.heightAt(x, z); b.path = []; b.speed = 0; }
     }
   }

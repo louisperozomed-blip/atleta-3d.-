@@ -10,6 +10,11 @@
 //      BLOQUEO   sin postura al atacante, más coste para ti y gasto de stamina (sin stamina, guardia rota)
 //  · bloqueo: daño reducido, gasta stamina; sin stamina se rompe la guardia
 //  · postura llena = aturdido; golpear a un aturdido es un remate (daño ×3)
+//  · ataques PELIGROSOS (AT.perilous): no se desvían ni se bloquean; cada uno tiene su respuesta:
+//      "jump"   barrido bajo: saltar (y contraatacar en el aire)
+//      "mikiri" estocada: esquivar HACIA el atacante en sus frames invulnerables = contraataque (mucha postura);
+//               cualquier otra esquiva a tiempo, la evita sin más
+//      "side"   agarre: esquivar de lado (la esquiva hacia delante o hacia atrás no basta: te atrapa)
 //  · sensación: hitstop 60-120 ms (más en attack3 y en el parry), sacudida de cámara en la dirección del
 //    golpe, destello blanco en quien lo recibe, partículas según el terreno y sonidos (audio.js)
 (function () {
@@ -46,7 +51,7 @@
   // aviso sobre el personaje de lo que acaba de pasar (¡PARRY!, BLOQUEO...): así se ve si ha salido
   const FB = {
     parry: ["PARRY", "#ffe08a", "who"], block: ["BLOQUEO", "#b8d8ff", "who"], guardbreak: ["GUARDIA ROTA", "#ff6a4a", "who"],
-    counter: ["¡CONTRA!", "#ffd34a", "from"],
+    counter: ["¡CONTRA!", "#ffd34a", "from"], mikiri: ["¡CONTRAATAQUE!", "#ffd34a", "who"], grab: ["¡ATRAPADO!", "#ff6a4a", "who"],
     evade: ["ESQUIVA", "#9fe8c8", "who"], playerPostureBreak: ["POSTURA ROTA", "#ff8a5a", "who"], stun: ["ATURDIDO", "#fff3b0", "who"], deathblow: ["¡REMATE!", "#ffb070", "who"],
   };
   const pops = [];
@@ -61,13 +66,17 @@
     const el = document.createElement("div");
     el.className = "cpop"; el.textContent = d[0]; el.style.color = d[1];
     if (e.ev === "parry" && e.level === "perfect") { el.textContent = "¡PERFECTO!"; el.style.color = "#ffd34a"; el.classList.add("gold"); }
+    if (e.ev === "evade" && e.how === "jump") el.textContent = "¡SALTO!";
+    if (e.ev === "mikiri") el.classList.add("gold");
     document.getElementById("wrap").appendChild(el);
     pops.push({ el, f, t: 0 });
   }
   function el0(txt, col, f) {
+    if (!hud) return;
     const el = document.createElement("div"); el.className = "cpop"; el.textContent = txt; el.style.color = col;
     document.getElementById("wrap").appendChild(el); pops.push({ el, f, t: 0 });
   }
+  W.combatPop = el0;
   function updatePops(dt) {
     for (let i = pops.length - 1; i >= 0; i--) {
       const q = pops[i]; q.t += dt;
@@ -209,7 +218,7 @@
     if (W.onCombatFrameExtra) W.onCombatFrameExtra(f, a);
   };
   function resolve(att, a) {
-    const AT = (att.attacks || PLAYER_ATTACKS)[a.name] || PLAYER_ATTACKS.attack1;
+    const AT = (att.attacks || PLAYER_ATTACKS)[a.move || a.name] || PLAYER_ATTACKS.attack1;
     const b = att.body, reach = AT.reach, arc = AT.arc * Math.PI / 180;
     let any = false;
     for (const t of fighters) {
@@ -218,7 +227,8 @@
       const ang = Math.abs(norm(Math.atan2(dz, dx) - b.heading));
       const inArc = d <= reach + (t.radiusHit || 0.3) && (ang <= arc || d < 0.6 + (t.radiusHit || 0));
       log({ ev: "swing", who: att.name, anim: a.name, d: +d.toFixed(2), ang: Math.round(ang * 180 / Math.PI), inArc });
-      if (!inArc) continue;
+      // la estocada: quien esquiva HACIA ella cuenta aunque se cuele por su lado
+      if (!inArc && !(AT.perilous === "mikiri" && t.invulnerable && d <= AT.reach + 1.5)) continue;
       any = true;
       const dir = Math.atan2(dz, dx);
       let def = t.defense(a.impactT);
@@ -227,6 +237,29 @@
       const heavy = !!AT.heavy;
       const cx = (b.x + t.body.x) / 2, cz = (b.z + t.body.z) / 2, cy = Math.max(b.y, t.body.y) + 1.05;
       const dmg = AT.dmg * (att.dmgK || 1);
+      if (AT.perilous) {
+        // peligroso: guardia y parry no sirven; solo su respuesta
+        const how = perilousAvoid(AT.perilous, t, att);
+        if (how === "mikiri") {
+          // esquivar HACIA la estocada: se la pisa; mucha postura y retrocede; tú quedas listo para contraatacar
+          W.fx.dust(cx, cy - 0.45, cz, 40, { pal: GOLD, spd: 2.8, up: 2.0, life: 0.5 });
+          flashLight(cx, cy, cz, 0xffc444, 6); star(cx, cy - 0.2, cz, 1.7, 0xffd040, 0.28);
+          stop(STOP.perfectHeavy); W.shakeCam(dx, dz, 0.08, 0.3);
+          if (W.sfx) W.sfx.combat("parryPerfect");
+          const broke = att.addPosture(AT.mikiriPost || 40);
+          if (!broke) att.start("hit", { kb: 0.55, kdir: dir + Math.PI, moved: 0, speed: 0.8, recoil: true });
+          if (t.act && t.act.name === "dodge") t.act = null;
+          t.counterT = W.ct + W.COMBAT.counterWin;
+          log({ ev: "mikiri", who: t.name, from: att.name, anim: a.name, move: a.move, post: Math.round(att.post), broke });
+          continue;
+        }
+        if (how) {
+          if (how === "jump") t.airCounterT = W.ct + 0.6;
+          log({ ev: "evade", how, who: t.name, from: att.name, anim: a.name, move: a.move });
+          continue;
+        }
+        def = "open";
+      }
       if (def === "evade") {
         log({ ev: "evade", who: t.name, anim: a.name });
         continue;
@@ -283,7 +316,8 @@
       const deathblow = t.stunned;
       const counter = !!a.counter && !deathblow;
       const dm = deathblow ? Math.max(40, dmg * 3) : counter ? dmg * W.COMBAT.counterDmg : dmg;
-      const res = t.hurt({ dmg: dm, dir, kb: AT.kb || (heavy ? 0.6 : 0.35) });
+      const res = t.hurt({ dmg: dm, dir, kb: AT.kb || (heavy ? 0.6 : 0.35), guardBreak: !!AT.throw });
+      if (AT.throw) log({ ev: "grab", who: t.name, from: att.name, anim: a.name, move: a.move });
       if (!deathblow && t.alive) t.addPosture(dm * 0.7 * (counter ? W.COMBAT.counterPost : 1));
       if (counter) { log({ ev: "counter", who: t.name, from: att.name, anim: a.name, dmg: Math.round(dm) }); W.fx.dust(t.body.x, t.body.y + 1.0, t.body.z, 18, { pal: GOLD, spd: 2.2, up: 1.6, life: 0.4 }); }
       const kind = groundBurst(t.body.x, t.body.z, heavy ? 14 : 9, heavy);
@@ -296,6 +330,18 @@
       log({ ev: deathblow ? "deathblow" : "hit", who: t.name, from: att.name, anim: a.name, dmg: Math.round(dm), hp: Math.round(t.hp), res, surface: kind });
     }
     if (!any) log({ ev: "whiff", who: att.name, anim: a.name });
+  }
+  // ¿esquiva bien el ataque peligroso? (null = le alcanza)
+  function perilousAvoid(kind, t, att) {
+    const b = t.body;
+    if (kind === "jump") return b.jump && b.jump.h > 0.12 * W.CHAR_H ? "jump" : null;
+    if (!t.invulnerable) return null;                        // frames invulnerables de la esquiva
+    // dirección de la esquiva respecto al golpe (contra su rumbo = hacia él), no respecto a la posición: al
+    // esquivar hacia la estocada los dos se cruzan
+    const ang = Math.abs(norm(t.act.dir - (att.body.heading + Math.PI)));
+    if (kind === "mikiri") return ang < 1.05 ? "mikiri" : "dodge";
+    if (kind === "side") return ang > 0.8 && ang < 2.35 ? "side" : null;
+    return "dodge";
   }
   W.onStun = function (f) {
     if (W.sfx) W.sfx.combat("stun");

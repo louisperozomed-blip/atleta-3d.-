@@ -28,13 +28,13 @@ await page.evaluate(() => {
     W.player.heading = a + Math.PI; e.body.heading = a; e.ai.state = "chase"; e.ai.cool = 99;
     W.skipRender = true; T(6); W.combatLog.length = 0;
   };
-  window.evs = () => W.combatLog.filter((x) => x.ev !== "swing" && x.ev !== "warn").map((x) => x.ev);
+  const CUES = ["swing", "warn", "release", "hold", "feint", "chainStart", "chainEnd"];     // avisos de la IA, no resultados
+  window.evs = () => W.combatLog.filter((x) => CUES.indexOf(x.ev) < 0).map((x) => x.ev);
   // el autómata ataca; fn(left) en cada tick hasta su impacto
   window.foeAttack = (name, fn) => {
     const e = E(); e.ai.attack(name, e.body.heading);
     let n = 0; while (e.act && e.act.name === name && e.act.f < 3 && n < 400) {
-      const a = e.act, ms = e.M().animations[name].ms;
-      const left = ((ms[0] + ms[1] + ms[2]) / 1000 - (a.tt || 0)) * (a.f < 3 ? (a.slow || 1) : 1);
+      const left = e.toImpact();                                   // con el plan del golpe (carga, retención, suelta)
       if (fn) fn(left, n); T(); n++;
     }
     T(3); return n;
@@ -95,7 +95,7 @@ check("el autómata mira al jugador al atacar en las 8 direcciones", pr.every((r
 const late = await page.evaluate((A8) => A8.map((a) => { pair(a, 2.0); foeAttack("attack1", parryAt(0.55)); return evs()[0]; }), A8);
 check("guardia demasiado pronto contra el autómata (550 ms antes): recibe el golpe, 8 direcciones", late.every((x) => x === "hit"), late);
 await page.evaluate(() => { pair(Math.PI * 0.75, 2.0); const e = E(); e.ai.attack("attack1", e.body.heading); let done = false, n = 0;
-  while (!W.combatLog.some((x) => x.ev === "parry") && n < 300) { const a = e.act; if (a && a.f < 3) { const ms = e.M().animations.attack1.ms; const l = ((ms[0] + ms[1] + ms[2]) / 1000 - (a.tt || 0)) * a.slow; if (!done && l <= 0.1) { W.pf.input("guardDown"); W.pf.input("guardUp"); done = true; } } T(); n++; } });
+  while (!W.combatLog.some((x) => x.ev === "parry") && n < 300) { const a = e.act; if (a && a.f < 3) { const l = e.toImpact(); if (!done && l <= 0.1) { W.pf.input("guardDown"); W.pf.input("guardUp"); done = true; } } T(); n++; } });
 await shot("03_parry_jugador");
 
 // ---- el jugador golpea en las 8 direcciones ------------------------------------------------------------
@@ -132,7 +132,8 @@ const st = await page.evaluate(() => { pair(0, 2.0); const e = E(); let k = 0;
   T(20); W.pf.act = null; W.pf.input("attack", { dir: Math.atan2(e.body.z - W.player.z, e.body.x - W.player.x) });
   let n = 0; while (!W.combatLog.some((x) => x.ev === "deathblow") && n < 80) { T(); n++; }
   const d = W.combatLog.find((x) => x.ev === "deathblow"); r.deathblow = d ? d.dmg : null; return r; });
-check("sus ataques desviados le llenan la postura: aturdido al desviar una cadena entera (≤ 5 seguidos)", st.stunned && st.parries >= 4 && st.parries <= 5, st);
+// (golpes sueltos: cada uno es su propia cadena, sin racha; en cadenas reales basta con 4-5, ver parry2.mjs)
+check("sus ataques desviados le llenan la postura: aturdido tras 5-6 desvíos de golpes sueltos", st.stunned && st.parries >= 5 && st.parries <= 6, st);
 check("remate al autómata aturdido (daño ×3, mínimo 40)", st.deathblow >= 40, { dmg: st.deathblow });
 await page.evaluate(() => { pair(Math.PI * 0.75, 2.0); const e = E(); for (let k = 0; k < 6 && !e.stunned; k++) { foeAttack("attack2", parryAt(0.1)); if (!e.stunned) { e.act = null; T(8); } } T(10); });
 await shot("05_aturdido");

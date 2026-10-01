@@ -124,6 +124,14 @@
       const h = kind === "chargeHeavy" ? 1.35 : 1, d = 0.55 * h;
       tone(c, t, "sawtooth", 46, 72, 0.16 * h, d); tone(c, t, "square", 92, 140, 0.05 * h, d * 0.9);
       noiseHit(c, t + 0.05, "bandpass", 700, 1900, 6, 0.07 * h, d * 0.7);
+    } else if (kind === "perilous") {
+      // peligro: bocina grave y chirrido de metal (el mismo para los tres ataques peligrosos)
+      tone(c, t, "sawtooth", 58, 52, 0.22, 0.75); tone(c, t, "square", 87, 80, 0.07, 0.7); tone(c, t + 0.02, "sawtooth", 116, 104, 0.08, 0.6);
+      noiseHit(c, t + 0.05, "bandpass", 900, 2600, 5, 0.09, 0.5);
+    } else if (kind === "release") {
+      // suelta el golpe: chasquido metálico, más grave cuanto más fuerte es
+      const lv = surface || 1, f0 = [0, 1500, 1100, 700][lv] || 1300;
+      tone(c, t, "square", f0, f0 * 0.7, 0.07 + 0.03 * lv, 0.06); noiseHit(c, t, "highpass", 4000, 2000, 0.8, 0.12 + 0.04 * lv, 0.05);
     } else if (kind === "stomp") { tone(c, t, "sine", 70, 38, 0.3 * (surface || 1), 0.16); noiseHit(c, t, "lowpass", 600, 150, 0.7, 0.18 * (surface || 1), 0.12); }
   };
   // Ambiente: viento (ruido filtrado que respira), goteo (gotas al azar en las charcas y bajo las copas),

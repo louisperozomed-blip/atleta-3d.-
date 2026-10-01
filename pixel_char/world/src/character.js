@@ -346,11 +346,13 @@
             const delta = ((st.dirWanted - st.dir) % 8 + 8) % 8;
             st.dir = (st.dir + (delta <= 4 ? 1 : 7)) % 8; st.lastStep = st.time;
           }
-          const an = act.name === "stun" ? "hit" : act.name;
-          st.anim = an; st.frame = act.f; st.settle = null; st.wfx = null; st.fi = null; st.idleT = 0;
+          let an = act.name === "stun" ? "hit" : act.name, fr = Math.max(0, Math.min(5, act.f | 0));
+          // pose compuesta (golpes peligrosos del autómata: frames de otras hojas)
+          if (act.show && act.show[fr]) { an = act.show[fr][0]; fr = act.show[fr][1]; }
+          st.anim = an; st.frame = fr; st.settle = null; st.wfx = null; st.fi = null; st.idleT = 0;
           st.lastHeading = p.heading;
           if (W.debugFrame) { st.dir = W.debugFrame.dir; }
-          this.place(p, camTheta, an, Math.max(0, Math.min(5, act.f | 0)));
+          this.place(p, camTheta, an, fr);
           return;
         }
         // --- animación -------------------------------------------------------
@@ -482,7 +484,8 @@
           uniforms.uWarp.value.set(st.wfx.warpX, st.wfx.warpY, 0.5, 0.86); }
         else uniforms.uWarp.value.set(0, 0, 0.5, 0.86);
         const sq = Math.sin(p.squash * Math.PI) * (p.squash > 0 ? 1 : 0);
-        const sx = (1 + 0.06 * sq) * wsx, sy = (1 - 0.09 * sq) * wsy;
+        const cr = (p.fighter && p.fighter.act && p.fighter.act.crouch) || 0;     // agachado (barrido bajo)
+        const sx = (1 + 0.06 * sq) * wsx * (1 + 0.3 * cr), sy = (1 - 0.09 * sq) * wsy * (1 - cr);
         const w = FW * unitsH * sx, h = FH * unitsV * sy;
         // hacia la cámara 0.15 para no pelearse con el suelo en los pies
         const tx = Math.sin(camTheta), tz = Math.cos(camTheta);
