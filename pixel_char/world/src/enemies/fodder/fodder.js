@@ -33,6 +33,10 @@
       see: 9, leash: 14, radius: 0.32, stunKB: 1.5, kbK: 1, cool: 0.5,
     },
     deadWait: 1.6, fade: 1.6, respawnT: 9,   // en el suelo, desvanecerse, reaparecer (si no estás encima)
+    // barra de FATIGA (su postura, como la del autómata): cada parry NORMAL la llena a la mitad; llena = AGOTADO
+    // (aturdido más largo, rematable). El PERFECTO la llena de golpe (y lo remata). Baja sola si no le desvías.
+    // (empieza a bajar 6 s después del último parry, a 5/s: con uno solo se agota al 2.º parry; en grupo, hacia el 3.º)
+    fatigue: { parry: 50, exhausted: 2.2, delay: 6, decay: 5 },
     // anillo de timing: radio inicial (u), grosor, color; nivel 1 = solo los últimos 250 ms
     ring: { r0: { zombie: 1.05, dog: 0.85 }, w: 0.05, color: [0.12, 0.78, 0.95], late: 0.25 },
     // andamio adaptativo por tipo: 4 parries seguidos bajan un nivel; 3 fallos seguidos lo suben
@@ -69,9 +73,10 @@
       if (vs.length) ch.locoFps = Math.max(4, Math.min(26, 12 * base * C.speedK / vs[vs.length >> 1]));
     }
     const f = W.addFighter(new W.Fighter(body, {
-      team: "foe", name: kind + "-" + (++serial), hp: C.hits * 10, stamina: 999, posture: 1e6, meta,
-      prepK: 1, stunTime: 1.2, kbK: C.kbK,
+      team: "foe", name: kind + "-" + (++serial), hp: C.hits * 10, stamina: 999, posture: 100, meta,
+      prepK: 1, stunTime: CFG.fatigue.exhausted, kbK: C.kbK,
     }), ch);
+    f.postDelay = CFG.fatigue.delay; f.postDecay = CFG.fatigue.decay;
     f.kind = kind; f.fodder = C; f.label = C.label.toUpperCase(); f.radiusHit = C.radius;
     f.attacks = { attack: { dmg: C.dmg, reach: C.reach, arc: C.arc, stop: 0.07, kb: 0.3, post: 0 } };
     // aturdido: IMPACT, RECOIL y STAGGER congelado (el temblor y el tinte, en update)
@@ -310,6 +315,7 @@
   W.fodderOnParry = function (t, f, perfect, dir, a) {
     const FX = W.combatFx, b = f.body, cy = b.y + f.ch.height * 0.55;
     if (perfect) {
+      f.post = f.postMax;                                          // la barra de fatiga se llena de golpe
       f.hp = 0; f.flash = 1; b.heading = dir + Math.PI;
       f.start("death", { kb: 0.3 * f.kbK, kdir: dir, moved: 0 });
       // fogonazo: la misma señal dorada que el parry perfecto, más grande
@@ -319,11 +325,16 @@
       if (W.combatPop) W.combatPop("¡REMATADO!", "#ffd34a", f, null, "gold");
       W.combatLog.push({ ev: "fodderKill", who: f.name, kind: f.kind, how: "perfect", t: +W.U.uTime.value.toFixed(3) });
     } else {
-      f.start("stun", { t: 0, dur: 1.2 });
+      // fatiga: +50; si se llena queda AGOTADO (addPosture ya lo aturde stunTime = 2,2 s), si no, aturdido 1,2 s
+      const broke = f.addPosture(CFG.fatigue.parry);
+      if (broke) {
+        if (W.combatPop) W.combatPop("¡AGOTADO!", "#ffb050", f, null, "gold");
+        W.combatLog.push({ ev: "fodderExhausted", who: f.name, kind: f.kind, dur: CFG.fatigue.exhausted, t: +W.U.uTime.value.toFixed(3) });
+      } else { f.start("stun", { t: 0, dur: 1.2, keepPost: true }); }
       const d = f.fodder.stunKB;
       f.slide = { vx: Math.cos(dir) * d, vz: Math.sin(dir) * d, t: 0, dur: f.kind === "dog" ? 0.28 : 0.18, x0: b.x, z0: b.z };
       if (W.sfx) W.sfx.combat("stun");
-      W.combatLog.push({ ev: "fodderStun", who: f.name, kind: f.kind, dur: 1.2, kb: d, t: +W.U.uTime.value.toFixed(3) });
+      W.combatLog.push({ ev: "fodderStun", who: f.name, kind: f.kind, dur: broke ? CFG.fatigue.exhausted : 1.2, fatigue: Math.round(f.post), kb: d, t: +W.U.uTime.value.toFixed(3) });
     }
     W.fodderOnDefense(f, perfect ? "perfect" : "normal");
     return true;

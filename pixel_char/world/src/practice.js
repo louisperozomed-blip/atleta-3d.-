@@ -139,10 +139,9 @@
         hud.top.style.top = Math.round(r.bottom + 8) + "px"; hud.top.style.left = Math.round(innerWidth - 12 - wE / 2) + "px"; }
       else { hud.top.style.top = ""; hud.top.style.left = ""; }
     }
-    const nm = (e.label || "ECO") + (e.stunned ? " · ATURDIDO" : T.on ? " · ENTRENAMIENTO" : "");
+    const nm = (e.label || "ECO") + (e.stunned ? (e.fodder && e.act.dur > 1.5 ? " · AGOTADO" : " · ATURDIDO") : e.fodder ? " · FATIGA" : T.on ? " · ENTRENAMIENTO" : "");
     if (hud.dn.textContent !== nm) hud.dn.textContent = nm;
-    // relleno: no tiene postura (un parry perfecto lo remata); su barra muestra los golpes que le quedan
-    setBar(hud.eb, hud.ei, e.fodder ? e.hp / e.hpMax : e.post / e.postMax);
+    setBar(hud.eb, hud.ei, e.post / e.postMax);                 // (en el relleno, su barra de fatiga)
     setBar(hud.pb, hud.pi, p.post / p.postMax);
     const ru = W.duelRipUntil ? W.duelRipUntil(p) : 0;     // ventana de riposte (duel.js)
     const cw = ru > W.ct ? (ru - W.ct) / W.duelRipSpan(p) : Math.max(0, Math.max(p.counterT, p.airCounterT || 0) - W.ct) / W.COMBAT.counterWin, con = cw > 0;

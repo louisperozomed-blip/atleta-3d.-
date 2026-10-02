@@ -386,9 +386,9 @@
       // postura: baja sola si pasa un rato sin recibir; más deprisa con la guardia alta; más despacio con poca vida
       this.postT += dt;
       const guarding = this.act && this.act.name === "block" && this.guardHeld;
-      if (this.postT > (guarding ? C.guardRecovDelay : C.postureDelay) && !this.stunned) {
+      if (this.postT > (guarding ? C.guardRecovDelay : (this.postDelay || C.postureDelay)) && !this.stunned) {
         const hpK = C.hpRecovMin + (1 - C.hpRecovMin) * Math.pow(Math.max(0, this.hp / this.hpMax), C.hpRecovPow);
-        this.post = Math.max(0, this.post - C.postureDecay * dt * hpK * (guarding ? C.guardRecovK : 1));
+        this.post = Math.max(0, this.post - (this.postDecay || C.postureDecay) * dt * hpK * (guarding ? C.guardRecovK : 1));   // (el relleno: su fatiga, más lenta)
       }
       if (this.buf) this.tryBuffered();
       // guardia mantenida al terminar otra acción (golpe, rotura de guardia...): vuelve a bloquear
@@ -399,7 +399,7 @@
       a.t += dt;
       if (a.name === "stun") {
         a.f = this.stunPose ? this.stunPose(a.t) : 2 + (Math.floor(a.t * this.stunRate) % 2);   // tambaleo (frames STAGGER de hit; el relleno, su pose)
-        if (a.t >= a.dur) { this.post = this.postMax * 0.35; this.act = null; }
+        if (a.t >= a.dur) { if (!a.keepPost) this.post = this.postMax * 0.35; this.act = null; }   // (aturdido corto del relleno: conserva su fatiga)
         return;
       }
       // preparación más lenta (enemigo): los frames anteriores al activo avanzan más despacio

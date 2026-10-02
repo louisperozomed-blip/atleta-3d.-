@@ -1658,3 +1658,17 @@ vez), `E5_niveles.gif` (el mismo zarpazo con el anillo en nivel 2, 1 y 0), `E5_e
 4. Perro `death_2` S: tras el primer frame se tumba de lado; leve.
 5. Restos muy tenues de la losa bajo 2-3 cuerpos tumbados de la muerte del zombi (columnas 5-6): casi invisibles a
    escala de juego.
+
+### Añadido — barra de FATIGA del zombi y del perro
+
+Al hacerles parry se fatigan, con la misma barra que la postura del autómata (arriba en el centro, «ZOMBI · FATIGA», y
+la mini-barra sobre su cabeza):
+- Parry NORMAL: +50 de fatiga y aturdido 1,2 s (como antes; ese aturdido corto conserva la fatiga).
+- Con la barra llena (el 2.º parry normal seguido) queda **¡AGOTADO!** 2,2 s, rematable con cualquier golpe.
+- Parry PERFECTO: la barra se llena de golpe y queda rematado (como antes).
+- Baja sola: empieza 6 s después del último parry, a 5/s (con uno solo se agota al 2.º parry; en el grupo de
+  práctica, donde cada uno ataca cada ~10 s, hacia el 3.º). Sus golpes también le suman un poco, como al autómata.
+- Su ritmo de ataque NO cambia con la fatiga (lo que se practica es ese tempo fijo).
+`fighter.js`: retardo y ritmo de recuperación de la postura por luchador (`postDelay`, `postDecay`; el resto, como
+siempre) y el aturdido con `keepPost` no reinicia la postura. Pruebas: relleno E3 **11/11** (nueva: la fatiga), E4
+10/10, batería 9/9, autómata 21/21, parry 50/50. Captura `review/fodder/E6_fatiga.png`.

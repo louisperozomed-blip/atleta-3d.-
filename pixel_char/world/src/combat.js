@@ -489,7 +489,6 @@
     hud.foe.style.left = s[0] + "px"; hud.foe.style.top = s[1] + "px";
     hud.hpE.style.width = (100 * e.hp / e.hpMax).toFixed(1) + "%";
     hud.poE.style.width = (100 * e.post / e.postMax).toFixed(1) + "%";
-    if (hud.poE.parentElement._fod !== !!e.fodder) { hud.poE.parentElement._fod = !!e.fodder; hud.poE.parentElement.style.visibility = e.fodder ? "hidden" : ""; }   // el relleno no tiene postura
     hud.foe.classList.toggle("stun", e.stunned);
     const nm = e.label || "ECO";
     const lbl = e.stunned ? "ATURDIDO" : !e.alive ? nm + " ✕" : nm;

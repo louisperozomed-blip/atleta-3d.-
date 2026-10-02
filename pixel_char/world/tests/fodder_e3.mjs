@@ -67,6 +67,17 @@ r = await page.evaluate(() => {
   return { st, alive: F.alive, db: L("deathblow").length, hp: F.hp };
 });
 check("durante el STUN cualquier golpe tuyo lo mata", r.st === "stun" && !r.alive && r.db === 1, r);
+// 3b) barra de FATIGA: cada parry normal la llena a la mitad (aturdido 1,2 s); la 2.ª la llena → AGOTADO 2,2 s; baja sola
+r = await page.evaluate(() => {
+  setup("dog"); W.fodderRespawn(F); setup("dog"); const out = {};
+  strike(0.13); out.p1 = Math.round(F.post); let n = 0, t0 = W.ct; while (F.act && F.act.name === "stun" && n++ < 300) T(1); out.stun1 = Math.round((W.ct - t0) * 1000); out.after1 = Math.round(F.post);
+  setup("dog"); strike(0.13); out.p2 = Math.round(F.post); out.agotado = L("fodderExhausted").length; t0 = W.ct; n = 0; while (F.act && F.act.name === "stun" && n++ < 300) T(1); out.stun2 = Math.round((W.ct - t0) * 1000);
+  setup("dog"); F.post = 60; F.postT = 0; T(60 * 5); out.quieta = Math.round(F.post); T(60 * 4); out.baja = Math.round(F.post);
+  const bar = document.querySelector("#duelE .pb i"), dn = document.querySelector("#duelE .dn"); out.hud = dn ? dn.textContent : null;
+  return out;
+});
+check("barra de FATIGA: parry normal +50 (aturdido 1,2 s); el 2.º la llena → ¡AGOTADO! 2,2 s; baja sola si no le desvías",
+  r.p1 === 50 && Math.abs(r.stun1 - 1200) <= 60 && r.after1 === 50 && r.p2 === 100 && r.agotado === 1 && Math.abs(r.stun2 - 2200) <= 60 && r.quieta === 60 && r.baja < 60 && /FATIGA/.test(r.hud || ""), r);
 // 4) bloqueo: la mitad de stamina, sin aturdir, sin chispas
 r = await page.evaluate(() => {
   setup("zombie"); W.pf.st = W.pf.stMax; const st0 = W.pf.st; const s = strike("hold"); T(5);
