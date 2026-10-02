@@ -179,8 +179,10 @@
     // Paso de simulación: frame() en tiempo real; W.tick(dt) avanza a paso fijo cuando W.manual
     // (pruebas y GIF deterministas: el antes y el después ven exactamente el mismo recorrido)
     function frame() {
-      const rdt = Math.min(0.05, clock.getDelta());
-      if (!W.manual) step(rdt);
+      // a pocos fps el paso se recorta a 50 ms (el juego va más lento que el reloj): se guarda el tiempo real del
+      // frame para que las pulsaciones se conviertan a tiempo de juego con el ritmo de verdad (W.pressTime)
+      const real = clock.getDelta(), rdt = Math.min(0.05, real);
+      if (!W.manual) { W.frameReal = real; step(rdt); }
       requestAnimationFrame(frame);
     }
     W.tick = function (dt, n) { for (let i = 0; i < (n || 1); i++) step(dt); };

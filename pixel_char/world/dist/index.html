@@ -3669,9 +3669,23 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
   W.pressTime = function (ts, human) {
     let t = W.ct;
     if (ts != null && isFinite(ts)) {
-      const ref = W.manual ? performance.now() : (W.ctReal || performance.now());
-      // (en cámara lenta, los ms reales valen menos tiempo de combate)
-      t += Math.max(-0.12, Math.min(0.05, (ts - ref) / 1000)) * (W.SLOWMO && W.SLOWMO.t > 0 ? W.SLOWMO.k : 1);
+      if (W.manual || W.ctRate == null) {
+        const ref = W.manual ? performance.now() : (W.ctReal || performance.now());
+        // (en cámara lenta, los ms reales valen menos tiempo de combate)
+        t += Math.max(-0.12, Math.min(0.05, (ts - ref) / 1000)) * (W.SLOWMO && W.SLOWMO.t > 0 ? W.SLOWMO.k : 1);
+      } else {
+        // tiempo real: entre dos frames el juego no avanza 1:1 con el reloj (a pocos fps el paso se recorta a
+        // 50 ms; en el hitstop se congela; en cámara lenta va al 30 %). Una pulsación de ANTES del último paso se
+        // sitúa con el ritmo que tuvo ese paso; una de DESPUÉS, con el que tendrá el siguiente: congelado si hay
+        // hitstop, la cámara lenta en curso o pendiente, y el recorte según la duración esperada del frame
+        const x = (ts - W.ctReal) / 1000;
+        if (x < 0) t += Math.max(-Math.max(0.12, (W.ctFrame || 0) + 0.02), x) * W.ctRate;
+        else {
+          const S = W.SLOWMO, D = Math.max(x, W.ctFrameEst || 1 / 60);
+          const k = W.hitstop > 0 ? 0 : S && S.pend ? S.pend.k : S && S.t > 0 ? S.k : 1;
+          t += Math.min(x, 0.25) * Math.min(D, 0.05) / D * k;
+        }
+      }
     }
     return human ? t - (C.calib || 0) / 1000 : t;   // la calibración, solo para el jugador
   };
@@ -4306,12 +4320,24 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
   W.slowmo = function (dur, k) { SLOW.pend = { dur, k }; };
   W.combatStep = function (dt) {
     W.ctReal = performance.now();
+    // ritmo del reloj de combate frente al reloj real en este paso (0 en el hitstop; incluye la cámara lenta y el
+    // recorte de dt a pocos fps): W.pressTime lo usa para situar las pulsaciones que llegan entre frames
+    const real = W.frameReal; W.frameReal = 0;
+    const gdt = combatAdvance(dt);
+    W.ctRate = real > 0 ? Math.min(1, gdt / real) : null;
+    W.ctFrame = real > 0 ? real : 0;
+    // duración esperada del próximo frame: media suave, pero un tirón suelto no la arrastra (mín. con el último)
+    if (real > 0) { frameAvg = frameAvg ? frameAvg + (Math.min(real, 0.25) - frameAvg) * 0.2 : Math.min(real, 0.25); W.ctFrameEst = Math.min(real, frameAvg); }
+    return gdt;
+  };
+  let frameAvg = 0;
+  function combatAdvance(dt) {
     if (W.hitstop > 0) { W.hitstop = Math.max(0, W.hitstop - dt); W.hitstopAcc = (W.hitstopAcc || 0) + dt; return 0; }
     if (SLOW.pend) { SLOW.t = SLOW.pend.dur; SLOW.k = SLOW.pend.k; SLOW.pend = null; }
     if (SLOW.t > 0) { SLOW.t -= dt; SLOW.acc += dt; dt *= SLOW.k; }
     W.ct += dt;                                      // reloj de combate (fighter.js)
     return dt;
-  };
+  }
   function stop(v) { W.hitstop = Math.max(W.hitstop, v); }
 
   // ---- luz del destello (parry, remate) -----------------------------------------------------------------
@@ -8871,8 +8897,10 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     // Paso de simulación: frame() en tiempo real; W.tick(dt) avanza a paso fijo cuando W.manual
     // (pruebas y GIF deterministas: el antes y el después ven exactamente el mismo recorrido)
     function frame() {
-      const rdt = Math.min(0.05, clock.getDelta());
-      if (!W.manual) step(rdt);
+      // a pocos fps el paso se recorta a 50 ms (el juego va más lento que el reloj): se guarda el tiempo real del
+      // frame para que las pulsaciones se conviertan a tiempo de juego con el ritmo de verdad (W.pressTime)
+      const real = clock.getDelta(), rdt = Math.min(0.05, real);
+      if (!W.manual) { W.frameReal = real; step(rdt); }
       requestAnimationFrame(frame);
     }
     W.tick = function (dt, n) { for (let i = 0; i < (n || 1); i++) step(dt); };

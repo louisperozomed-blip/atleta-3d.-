@@ -143,12 +143,24 @@
   W.slowmo = function (dur, k) { SLOW.pend = { dur, k }; };
   W.combatStep = function (dt) {
     W.ctReal = performance.now();
+    // ritmo del reloj de combate frente al reloj real en este paso (0 en el hitstop; incluye la cámara lenta y el
+    // recorte de dt a pocos fps): W.pressTime lo usa para situar las pulsaciones que llegan entre frames
+    const real = W.frameReal; W.frameReal = 0;
+    const gdt = combatAdvance(dt);
+    W.ctRate = real > 0 ? Math.min(1, gdt / real) : null;
+    W.ctFrame = real > 0 ? real : 0;
+    // duración esperada del próximo frame: media suave, pero un tirón suelto no la arrastra (mín. con el último)
+    if (real > 0) { frameAvg = frameAvg ? frameAvg + (Math.min(real, 0.25) - frameAvg) * 0.2 : Math.min(real, 0.25); W.ctFrameEst = Math.min(real, frameAvg); }
+    return gdt;
+  };
+  let frameAvg = 0;
+  function combatAdvance(dt) {
     if (W.hitstop > 0) { W.hitstop = Math.max(0, W.hitstop - dt); W.hitstopAcc = (W.hitstopAcc || 0) + dt; return 0; }
     if (SLOW.pend) { SLOW.t = SLOW.pend.dur; SLOW.k = SLOW.pend.k; SLOW.pend = null; }
     if (SLOW.t > 0) { SLOW.t -= dt; SLOW.acc += dt; dt *= SLOW.k; }
     W.ct += dt;                                      // reloj de combate (fighter.js)
     return dt;
-  };
+  }
   function stop(v) { W.hitstop = Math.max(W.hitstop, v); }
 
   // ---- luz del destello (parry, remate) -----------------------------------------------------------------

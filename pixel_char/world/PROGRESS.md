@@ -1672,3 +1672,35 @@ la mini-barra sobre su cabeza):
 `fighter.js`: retardo y ritmo de recuperación de la postura por luchador (`postDelay`, `postDecay`; el resto, como
 siempre) y el aturdido con `keepPost` no reinicia la postura. Pruebas: relleno E3 **11/11** (nueva: la fatiga), E4
 10/10, batería 9/9, autómata 21/21, parry 50/50. Captura `review/fodder/E6_fatiga.png`.
+
+### Depuración — cronometraje del parry y del bloqueo en tiempo real
+
+**Qué fallaba.** La pulsación se mide con su marca de tiempo (`event.timeStamp`) y se convierte a tiempo de combate
+contando los ms reales desde el último paso **como si el juego avanzara 1:1 con el reloj**, recortado a +50 ms. No es
+así en tres casos, y entonces la pulsación caía más tarde de lo que el jugador la vio:
+- **Pocos fps** (móvil lento, ~10-15 fps): cada paso se recorta a 50 ms, así que el juego va más lento que el reloj
+  (a 12 fps, al 60 %); una pulsación 40 ms después de un frame valía 40 ms de juego en vez de 24 (16 ms tarde).
+- **Hitstop**: con el juego congelado, una pulsación durante la congelación sumaba hasta 50 ms que el juego no
+  avanzó (golpes que llegan justo al salir del hitstop de otro: el 2.º atacante del grupo, la cadena del autómata).
+- **Cámara lenta** pendiente (el primer paso tras el hitstop del perfecto): se contaba al 100 %.
+
+**Arreglo** (`main.js`, `combat.js`, `fighter.js` → `W.pressTime`; solo en tiempo real, el paso fijo de las
+pruebas sigue igual): cada paso guarda su duración real y su ritmo juego/reloj. Una pulsación de ANTES del último
+paso se sitúa con el ritmo que tuvo ese paso; una de DESPUÉS, con el que tendrá el siguiente: 0 si hay hitstop, la
+cámara lenta en curso o pendiente, y el recorte de 50 ms según la duración esperada del frame (media suave que un
+tirón suelto no arrastra). La ventana (200 ms, PERFECTO ~70 ms) y la calibración NO cambian.
+
+**Medida** (`tests/timing_rt.mjs`, nuevo): en tiempo real, cada paso deja (reloj, W.ct); el instante de juego
+verdadero de la pulsación es la interpolación entre los dos pasos que la rodean, y se compara con `W.pressTime`.
+40 pulsaciones por modo (zombi, 0-240 ms antes del impacto):
+
+| modo | antes: error medio / máx | ahora: error medio / máx | resultado = esperado (antes → ahora) |
+|---|---|---|---|
+| 60 fps estables | 0,0 / 0,0 ms | 0,0 / 0,0 ms | 40/40 → 40/40 |
+| 37 fps con tirones (60-110 ms cada 6 frames) | 4,4 / **50** ms | 0,3 / 10,6 ms | 39/40 → **40/40** |
+| ~13-16 fps (SwiftShader) | 14,3 / **50** ms | 3,4 / 16,3 ms | 37/40 → **40/40** |
+
+Lo que queda a pocos fps es lo que nadie puede saber: cuánto durará el frame en curso (en SwiftShader saltan de 12 a
+120 ms). A 60 fps no cambia nada (ya era exacto). Datos por pulsación en `review/timing/`. Las baterías de paso fijo
+no cambian (el paso fijo sigue con la conversión de siempre); la de interfaz (`parry2_ui`, tiempo real con teclado y
+toque) sigue pasando.

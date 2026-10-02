@@ -51,9 +51,23 @@
   W.pressTime = function (ts, human) {
     let t = W.ct;
     if (ts != null && isFinite(ts)) {
-      const ref = W.manual ? performance.now() : (W.ctReal || performance.now());
-      // (en cámara lenta, los ms reales valen menos tiempo de combate)
-      t += Math.max(-0.12, Math.min(0.05, (ts - ref) / 1000)) * (W.SLOWMO && W.SLOWMO.t > 0 ? W.SLOWMO.k : 1);
+      if (W.manual || W.ctRate == null) {
+        const ref = W.manual ? performance.now() : (W.ctReal || performance.now());
+        // (en cámara lenta, los ms reales valen menos tiempo de combate)
+        t += Math.max(-0.12, Math.min(0.05, (ts - ref) / 1000)) * (W.SLOWMO && W.SLOWMO.t > 0 ? W.SLOWMO.k : 1);
+      } else {
+        // tiempo real: entre dos frames el juego no avanza 1:1 con el reloj (a pocos fps el paso se recorta a
+        // 50 ms; en el hitstop se congela; en cámara lenta va al 30 %). Una pulsación de ANTES del último paso se
+        // sitúa con el ritmo que tuvo ese paso; una de DESPUÉS, con el que tendrá el siguiente: congelado si hay
+        // hitstop, la cámara lenta en curso o pendiente, y el recorte según la duración esperada del frame
+        const x = (ts - W.ctReal) / 1000;
+        if (x < 0) t += Math.max(-Math.max(0.12, (W.ctFrame || 0) + 0.02), x) * W.ctRate;
+        else {
+          const S = W.SLOWMO, D = Math.max(x, W.ctFrameEst || 1 / 60);
+          const k = W.hitstop > 0 ? 0 : S && S.pend ? S.pend.k : S && S.t > 0 ? S.k : 1;
+          t += Math.min(x, 0.25) * Math.min(D, 0.05) / D * k;
+        }
+      }
     }
     return human ? t - (C.calib || 0) / 1000 : t;   // la calibración, solo para el jugador
   };
