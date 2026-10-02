@@ -144,6 +144,7 @@
     pn.querySelector("#tG3").addEventListener("click", () => W.spawnGroup(3, false));
     pn.querySelector("#tGE").addEventListener("click", () => W.spawnGroup(2, true));
     if (W.initCalibUI) W.initCalibUI(pn);           // latencia del parry (calib.js)
+    if (W.initFodderUI) W.initFodderUI(pn);         // anillo de timing del relleno (enemies/fodder)
     if (W.initTrainingUI) W.initTrainingUI(pn);     // modo entrenamiento (practice.js)
     if (W.initAnimViewerUI) W.initAnimViewerUI(pn); // visor de animaciones (animviewer.js)
   };

@@ -1543,3 +1543,35 @@ IMPACT (el índice 3 de su hoja), como en todo el juego.
 - Daño de su golpe: 6 (un tercio del zarpazo del autómata, 18). Vida en golpes: zombi 3, perro 2.
 - Selector del panel: «Zombi» y «Perro zombi» (`#enemy=zombie`, `#enemy=dog`, `W.setEnemyType("zombie"|"dog")`):
   aparecen en los tres sitios del autómata. El autómata sigue siendo el tipo por defecto (autómata 21/21).
+
+### Etapa 3 — Mecánica de práctica: anillo de timing y recompensas
+
+**Ritmo fijo y legible** (sin tocar la ventana del jugador: parry 200 ms, PERFECTO 0-70 ms ANTES del impacto):
+- ZOMBI, zarpazo descendente: WINDUP de 800 ms exactos (brazos arriba, ojos que se encienden —un brillo naranja
+  sobre la calavera que crece hasta el impacto, oculto de espaldas— y gruñido grave), recuperación 1000 ms, 0,6× tu
+  caminar, 3 golpes de vida.
+- PERRO, mordisco en salto: WINDUP de 600 ms exactos (se agacha y gruñe agudo), salta en la suelta (LUNGE) y el
+  IMPACT (BITE) llega al aterrizar junto a ti; recuperación 900 ms, 1,3× tu caminar con el walk acelerado, 2 golpes.
+
+**Anillo de timing** (`fodder.js`, shader propio): banda fina de grosor constante en el suelo bajo el enemigo, cian
+bioluminiscente, pintada a escalones de 0,035 u (pixel art). Su radio = r0 × (tiempo hasta el IMPACT / WINDUP), así
+que toca el centro (un punto) en el instante exacto del IMPACT, en tiempo de combate; la calibración de latencia del
+panel desplaza tus pulsaciones (`W.pressTime`), así que un toque que ves llegar con el anillo cuenta en el IMPACT.
+Medido: **0 ms de error** (zombi y perro; tolerancia ±16 ms). Al llegar, destello. **Clic** sintetizado en el frame
+IMPACT en todos los niveles.
+
+**Andamio adaptativo por tipo** (`W.FODDER_SCAF`): nivel 2 (anillo completo) → tras 4 parries seguidos (normal o
+perfecto) nivel 1 (el anillo solo los últimos 250 ms; medido: aparece a 233 ms, con un fundido de 50 ms) → otros 4,
+nivel 0 (sin anillo: pose + gruñido + clic, lo mismo que tendrás contra el autómata). 3 fallos seguidos (golpe recibido
+o bloqueo con la guardia mantenida) suben un nivel. Texto pequeño junto al personaje: «ritmo aprendido» / «ayuda
+activada». Panel ⚙ → «Anillo»: Auto (por defecto) / Siempre / Nunca (se recuerda en el navegador).
+
+**Recompensa inmediata** (`combat.js` llama a `W.fodderOnParry`; el relleno no tiene postura):
+- PERFECTO: las chispas doradas, el hitstop y la cámara lenta de siempre, y queda REMATADO al instante: muerte con
+  fogonazo dorado (luz, estrella y chispas) y el sonido del remate.
+- NORMAL: STUN de 1,2 s (medido 1200 ms); el perro sale despedido 1,5 u (medido 1,56), el zombi 0,3. Cualquier golpe
+  tuyo durante el STUN lo mata (remate).
+- Bloqueo: la MITAD de stamina (11 frente a 22), no aturde, polvo apagado y sin chispas.
+- Golpe recibido: 6 de daño (un tercio del zarpazo del autómata). Ningún golpe suyo es peligroso: sin aviso rojo.
+
+Prueba `tests/fodder_e3.mjs`: **10/10** (`review/fodder/E3_results.json`, captura `E3_anillo_zombi.png`).

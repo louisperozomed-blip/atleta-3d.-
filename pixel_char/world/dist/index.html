@@ -4252,9 +4252,9 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     }
     document.getElementById("wrap").appendChild(el); pops.push({ el, f, t: 0, row: 0 });
   }
-  function el0(txt, col, f, replace) {
+  function el0(txt, col, f, replace, cls) {
     if (!hud) return;
-    const el = document.createElement("div"); el.className = "cpop"; el.textContent = txt; el.style.color = col;
+    const el = document.createElement("div"); el.className = "cpop" + (cls ? " " + cls : ""); el.textContent = txt; el.style.color = col;
     if (/PERFECTO/.test(txt)) el.classList.add("gold");
     addPop(el, f, replace);
   }
@@ -4366,6 +4366,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
   const EMBER = [[1, 0.62, 0.2], [1, 0.85, 0.45], [1, 0.4, 0.12]];
   const SPARK = [[1, 0.95, 0.75], [1, 0.8, 0.4], [1, 1, 1]];
   const GOLD = [[1, 0.84, 0.3], [1, 0.95, 0.6], [1, 0.7, 0.16], [1, 1, 0.85]];
+  const DULL = [[0.42, 0.4, 0.36], [0.33, 0.32, 0.3], [0.5, 0.47, 0.42]];
   function surf(x, z) { return (W.surfaceAt && W.surfaceAt(x, z)) || "dust"; }
   function groundBurst(x, z, n, heavy) {
     const k = surf(x, z), y = W.heightAt(x, z);
@@ -4475,10 +4476,13 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         stop(perfect ? (heavy ? STOP.perfectHeavy : STOP.perfect) : (heavy ? STOP.parryHeavy : STOP.parry));
         W.shakeCam(dx, dz, perfect ? 0.065 : 0.05, 0.22);
         if (W.sfx) W.sfx.combat(perfect ? "parryPerfect" : "parry");
-        const gain = (W.parryPostGain ? W.parryPostGain(att, t, AT, def) : (AT.post || (heavy ? 48 : 38)) * L.atkPost);
-        const broke = att.addPosture(gain);
+        // relleno (enemies/fodder): sin postura; perfecto = rematado al instante, normal = aturdido (fodder.js)
+        const fod = !!att.fodder && t.team === "player";
+        const gain = fod ? 0 : (W.parryPostGain ? W.parryPostGain(att, t, AT, def) : (AT.post || (heavy ? 48 : 38)) * L.atkPost);
+        const broke = fod ? false : att.addPosture(gain);
         // Duelo 3: tras tu parry perfecto queda DESEQUILIBRADO (~0,7 s) y se abre la ventana de riposte (duel.js)
-        const handled = !broke && W.duelOnParry ? W.duelOnParry(t, att, perfect, dir, a) : false;
+        const handled = fod ? (W.fodderOnParry ? W.fodderOnParry(t, att, perfect, dir, a) : false) :
+          !broke && W.duelOnParry ? W.duelOnParry(t, att, perfect, dir, a) : false;
         // si quien desvía es el enemigo, tú quedas desequilibrado (tus frames de hit, más largos) y él contraataca
         const foeDefl = t.team !== "player" && att.team === "player";
         if (!broke && !handled) att.start("hit", { kb: 0.3, kdir: dir + Math.PI, moved: 0, speed: foeDefl ? 1.0 : 1.35, recoil: true, unbalanced: foeDefl });
@@ -4500,7 +4504,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       }
       if (def === "block") {
         breakStreak(att); t.lastDefT = W.ct;
-        const L = LEVEL.block, cost = a.guardDrain ? a.guardDrain * t.stMax : heavy ? L.stHeavy : L.st;   // quiebraguardia: le vacía la stamina
+        const L = LEVEL.block, cost = (a.guardDrain ? a.guardDrain * t.stMax : heavy ? L.stHeavy : L.st) * (att.fodder ? 0.5 : 1);   // quiebraguardia: le vacía la stamina; relleno: la mitad
         t.st -= cost; t.stT = 0;
         if (AT.breaker) t.st = 0;                               // golpe que rompe la guardia (Duelo 3)
         if (t.st <= 0) {
@@ -4518,8 +4522,9 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         t.body.tryMove(Math.cos(dir) * 0.12, Math.sin(dir) * 0.12);
         const pc = heavy ? L.defPostHeavy : L.defPost;
         if (t.addPosture(pc)) { log({ ev: "block", who: t.name, from: att.name, anim: a.name, st: Math.round(t.st), hp: Math.round(t.hp), postBreak: true }); continue; }
-        W.fx.dust(cx, cy - 0.35, cz, 8, { pal: SPARK, spd: 1.3, up: 1.2, life: 0.28 });
-        star(cx, cy - 0.15, cz, 0.7, 0xffd8a0, 0.12);
+        if (att.fodder) W.fx.dust(cx, cy - 0.35, cz, 7, { pal: DULL, spd: 0.8, up: 0.7, life: 0.35 });   // relleno: polvo apagado, sin chispas
+        else { W.fx.dust(cx, cy - 0.35, cz, 8, { pal: SPARK, spd: 1.3, up: 1.2, life: 0.28 }); star(cx, cy - 0.15, cz, 0.7, 0xffd8a0, 0.12); }
+        if (att.fodder && t === W.pf && W.fodderOnDefense) W.fodderOnDefense(att, "block");
         stop(STOP.block); W.shakeCam(dx, dz, 0.03, 0.18);
         if (W.sfx) W.sfx.combat("block");
         log({ ev: "block", early: Math.round((t.lastEarly || 0) * 1000), who: t.name, from: att.name, anim: a.name, st: Math.round(t.st), hp: Math.round(t.hp), post: Math.round(t.post) });
@@ -4531,7 +4536,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       const exposed = !!(t.act && t.act.exposed);          // su parry falló (le engañaste): más postura
       const deathblow = t.stunned;
       const counter = !!a.counter && !deathblow;
-      const dm = deathblow ? Math.max(40, dmg * 3) : counter ? dmg * W.COMBAT.counterDmg : dmg;
+      const dm = t.fodder && !deathblow ? 10 : deathblow ? Math.max(40, dmg * 3) : counter ? dmg * W.COMBAT.counterDmg : dmg;   // relleno: 10 por golpe (3 el zombi, 2 el perro)
+      if (att.fodder && t === W.pf && W.fodderOnDefense) W.fodderOnDefense(att, "hit");
       const res = t.hurt({ dmg: dm, dir, kb: AT.kb || (heavy ? 0.6 : 0.35), guardBreak: !!AT.throw, heavy: heavy || counter || deathblow });
       if (res === "armor") {
         // aguanta el golpe sin interrumpir el suyo: chispas de metal y un golpe sordo
@@ -4618,7 +4624,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       @media (min-width:700px){#cpad{bottom:calc(84px + env(safe-area-inset-bottom,0px))}}
       .cpop{position:absolute;pointer-events:none;font-size:11px;text-shadow:2px 2px 0 #000,-1px -1px 0 #000;white-space:nowrap;z-index:5}
       #ctrW{visibility:hidden}#ctrW.on{visibility:visible}#ctrW span{color:#ffd34a}#ctP{background:#ffd34a!important;box-shadow:0 0 6px #ffb020}
-      .cpop.gold{font-size:14px;text-shadow:2px 2px 0 #000,-1px -1px 0 #000,0 0 8px #ffb020}
+      .cpop.small{font-size:8px;opacity:.92}.cpop.gold{font-size:14px;text-shadow:2px 2px 0 #000,-1px -1px 0 #000,0 0 8px #ffb020}
       #ebars.stun .en{color:#fff3b0}#respawn{display:none}#respawn.hot{display:inline-block;background:#6a2a1a!important;border-color:#ff9a5a!important}#cbars.low #hpP{background:#ff4a3a!important}`;
     document.head.appendChild(css);
     return { hpP: el.querySelector("#hpP"), stP: el.querySelector("#stP"), poP: el.querySelector("#poP"), ctW: el.querySelector("#ctrW"), ctP: el.querySelector("#ctP"), box: el, foe, hpE: foe.querySelector("#hpE"), poE: foe.querySelector("#poE"), en: foe.querySelector(".en") };
@@ -4646,6 +4652,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     hud.foe.style.left = s[0] + "px"; hud.foe.style.top = s[1] + "px";
     hud.hpE.style.width = (100 * e.hp / e.hpMax).toFixed(1) + "%";
     hud.poE.style.width = (100 * e.post / e.postMax).toFixed(1) + "%";
+    if (hud.poE.parentElement._fod !== !!e.fodder) { hud.poE.parentElement._fod = !!e.fodder; hud.poE.parentElement.style.visibility = e.fodder ? "hidden" : ""; }   // el relleno no tiene postura
     hud.foe.classList.toggle("stun", e.stunned);
     const nm = e.label || "ECO";
     const lbl = e.stunned ? "ATURDIDO" : !e.alive ? nm + " ✕" : nm;
@@ -5761,6 +5768,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     pn.querySelector("#tG3").addEventListener("click", () => W.spawnGroup(3, false));
     pn.querySelector("#tGE").addEventListener("click", () => W.spawnGroup(2, true));
     if (W.initCalibUI) W.initCalibUI(pn);           // latencia del parry (calib.js)
+    if (W.initFodderUI) W.initFodderUI(pn);         // anillo de timing del relleno (enemies/fodder)
     if (W.initTrainingUI) W.initTrainingUI(pn);     // modo entrenamiento (practice.js)
     if (W.initAnimViewerUI) W.initAnimViewerUI(pn); // visor de animaciones (animviewer.js)
   };
@@ -6772,7 +6780,17 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       see: 9, leash: 14, radius: 0.32, stunKB: 1.5, kbK: 1, cool: 0.5,
     },
     deadWait: 1.6, fade: 1.6, respawnT: 9,   // en el suelo, desvanecerse, reaparecer (si no estás encima)
+    // anillo de timing: radio inicial (u), grosor, color; nivel 1 = solo los últimos 250 ms
+    ring: { r0: { zombie: 1.05, dog: 0.85 }, w: 0.05, color: [0.12, 0.78, 0.95], late: 0.25 },
+    // andamio adaptativo por tipo: 4 parries seguidos bajan un nivel; 3 fallos seguidos lo suben
+    scaf: { down: 4, up: 3 },
   });
+  // modo del anillo (panel ⚙): auto (andamio), always (siempre), never (nunca); se recuerda en este navegador
+  const RKEY = "bosque.fodderRing";
+  CFG.ringMode = (() => { try { const v = localStorage.getItem(RKEY); return v === "always" || v === "never" ? v : "auto"; } catch (_) { return "auto"; } })();
+  const SCAF = (W.FODDER_SCAF = { zombie: { level: 2, streak: 0, fails: 0 }, dog: { level: 2, streak: 0, fails: 0 } });
+  // estadísticas de la práctica (contador en pantalla y modo entrenamiento)
+  const STATS = (W.FODDER_STATS = { streak: 0, best: 0, parries: 0, perfect: 0, fails: 0, last: null });
   let seed = 777;
   const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   let serial = 0;
@@ -6810,8 +6828,54 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     f.ai = makeAI(f);
     f.fade = 1; f.deadT = 0;
     ch.onStep = (e, sk, P) => step(f, e, sk, P);
+    f.ringMesh = makeRing(CFG.ring.r0[kind]);
+    if (kind === "zombie") {
+      // ojos que se encienden en el WINDUP (sobre la calavera; no se ven de espaldas)
+      const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xff7040, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 }));
+      e.scale.set(0.42, 0.42, 1); e.renderOrder = 4; W.scene.add(e); f.eyeGlow = e;
+    }
     return f;
   }
+
+  // ---- anillo de timing: banda fina de grosor constante en el suelo, cian bioluminiscente -------------------
+  function makeRing(r0) {
+    const R = r0 + 0.25;
+    const geo = new THREE.PlaneGeometry(2 * R, 2 * R); geo.rotateX(-Math.PI / 2);
+    const mat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      uniforms: { uR: { value: r0 }, uW: { value: CFG.ring.w }, uA: { value: 0 }, uFlash: { value: 0 }, uHalf: { value: R },
+        uCol: { value: new THREE.Vector3().fromArray(CFG.ring.color) } },
+      vertexShader: "varying vec2 vP; uniform float uHalf; void main(){ vP = (uv * 2.0 - 1.0) * uHalf; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+      fragmentShader: `varying vec2 vP; uniform float uR, uW, uA, uFlash; uniform vec3 uCol;
+        void main(){
+          // celdas de 0.035 u (pixel art: la banda se pinta a escalones, sin degradado fino)
+          vec2 q = floor(vP / 0.035 + 0.5) * 0.035;
+          float d = length(q);
+          float band = step(abs(d - uR), uW * 0.5);
+          float dot = step(d, 0.07) * 0.8;                 // el centro: a donde llega
+          float fl = uFlash * step(d, 0.32 + 0.25 * (1.0 - uFlash));
+          float a = max(band * uA, max(dot * uA * 0.8, fl));
+          if (a < 0.01) discard;
+          gl_FragColor = vec4(mix(uCol, vec3(0.85, 1.0, 1.0), fl * 0.6) * (0.85 + 0.6 * fl), a);
+        }`,
+    });
+    const m = new THREE.Mesh(geo, mat); m.renderOrder = 3; m.visible = false; m.frustumCulled = false;
+    W.scene.add(m);
+    return m;
+  }
+  let _glow = null;
+  function glowTex() {
+    if (_glow) return _glow;
+    const c = document.createElement("canvas"); c.width = c.height = 32;
+    const g = c.getContext("2d");
+    // dos puntos (los ojos) con su halo
+    for (const x of [11, 21]) { const gr = g.createRadialGradient(x, 16, 0, x, 16, 9); gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(0.35, "rgba(255,200,140,0.75)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, 32, 32); }
+    return (_glow = new THREE.CanvasTexture(c));
+  }
+  // nivel de ayuda que toca ahora para este tipo (2 = anillo completo, 1 = últimos 250 ms, 0 = sin anillo)
+  function ringLevel(kind) { return CFG.ringMode === "always" ? 2 : CFG.ringMode === "never" ? 0 : SCAF[kind].level; }
+  W.fodderRingLevel = ringLevel;
+  W.setFodderRingMode = function (m) { CFG.ringMode = m; try { localStorage.setItem(RKEY, m); } catch (_) {} const sel = document.getElementById("fodRing"); if (sel) sel.value = m; return m; };
 
   // ---- peso: el zombi arrastra los pies (polvo bajo y un roce grave); el perro pisa ligero ----------------
   function step(f, e, kind, P) {
@@ -6881,7 +6945,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         b.stop(); b.heading = toP;
         f.startAttack("attack", { dir: toP, plan: { wind: C.windup - C.rel, hold: 0, rel: C.rel }, want: C.want, cap: C.cap, seek: C.engage + 1.2,
           lungeFrom: C.lunge ? "release" : undefined });
-        if (f.act) { f.act.move = "attack"; f.act.fodderT0 = W.ct; }
+        if (f.act) { f.act.move = "attack"; f.act.fodderT0 = W.ct; f.act.ringLv = ringLevel(f.kind); }
         this.state = "windup"; this.cool = C.cool;
         W.combatLog.push({ ev: "fodderWindup", who: f.name, kind: f.kind, impactIn: +C.windup.toFixed(3), t: +W.U.uTime.value.toFixed(3) });
         if (W.onFodderWindup) W.onFodderWindup(f);
@@ -6909,6 +6973,14 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
   // ---- cada paso: aturdido (temblor y tinte), muerte y desvanecimiento, reaparición ----------------------
   function update(f, dt) {
     const ch = f.ch, U = ch.uniforms, a = f.act;
+    updateRing(f, dt);
+    updateEyes(f, dt);
+    // retroceso del aturdido (el perro sale despedido ~1,5 baldosas)
+    if (f.slide) {
+      const sl = f.slide, k = Math.min(dt, Math.max(0, sl.dur - sl.t)) / sl.dur;
+      if (k > 0) f.body.tryMove(sl.vx * k, sl.vz * k);
+      sl.t += dt; if (sl.t >= sl.dur) f.slide = null;
+    }
     if (a && a.name === "stun") {
       f.jitter = Math.sin(a.t * 70) * 0.012 * W.CHAR_H * Math.max(0, 1 - a.t / (a.dur || 1.2) * 0.6);
       f.flash = Math.max(f.flash, 0.18 + 0.08 * Math.sin(a.t * 18));
@@ -6931,8 +7003,96 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     } else { f.deadT = 0; f.fade = 1; }
     U.uFade.value = f.fade;
   }
+  function updateRing(f, dt) {
+    const m = f.ringMesh; if (!m) return;
+    const U = m.material.uniforms, a = f.act, C = f.fodder, R = CFG.ring, b = f.body;
+    f.ringFlash = Math.max(0, (f.ringFlash || 0) - dt / 0.16);
+    let alpha = 0, r = 0;
+    if (a && a.name === "attack" && a.ringLv > 0 && a.f < W.hitF(a) && f.alive) {
+      const ti = f.toImpact();
+      if (ti != null) {
+        r = R.r0[f.kind] * Math.max(0, Math.min(1, ti / C.windup));
+        alpha = a.ringLv >= 2 ? Math.min(1, (C.windup - ti) / 0.08) : ti <= R.late ? Math.min(1, (R.late - ti) / 0.05) : 0;
+        f.ring = { r, alpha, ti, t: W.ct };
+      }
+    } else f.ring = null;
+    const show = alpha > 0.01 || f.ringFlash > 0.01;
+    m.visible = show && !f.hidden;
+    if (!show) return;
+    m.position.set(b.x, W.heightAt(b.x, b.z) + 0.03, b.z);
+    U.uR.value = r; U.uA.value = alpha * 0.95; U.uFlash.value = f.ringFlash;
+  }
+  // posición de los ojos en el mundo (eye_px del atlas: la parte alta de la cabeza, respecto al pivote)
+  const BACK = { 3: 1, 4: 1, 5: 1 };
+  function updateEyes(f, dt) {
+    const e = f.eyeGlow; if (!e) return;
+    const ch = f.ch, st = ch.st, a = f.act, b = f.body;
+    let k = 0;
+    if (a && a.name === "attack" && a.f < W.hitF(a) && f.alive) { const ti = f.toImpact(); k = ti == null ? 1 : Math.min(1, 0.35 + 0.65 * (1 - ti / f.fodder.windup)); }
+    f.eyeK = (f.eyeK || 0) + (k - (f.eyeK || 0)) * Math.min(1, dt * 14);
+    const P = ch.meta.eye_px[st.anim + "_" + DIRS8[st.dir]];
+    const p = P && P[Math.min(5, st.frame)];
+    e.visible = f.eyeK > 0.02 && !!p && !BACK[st.dir] && !f.hidden;
+    if (!e.visible) return;
+    const th = W.ui ? W.ui.theta : Math.PI / 4;
+    const rx = Math.cos(th), rz = -Math.sin(th), tx = Math.sin(th), tz = Math.cos(th);
+    const ey = p[1] + 0.07 * ch.meta.standing_height_px;
+    e.position.set(b.x + rx * p[0] * ch.unitsH + tx * 0.3, b.y + (st.hgt || 0) - ey * ch.unitsV, b.z + rz * p[0] * ch.unitsH + tz * 0.3);
+    e.material.opacity = Math.min(1, f.eyeK) * 0.95 * f.fade;
+    const sc = 0.3 + 0.14 * f.eyeK; e.scale.set(sc, sc * 0.6, 1);
+  }
+  const DIRS8 = ["S", "SW", "W", "NW", "N", "NE", "E", "SE"];
+  // aviso del golpe: gruñido (grave el zombi, agudo el perro)
+  W.onFodderWindup = function (f) {
+    if (!W.sfx) return;
+    const d = W.player ? Math.hypot(f.body.x - W.player.x, f.body.z - W.player.z) : 0;
+    W.sfx.combat(f.kind === "zombie" ? "growlLow" : "growlHigh", Math.max(0.25, 1 - d / 14));
+  };
+  // recompensas del parry contra el relleno (combat.js): perfecto = rematado al instante; normal = aturdido 1,2 s
+  W.fodderOnParry = function (t, f, perfect, dir, a) {
+    const FX = W.combatFx, b = f.body, cy = b.y + f.ch.height * 0.55;
+    if (perfect) {
+      f.hp = 0; f.flash = 1; b.heading = dir + Math.PI;
+      f.start("death", { kb: 0.3 * f.kbK, kdir: dir, moved: 0 });
+      // fogonazo: la misma señal dorada que el parry perfecto, más grande
+      if (FX) { FX.flash(b.x, cy + 0.4, b.z, 0xffd060, 7.5); FX.star(b.x, cy, b.z, 1.9, 0xfff0b0, 0.3); }
+      if (W.fx && FX) W.fx.dust(b.x, cy, b.z, 34, { pal: FX.GOLD, spd: 2.6, up: 2.2, life: 0.6 });
+      if (W.sfx) W.sfx.combat("deathblow");
+      if (W.combatPop) W.combatPop("¡REMATADO!", "#ffd34a", f, null, "gold");
+      W.combatLog.push({ ev: "fodderKill", who: f.name, kind: f.kind, how: "perfect", t: +W.U.uTime.value.toFixed(3) });
+    } else {
+      f.start("stun", { t: 0, dur: 1.2 });
+      const d = f.fodder.stunKB;
+      f.slide = { vx: Math.cos(dir) * d, vz: Math.sin(dir) * d, t: 0, dur: f.kind === "dog" ? 0.28 : 0.18, x0: b.x, z0: b.z };
+      if (W.sfx) W.sfx.combat("stun");
+      W.combatLog.push({ ev: "fodderStun", who: f.name, kind: f.kind, dur: 1.2, kb: d, t: +W.U.uTime.value.toFixed(3) });
+    }
+    W.fodderOnDefense(f, perfect ? "perfect" : "normal");
+    return true;
+  };
+  // andamio: aciertos y fallos seguidos POR TIPO de enemigo
+  W.fodderOnDefense = function (f, res) {
+    const S = SCAF[f.kind], C = CFG.scaf, ok = res === "perfect" || res === "normal";
+    const lv0 = S.level;
+    if (ok) { S.streak++; S.fails = 0; if (S.streak >= C.down && S.level > 0) { S.level--; S.streak = 0; } }
+    else { S.fails++; S.streak = 0; if (S.fails >= C.up && S.level < 2) { S.level++; S.fails = 0; } }
+    if (S.level !== lv0) {
+      const down = S.level < lv0;
+      if (W.combatPop && CFG.ringMode === "auto") W.combatPop(down ? "ritmo aprendido" : "ayuda activada", down ? "#8ff0ff" : "#ffc070", W.pf, null, "small");
+      W.combatLog.push({ ev: "fodderLevel", kind: f.kind, level: S.level, from: lv0, t: +W.U.uTime.value.toFixed(3) });
+    }
+    // contador de la práctica
+    if (ok) { STATS.streak++; STATS.parries++; if (res === "perfect") STATS.perfect++; STATS.best = Math.max(STATS.best, STATS.streak); }
+    else { STATS.streak = 0; STATS.fails++; }
+    STATS.last = { res, kind: f.kind, early: W.pf ? Math.round((W.pf.lastEarly || 0) * 1000) : null, level: S.level };
+    W.combatLog.push({ ev: "fodderDef", kind: f.kind, res, level: S.level, streak: S.streak, fails: S.fails, t: +W.U.uTime.value.toFixed(3) });
+  };
+  W.fodderResetScaffold = function () { for (const k of KINDS) Object.assign(SCAF[k], { level: 2, streak: 0, fails: 0 }); Object.assign(STATS, { streak: 0, best: 0, parries: 0, perfect: 0, fails: 0, last: null }); };
+
   function hide(f, h) {
     const ch = f.ch; f.hidden = h;
+    if (h && f.ringMesh) f.ringMesh.visible = false;
+    if (h && f.eyeGlow) f.eyeGlow.visible = false;
     ch.mesh.visible = ch.caster.visible = ch.blob.visible = ch.ghost.visible = !h;
     for (const m of ch.boots || []) m.visible = !h;
   }
@@ -6945,6 +7105,17 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
   }
   function onFrame(f, a) {
     if (a.name === "death" && a.f === 2 && W.sfx) W.sfx.combat("death");
+    if (a.name === "attack" && a.f === W.hitF(a) && !a.clicked) {
+      // IMPACT: clic sincronizado (en todos los niveles) y destello del anillo (si se veía)
+      a.clicked = true;
+      if (a.ringLv > 0) f.ringFlash = 1;
+      if (W.sfx) W.sfx.combat("fodderClick");
+      W.combatLog.push({ ev: "fodderImpact", who: f.name, kind: f.kind, ringLv: a.ringLv, t0: a.fodderT0, t: +W.ct.toFixed(4) });
+    }
+  }
+  function remove(f) {
+    if (f.ringMesh) { W.scene.remove(f.ringMesh); f.ringMesh.geometry.dispose(); }
+    if (f.eyeGlow) W.scene.remove(f.eyeGlow);
   }
 
   // los mismos tres sitios que el autómata (claro del titán, bosque retorcido, cementerio)
@@ -6964,9 +7135,17 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
       label: CFG[kind].label,
       spawnPoints: sites,
       spawn(p) { return spawn(kind, p); },
-      update, onFrame, respawn,
+      update, onFrame, respawn, remove,
     });
   }
+  // ---- panel ⚙: «Anillo de timing» Auto / Siempre / Nunca ----------------------------------------------
+  W.initFodderUI = function (pn) {
+    const row = document.createElement("label");
+    row.innerHTML = `Anillo <select id="fodRing"><option value="auto">Auto</option><option value="always">Siempre</option><option value="never">Nunca</option></select>`;
+    pn.insertBefore(row, pn.querySelector("#tResp"));
+    const sel = row.querySelector("select"); sel.value = CFG.ringMode;
+    sel.addEventListener("change", () => W.setFodderRingMode(sel.value));
+  };
   W.spawnFodder = spawn;
   W.fodderRespawn = respawn;
   W.fodderPhase = phaseOf;
@@ -7114,7 +7293,8 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     }
     const nm = (e.label || "ECO") + (e.stunned ? " · ATURDIDO" : T.on ? " · ENTRENAMIENTO" : "");
     if (hud.dn.textContent !== nm) hud.dn.textContent = nm;
-    setBar(hud.eb, hud.ei, e.post / e.postMax);
+    // relleno: no tiene postura (un parry perfecto lo remata); su barra muestra los golpes que le quedan
+    setBar(hud.eb, hud.ei, e.fodder ? e.hp / e.hpMax : e.post / e.postMax);
     setBar(hud.pb, hud.pi, p.post / p.postMax);
     const ru = W.duelRipUntil ? W.duelRipUntil(p) : 0;     // ventana de riposte (duel.js)
     const cw = ru > W.ct ? (ru - W.ct) / W.duelRipSpan(p) : Math.max(0, Math.max(p.counterT, p.airCounterT || 0) - W.ct) / W.COMBAT.counterWin, con = cw > 0;
@@ -7504,6 +7684,10 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
     } else if (kind === "stomp") { tone(c, t, "sine", 70, 38, 0.3 * (surface || 1), 0.16); noiseHit(c, t, "lowpass", 600, 150, 0.7, 0.18 * (surface || 1), 0.12); }
     // relleno: el zombi arrastra los pies (roce grave), el perro pisa ligero
     else if (kind === "dragStep") { noiseHit(c, t, "lowpass", 700, 180, 0.8, 0.12 * (surface || 1), 0.22); tone(c, t, "sine", 62, 44, 0.06 * (surface || 1), 0.12); }
+    // relleno: gruñido del aviso (grave el zombi, agudo el perro) y el clic del IMPACT (el compás del parry)
+    else if (kind === "growlLow") { const v = surface || 1; tone(c, t, "sawtooth", 78, 52, 0.11 * v, 0.62); tone(c, t + 0.03, "sawtooth", 83, 58, 0.07 * v, 0.55); noiseHit(c, t, "lowpass", 420, 160, 0.9, 0.16 * v, 0.6); }
+    else if (kind === "growlHigh") { const v = surface || 1; tone(c, t, "sawtooth", 210, 170, 0.07 * v, 0.34); tone(c, t + 0.12, "sawtooth", 230, 180, 0.06 * v, 0.26); noiseHit(c, t, "bandpass", 1300, 800, 2.5, 0.09 * v, 0.4); }
+    else if (kind === "fodderClick") { tone(c, t, "square", 2600, 2550, 0.05, 0.025); tone(c, t, "triangle", 1300, 1290, 0.08, 0.04); noiseHit(c, t, "highpass", 5000, 4000, 1.2, 0.07, 0.02); }
     else if (kind === "pawStep") { noiseHit(c, t, "bandpass", 1800, 900, 1.4, 0.05 * (surface || 1), 0.05); }
   };
   // Ambiente: viento (ruido filtrado que respira), goteo (gotas al azar en las charcas y bajo las copas),

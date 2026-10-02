@@ -89,9 +89,9 @@
     }
     document.getElementById("wrap").appendChild(el); pops.push({ el, f, t: 0, row: 0 });
   }
-  function el0(txt, col, f, replace) {
+  function el0(txt, col, f, replace, cls) {
     if (!hud) return;
-    const el = document.createElement("div"); el.className = "cpop"; el.textContent = txt; el.style.color = col;
+    const el = document.createElement("div"); el.className = "cpop" + (cls ? " " + cls : ""); el.textContent = txt; el.style.color = col;
     if (/PERFECTO/.test(txt)) el.classList.add("gold");
     addPop(el, f, replace);
   }
@@ -203,6 +203,7 @@
   const EMBER = [[1, 0.62, 0.2], [1, 0.85, 0.45], [1, 0.4, 0.12]];
   const SPARK = [[1, 0.95, 0.75], [1, 0.8, 0.4], [1, 1, 1]];
   const GOLD = [[1, 0.84, 0.3], [1, 0.95, 0.6], [1, 0.7, 0.16], [1, 1, 0.85]];
+  const DULL = [[0.42, 0.4, 0.36], [0.33, 0.32, 0.3], [0.5, 0.47, 0.42]];
   function surf(x, z) { return (W.surfaceAt && W.surfaceAt(x, z)) || "dust"; }
   function groundBurst(x, z, n, heavy) {
     const k = surf(x, z), y = W.heightAt(x, z);
@@ -312,10 +313,13 @@
         stop(perfect ? (heavy ? STOP.perfectHeavy : STOP.perfect) : (heavy ? STOP.parryHeavy : STOP.parry));
         W.shakeCam(dx, dz, perfect ? 0.065 : 0.05, 0.22);
         if (W.sfx) W.sfx.combat(perfect ? "parryPerfect" : "parry");
-        const gain = (W.parryPostGain ? W.parryPostGain(att, t, AT, def) : (AT.post || (heavy ? 48 : 38)) * L.atkPost);
-        const broke = att.addPosture(gain);
+        // relleno (enemies/fodder): sin postura; perfecto = rematado al instante, normal = aturdido (fodder.js)
+        const fod = !!att.fodder && t.team === "player";
+        const gain = fod ? 0 : (W.parryPostGain ? W.parryPostGain(att, t, AT, def) : (AT.post || (heavy ? 48 : 38)) * L.atkPost);
+        const broke = fod ? false : att.addPosture(gain);
         // Duelo 3: tras tu parry perfecto queda DESEQUILIBRADO (~0,7 s) y se abre la ventana de riposte (duel.js)
-        const handled = !broke && W.duelOnParry ? W.duelOnParry(t, att, perfect, dir, a) : false;
+        const handled = fod ? (W.fodderOnParry ? W.fodderOnParry(t, att, perfect, dir, a) : false) :
+          !broke && W.duelOnParry ? W.duelOnParry(t, att, perfect, dir, a) : false;
         // si quien desvía es el enemigo, tú quedas desequilibrado (tus frames de hit, más largos) y él contraataca
         const foeDefl = t.team !== "player" && att.team === "player";
         if (!broke && !handled) att.start("hit", { kb: 0.3, kdir: dir + Math.PI, moved: 0, speed: foeDefl ? 1.0 : 1.35, recoil: true, unbalanced: foeDefl });
@@ -337,7 +341,7 @@
       }
       if (def === "block") {
         breakStreak(att); t.lastDefT = W.ct;
-        const L = LEVEL.block, cost = a.guardDrain ? a.guardDrain * t.stMax : heavy ? L.stHeavy : L.st;   // quiebraguardia: le vacía la stamina
+        const L = LEVEL.block, cost = (a.guardDrain ? a.guardDrain * t.stMax : heavy ? L.stHeavy : L.st) * (att.fodder ? 0.5 : 1);   // quiebraguardia: le vacía la stamina; relleno: la mitad
         t.st -= cost; t.stT = 0;
         if (AT.breaker) t.st = 0;                               // golpe que rompe la guardia (Duelo 3)
         if (t.st <= 0) {
@@ -355,8 +359,9 @@
         t.body.tryMove(Math.cos(dir) * 0.12, Math.sin(dir) * 0.12);
         const pc = heavy ? L.defPostHeavy : L.defPost;
         if (t.addPosture(pc)) { log({ ev: "block", who: t.name, from: att.name, anim: a.name, st: Math.round(t.st), hp: Math.round(t.hp), postBreak: true }); continue; }
-        W.fx.dust(cx, cy - 0.35, cz, 8, { pal: SPARK, spd: 1.3, up: 1.2, life: 0.28 });
-        star(cx, cy - 0.15, cz, 0.7, 0xffd8a0, 0.12);
+        if (att.fodder) W.fx.dust(cx, cy - 0.35, cz, 7, { pal: DULL, spd: 0.8, up: 0.7, life: 0.35 });   // relleno: polvo apagado, sin chispas
+        else { W.fx.dust(cx, cy - 0.35, cz, 8, { pal: SPARK, spd: 1.3, up: 1.2, life: 0.28 }); star(cx, cy - 0.15, cz, 0.7, 0xffd8a0, 0.12); }
+        if (att.fodder && t === W.pf && W.fodderOnDefense) W.fodderOnDefense(att, "block");
         stop(STOP.block); W.shakeCam(dx, dz, 0.03, 0.18);
         if (W.sfx) W.sfx.combat("block");
         log({ ev: "block", early: Math.round((t.lastEarly || 0) * 1000), who: t.name, from: att.name, anim: a.name, st: Math.round(t.st), hp: Math.round(t.hp), post: Math.round(t.post) });
@@ -368,7 +373,8 @@
       const exposed = !!(t.act && t.act.exposed);          // su parry falló (le engañaste): más postura
       const deathblow = t.stunned;
       const counter = !!a.counter && !deathblow;
-      const dm = deathblow ? Math.max(40, dmg * 3) : counter ? dmg * W.COMBAT.counterDmg : dmg;
+      const dm = t.fodder && !deathblow ? 10 : deathblow ? Math.max(40, dmg * 3) : counter ? dmg * W.COMBAT.counterDmg : dmg;   // relleno: 10 por golpe (3 el zombi, 2 el perro)
+      if (att.fodder && t === W.pf && W.fodderOnDefense) W.fodderOnDefense(att, "hit");
       const res = t.hurt({ dmg: dm, dir, kb: AT.kb || (heavy ? 0.6 : 0.35), guardBreak: !!AT.throw, heavy: heavy || counter || deathblow });
       if (res === "armor") {
         // aguanta el golpe sin interrumpir el suyo: chispas de metal y un golpe sordo
@@ -455,7 +461,7 @@
       @media (min-width:700px){#cpad{bottom:calc(84px + env(safe-area-inset-bottom,0px))}}
       .cpop{position:absolute;pointer-events:none;font-size:11px;text-shadow:2px 2px 0 #000,-1px -1px 0 #000;white-space:nowrap;z-index:5}
       #ctrW{visibility:hidden}#ctrW.on{visibility:visible}#ctrW span{color:#ffd34a}#ctP{background:#ffd34a!important;box-shadow:0 0 6px #ffb020}
-      .cpop.gold{font-size:14px;text-shadow:2px 2px 0 #000,-1px -1px 0 #000,0 0 8px #ffb020}
+      .cpop.small{font-size:8px;opacity:.92}.cpop.gold{font-size:14px;text-shadow:2px 2px 0 #000,-1px -1px 0 #000,0 0 8px #ffb020}
       #ebars.stun .en{color:#fff3b0}#respawn{display:none}#respawn.hot{display:inline-block;background:#6a2a1a!important;border-color:#ff9a5a!important}#cbars.low #hpP{background:#ff4a3a!important}`;
     document.head.appendChild(css);
     return { hpP: el.querySelector("#hpP"), stP: el.querySelector("#stP"), poP: el.querySelector("#poP"), ctW: el.querySelector("#ctrW"), ctP: el.querySelector("#ctP"), box: el, foe, hpE: foe.querySelector("#hpE"), poE: foe.querySelector("#poE"), en: foe.querySelector(".en") };
@@ -483,6 +489,7 @@
     hud.foe.style.left = s[0] + "px"; hud.foe.style.top = s[1] + "px";
     hud.hpE.style.width = (100 * e.hp / e.hpMax).toFixed(1) + "%";
     hud.poE.style.width = (100 * e.post / e.postMax).toFixed(1) + "%";
+    if (hud.poE.parentElement._fod !== !!e.fodder) { hud.poE.parentElement._fod = !!e.fodder; hud.poE.parentElement.style.visibility = e.fodder ? "hidden" : ""; }   // el relleno no tiene postura
     hud.foe.classList.toggle("stun", e.stunned);
     const nm = e.label || "ECO";
     const lbl = e.stunned ? "ATURDIDO" : !e.alive ? nm + " ✕" : nm;

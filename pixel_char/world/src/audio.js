@@ -157,6 +157,10 @@
     } else if (kind === "stomp") { tone(c, t, "sine", 70, 38, 0.3 * (surface || 1), 0.16); noiseHit(c, t, "lowpass", 600, 150, 0.7, 0.18 * (surface || 1), 0.12); }
     // relleno: el zombi arrastra los pies (roce grave), el perro pisa ligero
     else if (kind === "dragStep") { noiseHit(c, t, "lowpass", 700, 180, 0.8, 0.12 * (surface || 1), 0.22); tone(c, t, "sine", 62, 44, 0.06 * (surface || 1), 0.12); }
+    // relleno: gruñido del aviso (grave el zombi, agudo el perro) y el clic del IMPACT (el compás del parry)
+    else if (kind === "growlLow") { const v = surface || 1; tone(c, t, "sawtooth", 78, 52, 0.11 * v, 0.62); tone(c, t + 0.03, "sawtooth", 83, 58, 0.07 * v, 0.55); noiseHit(c, t, "lowpass", 420, 160, 0.9, 0.16 * v, 0.6); }
+    else if (kind === "growlHigh") { const v = surface || 1; tone(c, t, "sawtooth", 210, 170, 0.07 * v, 0.34); tone(c, t + 0.12, "sawtooth", 230, 180, 0.06 * v, 0.26); noiseHit(c, t, "bandpass", 1300, 800, 2.5, 0.09 * v, 0.4); }
+    else if (kind === "fodderClick") { tone(c, t, "square", 2600, 2550, 0.05, 0.025); tone(c, t, "triangle", 1300, 1290, 0.08, 0.04); noiseHit(c, t, "highpass", 5000, 4000, 1.2, 0.07, 0.02); }
     else if (kind === "pawStep") { noiseHit(c, t, "bandpass", 1800, 900, 1.4, 0.05 * (surface || 1), 0.05); }
   };
   // Ambiente: viento (ruido filtrado que respira), goteo (gotas al azar en las charcas y bajo las copas),
