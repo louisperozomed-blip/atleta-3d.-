@@ -1704,3 +1704,7 @@ Lo que queda a pocos fps es lo que nadie puede saber: cuánto durará el frame e
 120 ms). A 60 fps no cambia nada (ya era exacto). Datos por pulsación en `review/timing/`. Las baterías de paso fijo
 no cambian (el paso fijo sigue con la conversión de siempre); la de interfaz (`parry2_ui`, tiempo real con teclado y
 toque) sigue pasando.
+
+Regresión completa tras el arreglo (`review/timing/regresion.txt`): combate 31/31, autómata 21/21, parry 50/50,
+duelo 22/22, interfaz 10/10, salto 15/15, cc_e1-e7 7/17/15/11/8/9/11, navegación 282/282, relleno E3 11/11, E4 10/10,
+batería 9/9; sin errores JS.

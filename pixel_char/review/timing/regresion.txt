@@ -1,0 +1,35 @@
+== combat
+31/31 OK , sin errores JS
+== enemy
+21/21 OK , sin errores JS
+== parry2
+50/50 OK , sin errores JS
+== duel3
+22/22 OK , sin errores JS
+== parry2_ui
+10/10 OK , sin errores JS
+== salto
+15/15 OK , sin errores JS
+== cc_e1
+7/7 OK , sin errores JS
+== cc_e2
+17/17 OK , sin errores JS
+== cc_e3
+15/15 OK , sin errores JS
+== cc_e4
+11/11 OK , sin errores JS
+== cc_e5
+8/8 OK , sin errores JS
+== cc_e6
+9/9 OK , sin errores JS
+== cc_e7
+11/11 OK , sin errores JS
+== nav
+navegación: 282/282 rutas  , sin errores JS
+== fodder_e3
+11/11 OK , sin errores JS
+== fodder_e4
+10/10 OK , sin errores JS
+== fodder
+9/9 OK , sin errores JS
+FIN
