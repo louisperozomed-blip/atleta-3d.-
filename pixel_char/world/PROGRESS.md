@@ -1598,3 +1598,63 @@ Prueba `tests/fodder_e3.mjs`: **10/10** (`review/fodder/E3_results.json`, captur
   antes · nivel 1» (el nivel del anillo con el que lo hiciste).
 
 Prueba `tests/fodder_e4.mjs`: **10/10** (`review/fodder/E4_results.json`, captura `E4_grupo_practica.png`).
+
+### Etapa 5 — Pruebas y publicación
+
+**Batería del relleno** (Playwright, escritorio 1280×800 con teclado e iPhone 390×844 táctil):
+- `tests/fodder.mjs` **9/9**: estados con la IA real (idle/wander → chase → windup → attack → recovery → hit →
+  stun → death); el golpe en arco solo en el frame IMPACT (un «swing» por golpe); A* sin atascos (21/21 desde 6-12 u
+  en el titán, el cementerio y las charcas; 3 puntos sin camino andando, en salientes de 2,5-3 u, no cuentan: ahí el
+  relleno se rinde a los 4 s y vuelve a su sitio en vez de quedarse quieto); muerte (se desvanece a los 3,2 s) y
+  reaparición en su sitio (9 s después, si no estás encima); tecla K → PERFECTO remata / NORMAL aturde; botón GUARDIA
+  táctil en el iPhone → parry; el contador dentro de la pantalla sin pisar botones ni barras; nunca una animación
+  inexistente (`W.animMiss` vacío en escritorio y en iPhone).
+- `tests/fodder_e3.mjs` **10/10** (anillo a 0 ms del IMPACT, nivel 1 = últimos 250 ms, nivel 0 sin anillo, andamio
+  4↓/3↑ por tipo, recompensas, panel) y `tests/fodder_e4.mjs` **10/10** (nunca 2 atacantes, 700 ms entre turnos,
+  corro a 2-3 u, grupo de práctica, contador, selector, grupos del mundo, entrenamiento).
+- (En el iPhone emulado, el toque por CDP con la simulación en pausa llega con la marca de tiempo recortada a −120 ms
+  y con un retraso variable: el PERFECTO con el control real se comprueba con la tecla K.)
+
+**Bot de reacción humana** (`tests/fodder_bot.mjs`, 150 golpes por caso; `review/fodder/E5_bot.json`). Relleno: ve
+el inicio del WINDUP con su reacción (250 ± 40 ms) y, como el ritmo es fijo, apunta 60 ms antes del IMPACT con un
+error de cronometraje según la ayuda (anillo completo σ 20 ms, nivel 1 σ 25 ms, sin anillo σ 35 ms ≈ 5 % del
+intervalo); nunca pulsa antes de percibir el aviso + 50 ms. Autómata: el bot de siempre (reacciona a la SUELTA).
+
+| Contra | desviables | desviados | PERFECTOS |
+|---|---|---|---|
+| zombi, anillo nivel 2 | 100 % | 100 % | **68 %** |
+| zombi, nivel 1 | 100 % | 100 % | 66 % |
+| zombi, nivel 0 (sin anillo) | 100 % | 97,3 % | **54 %** |
+| perro, anillo nivel 2 | 100 % | 100 % | **69,3 %** |
+| perro, nivel 1 | 100 % | 99,3 % | 62 % |
+| perro, nivel 0 | 100 % | 98 % | **56,7 %** |
+| **autómata** (zarpazo y barrido) | — | 96,7 % | **9,3 %** (12 % y 6,7 %) |
+
+≥ 99 % de los golpes de relleno son desviables (la reacción humana cabe de sobra en el WINDUP de 600-800 ms), así que
+no hizo falta alargarlo; la ventana del jugador no se ha tocado. Lectura: con el ritmo fijo y el anillo, el PERFECTO
+sale 7 veces más que contra el autómata cuando solo se reacciona a su suelta: lo que hay que llevarse al autómata es
+**anticipar el golpe por su tempo**, no reaccionar al destello.
+
+**Regresión** (`review/fodder/E5_regresion.txt`): combate (eco) **31/31**, autómata **21/21**, parry **50/50**,
+duelo **22/22**, salto 15/15, combate completo 7+17+15+11+8+9+11, parry en la interfaz 10/10 y navegación
+**282/282**. Dos pruebas antiguas se pusieron al día (no el juego):
+- La navegación de 282 rutas no estaba guardada (se ejecutaba en línea dentro de otra prueba): ahora es
+  `tests/nav_stress.mjs`. Con el salto contextual daba 280/282 porque dejaba de simular cuando el camino quedaba vacío
+  en mitad del último salto (el aterrizaje era el último punto); simulando hasta aterrizar: 282/282.
+- `parry2_ui` en el iPhone: el segundo toque emulado llega en esta máquina con 240-770 ms de retraso (también con la
+  versión anterior al relleno); la antelación medida pasa entonces de la ventana de 200 ms y lo correcto es BLOQUEO.
+
+GIF y capturas (`review/fodder/`): `E5_anillo_perfecto.gif` (el anillo se cierra y un PERFECTO remata al zombi),
+`E5_perro_despedido.gif` (parry NORMAL: aturdido y despedido), `E5_metronomo.gif` (grupo de 4, un atacante cada
+vez), `E5_niveles.gif` (el mismo zarpazo con el anillo en nivel 2, 1 y 0), `E5_escritorio_grupo.png`,
+`E5_iphone_grupo.png`. Página: 15,66 MB.
+
+**Queda en (b), para regenerar:**
+1. `dog_death_1` (N, NE, E, SE): no llegó; E/SE/NE son espejos de W/SW/NW y la N es la NW provisional.
+2. Zombi `idle` y `walk` (_1 y _2): otro diseño (más delgado, musgo colgante, setas en los hombros) que attack, hit y
+   death; el color ya casa, la silueta no. Regenerarlas con el diseño de attack.
+3. Zombi `idle_1` NE, E, SE (miran a la izquierda), `attack_2` NW (de frente) y `hit_2` W (mira a la derecha):
+   arregladas con espejos; mejor regenerarlas.
+4. Perro `death_2` S: tras el primer frame se tumba de lado; leve.
+5. Restos muy tenues de la losa bajo 2-3 cuerpos tumbados de la muerte del zombi (columnas 5-6): casi invisibles a
+   escala de juego.

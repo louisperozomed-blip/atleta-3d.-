@@ -69,7 +69,9 @@ for (const prof of ["escritorio", "movil"]) {
     pr.push(r);
   }
   check(`[${prof}] guardia (${mob ? "toque en GUARDIA" : "tecla K"}): parry medido desde la marca de tiempo del evento (antelación = lo que faltaba + el retraso del evento)`,
-    pr.every((r) => /^(perfect|normal):/.test(r.res) && Math.abs(+r.res.split(":")[1] - r.esperado) <= 4), pr);
+    // (si el evento llega con mucho retraso —el toque emulado en una máquina lenta— la antelación medida pasa de la
+    //  ventana de 200 ms y lo correcto es BLOQUEO; si no, parry con esa antelación ±4 ms)
+    pr.every((r) => r.esperado > 204 ? r.res === "block" : /^(perfect|normal):/.test(r.res) && Math.abs(+r.res.split(":")[1] - r.esperado) <= 4), pr);
 
   // 2) golpe retrasado manteniendo (dedo sobre el enemigo / J) y 3) finta (guardia durante tu preparación)
   await page.evaluate(() => pair(0.6, 1.9));

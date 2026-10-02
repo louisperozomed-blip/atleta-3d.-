@@ -1,0 +1,141 @@
+{
+ "results": [
+  {
+   "name": "estados: idle/wander → chase → windup → attack → recovery → hit → … → stun → … → death",
+   "ok": true,
+   "info": {
+    "seq": [
+     "idle",
+     "wander",
+     "chase",
+     "windup",
+     "attack",
+     "recovery",
+     "hit",
+     "chase",
+     "windup",
+     "stun",
+     "chase",
+     "windup",
+     "death"
+    ]
+   }
+  },
+  {
+   "name": "golpe en arco solo en el frame IMPACT (un «swing» por golpe, ninguno en la preparación ni en la recuperación)",
+   "ok": true,
+   "info": [
+    {
+     "kind": "zombie",
+     "swings": 4,
+     "impacts": 4,
+     "sameT": true,
+     "frames": [
+      "attack",
+      "attack",
+      "attack",
+      "attack"
+     ]
+    },
+    {
+     "kind": "dog",
+     "swings": 4,
+     "impacts": 4,
+     "sameT": true,
+     "frames": [
+      "attack",
+      "attack",
+      "attack",
+      "attack"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A* sin atascos: llegan a su distancia de ataque desde 6-12 u (titán, cementerio, charcas)",
+   "ok": true,
+   "info": {
+    "n": 21,
+    "ok": 21,
+    "inalcanzables": 3,
+    "fails": []
+   }
+  },
+  {
+   "name": "muerte: se queda en el suelo y se desvanece (~3,2 s); reaparece en su sitio a los 9 s si no estás encima",
+   "ok": true,
+   "info": {
+    "hidMs": 3217,
+    "back": true,
+    "backMs": 12217,
+    "atHome": 0,
+    "log": 1
+   }
+  },
+  {
+   "name": "escritorio: tecla K → parry PERFECTO remata al zombi; parry NORMAL aturde al perro",
+   "ok": true,
+   "info": {
+    "zombi": {
+     "res": "perfect",
+     "early": 54,
+     "kill": 1,
+     "stun": 0
+    },
+    "perro": {
+     "res": "normal",
+     "early": 110,
+     "kill": 0,
+     "stun": 1
+    }
+   }
+  },
+  {
+   "name": "escritorio: nunca se pide una animación inexistente",
+   "ok": true,
+   "info": {
+    "miss": []
+   }
+  },
+  {
+   "name": "iPhone: botón GUARDIA táctil → parry al zombi y al perro (aturdido o rematado)",
+   "ok": true,
+   "info": {
+    "zombi": {
+     "res": "perfect",
+     "early": 28,
+     "kill": 1,
+     "stun": 0
+    },
+    "perro": {
+     "res": "normal",
+     "early": 130,
+     "kill": 0,
+     "stun": 1
+    }
+   }
+  },
+  {
+   "name": "iPhone: el contador de la práctica se ve dentro de la pantalla y no pisa botones ni barras",
+   "ok": true,
+   "info": {
+    "hud": [
+     12,
+     112,
+     145.640625,
+     164.78125
+    ],
+    "overlaps": 0,
+    "inside": true
+   }
+  },
+  {
+   "name": "iPhone: nunca se pide una animación inexistente",
+   "ok": true,
+   "info": {
+    "miss": []
+   }
+  }
+ ],
+ "errors": []
+}
