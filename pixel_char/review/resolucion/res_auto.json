@@ -1,0 +1,122 @@
+{
+ "res": [
+  {
+   "name": "escritorio 1280×800 empieza en px2 (auto)",
+   "ok": true,
+   "info": {
+    "pi": 1,
+    "on": true,
+    "buf": [
+     640,
+     400
+    ],
+    "btn": "px2 auto"
+   }
+  },
+  {
+   "name": "tiempo real a pocos fps: prueba un píxel más grueso y lo deja solo si sube los fps",
+   "ok": true,
+   "info": {
+    "pi": 3,
+    "fps": 7.8,
+    "log": [
+     "6 fps → px3",
+     "8 fps → px4"
+    ],
+    "lock": false
+   }
+  },
+  {
+   "name": "60 fps: sube de px3 a px2",
+   "ok": true,
+   "info": {
+    "up": 1,
+    "dn": 2,
+    "dn2": 2,
+    "noBack": 2,
+    "cap1": 3,
+    "cap2": 2,
+    "lock": true,
+    "cap3": 2
+   }
+  },
+  {
+   "name": "40 fps: baja a px3 y no vuelve a px2",
+   "ok": true,
+   "info": {
+    "up": 1,
+    "dn": 2,
+    "dn2": 2,
+    "noBack": 2,
+    "cap1": 3,
+    "cap2": 2,
+    "lock": true,
+    "cap3": 2
+   }
+  },
+  {
+   "name": "limitado a 30 fps: baja, no mejora → vuelve a px3 y se queda",
+   "ok": true,
+   "info": {
+    "up": 1,
+    "dn": 2,
+    "dn2": 2,
+    "noBack": 2,
+    "cap1": 3,
+    "cap2": 2,
+    "lock": true,
+    "cap3": 2
+   }
+  },
+  {
+   "name": "botón px: auto → manual … → auto",
+   "ok": true,
+   "info": {
+    "seq": [
+     "px4",
+     "px5",
+     "px6",
+     "px8",
+     "px2 auto",
+     "px3",
+     "px4",
+     "px5"
+    ],
+    "on": false
+   }
+  },
+  {
+   "name": "ligero: el toque se recupera (≤ 40 % de la preparación)",
+   "ok": true,
+   "info": [
+    {
+     "tapMs": 50,
+     "ms": 217,
+     "cut": 0.05
+    },
+    {
+     "tapMs": 100,
+     "ms": 233,
+     "cut": 0.082
+    },
+    {
+     "tapMs": 150,
+     "ms": 283,
+     "cut": 0.082
+    }
+   ]
+  },
+  {
+   "name": "iPhone empieza en px3 (como antes)",
+   "ok": true,
+   "info": {
+    "pi": 2,
+    "buf": [
+     390,
+     664
+    ]
+   }
+  }
+ ],
+ "errors": []
+}

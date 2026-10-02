@@ -140,7 +140,7 @@
       const P = a.plan;
       if (P && !P.done) return (P.wind + P.hold + P.rel - P.t) / (a.speed || 1);
       const c = cumOf(this.M(), an(a));
-      return (c[HF(a)] - (a.tt || 0)) * (a.slow || 1) / (a.speed || 1);
+      return (c[HF(a)] - (a.tt || 0)) * (a.slow || 1) / (a.speed || 1) / (a.prepK || 1);
     }
     // ---- entradas ------------------------------------------------------------------------
     input(type, data) {
@@ -295,6 +295,13 @@
         if (data.lungeFrom) a.lungeFrom = data.lungeFrom;
         if (data.track) a.track = true;                // persigue al objetivo hasta el impacto (agarre, barrido)
         if (data.hold) a.holdable = true;              // retraso: se queda en la carga mientras se mantenga
+      }
+      // TOQUE: el ligero sale al SOLTAR (mantener = fuerte), así que el toque (~80-150 ms) se sumaba al golpe. Si sale
+      // en el mismo paso en que se suelta, se recupera ese tiempo acelerando la preparación (hasta un 40 % de ella:
+      // la anticipación se sigue viendo): el impacto llega como si hubiera empezado al pulsar
+      if (data && data.tap > 0 && data.relCt === W.ct && !a.charging && !a.plan && name.startsWith("attack")) {
+        const wd = cumOf(this.M(), an(a))[HF(a)] * (a.slow || 1) / (a.speed || 1), cut = Math.min(data.tap, wd * 0.4);
+        if (cut > 0.005) { a.prepK = wd / (wd - cut); a.tapCut = +cut.toFixed(3); }
       }
       if (this.counterT && W.ct <= this.counterT && name !== "riposte" && name !== "deathblow") { a.counter = true; this.counterT = 0; }   // contraataque
       // atracción suave hacia el enemigo más cercano (delante, a menos de 3.4 u): gira hacia él y se acerca
@@ -453,6 +460,7 @@
         }
       } else {
         if (a.slow && a.slow !== 1 && isAtk(a) && a.f < HF(a)) sp /= a.slow;
+        if (a.prepK && isAtk(a) && a.f < HF(a)) sp *= a.prepK;        // toque recuperado (startAttack)
         if (a.recK && isAtk(a) && a.f > HF(a)) sp *= a.recK;          // recuperación larga (remate giratorio)
         let nt = (a.tt || 0) + dt * sp;
         // RETRASO: mientras se mantenga el ataque, la preparación se queda al final de la carga (frame 1)

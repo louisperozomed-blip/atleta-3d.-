@@ -1708,3 +1708,30 @@ toque) sigue pasando.
 Regresión completa tras el arreglo (`review/timing/regresion.txt`): combate 31/31, autómata 21/21, parry 50/50,
 duelo 22/22, interfaz 10/10, salto 15/15, cc_e1-e7 7/17/15/11/8/9/11, navegación 282/282, relleno E3 11/11, E4 10/10,
 batería 9/9; sin errores JS.
+
+### Resolución automática y arranque del ataque ligero
+
+**Resolución + fps** (`main.js`). Antes, siempre px3 (cada píxel del juego = 3 píxeles de pantalla): en un portátil
+1280×800 el juego se pintaba a 426×266. Ahora hay modo **auto** (el botón muestra «px2 auto»):
+- Empieza en **px2** si el buffer cabe en ~0,42 MP (portátiles y monitores hasta ~1440×900: 640×400, 2,25× más
+  píxeles); si no, en px3 como antes (móviles: 1 píxel de juego por píxel CSS). Nunca empieza más grueso que antes.
+- Cada 2 s mira los fps reales: con ≥ 57 fps sostenidos prueba un píxel más fino (hasta px2); por debajo de 45 pasa a
+  uno más grueso (hasta px4) para recuperar fluidez y no vuelve a ese nivel; si el más grueso no sube los fps (un
+  móvil en ahorro de energía limitado a 30, o un equipo que no está limitado por los píxeles) vuelve y se queda.
+- El botón px pasa a manual (como antes) y, tras px8, vuelve a auto. Las pruebas automáticas lo tienen apagado salvo
+  con `#res=auto`, así que sus capturas y tiempos no cambian.
+Comparación `review/resolucion/escritorio_px3_vs_px2.png` (izquierda antes, derecha ahora: mismo estilo pixel art,
+el doble de detalle en el personaje y el zombi).
+
+**Ataque ligero** (`controls.js`, `fighter.js`). El ligero sale al SOLTAR (mantener = fuerte), así que el toque entero
+(~80-150 ms) se sumaba al golpe. Ahora, si el golpe empieza en el mismo paso en que se suelta, la preparación se
+acelera para recuperar ese tiempo (hasta un 40 % de ella, la anticipación se sigue viendo). Pulsar → impacto:
+
+| toque | antes | ahora |
+|---|---|---|
+| 50 ms | 267 ms | 217 ms |
+| 100 ms | 317 ms | 233 ms |
+| 150 ms | 367 ms | 283 ms |
+
+Los combos encadenados, el fuerte, el riposte y el remate no cambian (solo el golpe que sale nada más soltar).
+`toImpact()` lo tiene en cuenta (el autómata lee bien el golpe más rápido). Prueba nueva `tests/res_auto.mjs` 8/8.

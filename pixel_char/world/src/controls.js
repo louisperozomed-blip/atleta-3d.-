@@ -80,11 +80,11 @@
     }
     return best;
   };
-  function attackFoe(f, ts, pt) {
+  function attackFoe(f, ts, pt, tap) {
     const p = W.player, pf = W.pf;
     const d = Math.hypot(f.body.x - p.x, f.body.z - p.z), dir = Math.atan2(f.body.z - p.z, f.body.x - p.x);
     // ts: instante del toque (para el ritmo del riposte cuenta cuándo bajó el dedo, no cuándo se levantó)
-    if (d <= 3.2 || pf.act) { pf.input("attack", { dir, ts, pt, kind: "L" }); pendingAttack = null; return "attack"; }
+    if (d <= 3.2 || pf.act) { pf.input("attack", { dir, ts, pt, kind: "L", tap, relCt: W.ct }); pendingAttack = null; return "attack"; }
     // lejos: va hacia él y ataca al llegar
     const path = W.findPath(p.x, p.z, f.body.x - Math.cos(dir) * 1.1, f.body.z - Math.sin(dir) * 1.1, undefined, { jump: true });
     if (path.length) { p.setPath(path, { noDelay: true }); pendingAttack = { f, t: 0 }; }
@@ -258,8 +258,9 @@
     if (!atk || atk.src !== src) return null;
     const A = atk; atk = null;
     if (A.charging) { W.pf.input("chargeRelease"); return "heavy"; }
-    if (A.foe && A.foe.alive) return attackFoe(A.foe, A.ts, A.pt);
-    W.pf.input("attack", { dir: A.dir != null ? A.dir : W.player.heading, ts: A.ts, pt: A.pt, kind: "L" });
+    // tap: lo que se mantuvo (el ligero sale al soltar; fighter.js lo recupera si el golpe empieza ya)
+    if (A.foe && A.foe.alive) return attackFoe(A.foe, A.ts, A.pt, A.held);
+    W.pf.input("attack", { dir: A.dir != null ? A.dir : W.player.heading, ts: A.ts, pt: A.pt, kind: "L", tap: A.held, relCt: W.ct });
     return "attack";
   };
   W.attackHold = () => (atk ? { src: atk.src, held: atk.held, charging: atk.charging } : null);

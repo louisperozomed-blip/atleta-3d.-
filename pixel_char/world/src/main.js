@@ -117,9 +117,39 @@
       if (W.ambient) W.ambient.mat.uniforms.uPx.value = 1;
       setProj();
       const a = w / h, fh = cam.top - cam.bottom;
-      const pxBtn = $("px"); if (pxBtn) pxBtn.textContent = "px" + px;
+      const pxBtn = $("px"); if (pxBtn) pxBtn.textContent = "px" + px + (W.resAuto && W.resAuto.on ? " auto" : "");
     }
     W.resize = resize;
+    // --- RESOLUCIÓN AUTOMÁTICA ---------------------------------------------------------------------------------
+    // Empieza en px2 si el buffer cabe en ~0,42 MP (portátiles y monitores hasta ~1440×900), si no en px3 (móviles:
+    // 1 píxel de juego por píxel CSS; nunca más grueso que antes). Cada 2 s mira los fps REALES: con ≥ 57 fps
+    // sostenidos prueba un píxel más fino (hasta px2); por debajo de 45 pasa a uno más grueso (hasta px4) y no vuelve
+    // a ese nivel; si el más grueso no sube los fps (p. ej. un móvil en ahorro, limitado a 30) vuelve y se queda.
+    // El botón px pasa a manual (y tras px8 vuelve a «auto»). Las pruebas (navigator.webdriver) lo tienen apagado
+    // salvo con #res=auto: sus capturas y tiempos no cambian.
+    const AUTO = (W.resAuto = { on: !navigator.webdriver || /res=auto/.test(location.hash), min: 1, max: 3, bad: {}, acc: 0, n: 0, good: 0, warm: 0, prev: null, lock: false, fps: 0, log: [] });
+    function autoInit() {
+      const cw = wrap.clientWidth * dpr, ch = wrap.clientHeight * dpr;
+      ui.pi = cw * ch / (PIX[1] * PIX[1]) <= 4.2e5 ? 1 : 2;
+      Object.assign(AUTO, { bad: {}, acc: 0, n: 0, good: 0, warm: 0, prev: null, lock: false });
+    }
+    function autoSet(pi, why) { ui.pi = pi; AUTO.log.push(why + " → px" + PIX[pi]); resize(); }
+    function autoStep(real) {
+      if (!AUTO.on || W.skipRender || document.hidden || real > 0.25) return;   // (una pestaña que vuelve no cuenta)
+      AUTO.acc += real; AUTO.n++;
+      if (AUTO.acc < 2) return;
+      const fps = AUTO.n / AUTO.acc; AUTO.acc = 0; AUTO.n = 0; AUTO.fps = fps;
+      if (AUTO.warm++ < 1) return;                                // la primera ventana (carga) no cuenta
+      if (AUTO.prev) {                                            // acaba de bajar: ¿sirvió?
+        const P = AUTO.prev; AUTO.prev = null;
+        if (fps < P.fps * 1.1) { AUTO.lock = true; autoSet(P.pi, "sin mejora (" + fps.toFixed(0) + " fps)"); return; }
+      }
+      if (fps < 45 && !AUTO.lock && ui.pi < AUTO.max) { AUTO.bad[ui.pi] = true; AUTO.prev = { pi: ui.pi, fps }; AUTO.good = 0; autoSet(ui.pi + 1, fps.toFixed(0) + " fps"); }
+      else if (fps >= 57) { if (++AUTO.good >= 2 && ui.pi > AUTO.min && !AUTO.bad[ui.pi - 1]) { AUTO.good = 0; autoSet(ui.pi - 1, fps.toFixed(0) + " fps"); } }
+      else AUTO.good = 0;
+    }
+    W.resAutoStep = autoStep;
+    if (AUTO.on) autoInit();
     addEventListener("resize", resize);
     if (window.visualViewport) visualViewport.addEventListener("resize", resize);
     resize();
@@ -162,7 +192,13 @@
     on("rr", () => { ui.thetaT += Q; });
     on("zi", () => { ui.zoom = Math.min(4, ui.zoom * 1.25); resize(); });
     on("zo", () => { ui.zoom = Math.max(0.45, ui.zoom / 1.25); resize(); });
-    on("px", () => { ui.pi = (ui.pi + 1) % PIX.length; resize(); });
+    on("px", () => {
+      // auto → manual (siguiente tamaño); tras el último, vuelve a auto
+      if (AUTO.on) { AUTO.on = false; ui.pi = (ui.pi + 1) % PIX.length; }
+      else if (ui.pi === PIX.length - 1) { AUTO.on = true; autoInit(); }
+      else ui.pi++;
+      resize();
+    });
     const wb = $("walk");
     const setWalk = (m) => { W.walkMode = m; if (wb) wb.textContent = "andar " + m; };
     on("walk", () => { const M = W.WALK_MODES; setWalk(M[(M.indexOf(W.walkMode) + 1) % M.length]); });
@@ -182,7 +218,7 @@
       // a pocos fps el paso se recorta a 50 ms (el juego va más lento que el reloj): se guarda el tiempo real del
       // frame para que las pulsaciones se conviertan a tiempo de juego con el ritmo de verdad (W.pressTime)
       const real = clock.getDelta(), rdt = Math.min(0.05, real);
-      if (!W.manual) { W.frameReal = real; step(rdt); }
+      if (!W.manual) { W.frameReal = real; step(rdt); autoStep(real); }
       requestAnimationFrame(frame);
     }
     W.tick = function (dt, n) { for (let i = 0; i < (n || 1); i++) step(dt); };
