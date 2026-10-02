@@ -1,0 +1,44 @@
+{
+  "directions": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+  ],
+  "animations": {
+    "idle": {
+      "fps": 6,
+      "frames": 6,
+      "loop": true
+    },
+    "walk": {
+      "fps": 10,
+      "frames": 6,
+      "loop": true
+    },
+    "run": {
+      "fps": 12,
+      "frames": 6,
+      "loop": true
+    },
+    "jump": {
+      "fps": 10,
+      "frames": 6,
+      "loop": false
+    }
+  },
+  "standing_height_px": 103,
+  "frame_size": [
+    120,
+    136
+  ],
+  "pivot": [
+    60,
+    125
+  ],
+  "scale_from_full": 0.5
+}

@@ -1,0 +1,21 @@
+{
+  "_source": "combat.js STOP (constante local)",
+  "STOP": {
+    "attack1": 0.075,
+    "attack2": 0.085,
+    "attack3": 0.12,
+    "parry": 0.11,
+    "parryHeavy": 0.13,
+    "perfect": 0.16,
+    "perfectHeavy": 0.18,
+    "block": 0.06,
+    "deathblow": 0.16
+  },
+  "other": {
+    "guardBreak": 0.1,
+    "clash": 0.13,
+    "deathblowDuel": 0.2,
+    "mikiri": 0.18
+  },
+  "_units": "s"
+}

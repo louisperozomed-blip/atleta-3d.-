@@ -1,0 +1,68 @@
+{
+  "_source": "combat.js PLAYER_ATTACKS (W.combatAttacks)",
+  "_units": "dmg puntos, reach u, arc grados (semiángulo: el arco es ±arc), stop s (hitstop), kb u (retroceso), post = postura que gana el atacante si se lo desvían (NORMAL; PERFECTO ×1.33)",
+  "attacks": {
+    "attack1": {
+      "dmg": 10,
+      "reach": 1.6,
+      "arc": 70,
+      "stop": 0.075,
+      "kb": 0.35,
+      "post": 38
+    },
+    "attack2": {
+      "dmg": 12,
+      "reach": 1.65,
+      "arc": 70,
+      "stop": 0.085,
+      "kb": 0.35,
+      "post": 38
+    },
+    "attack3": {
+      "dmg": 22,
+      "reach": 1.95,
+      "arc": 85,
+      "stop": 0.12,
+      "kb": 0.6,
+      "heavy": true,
+      "post": 48
+    },
+    "riposte": {
+      "dmg": 8,
+      "reach": 1.95,
+      "arc": 80,
+      "stop": 0.07,
+      "kb": 0.2,
+      "post": 22
+    },
+    "deathblow": {
+      "dmg": 100,
+      "reach": 2.2,
+      "arc": 120,
+      "stop": 0.18,
+      "kb": 0.6,
+      "heavy": true,
+      "post": 0
+    },
+    "heavy": {
+      "dmg": 22,
+      "reach": 2.05,
+      "arc": 80,
+      "stop": 0.13,
+      "kb": 0.75,
+      "heavy": true,
+      "post": 50,
+      "postK": 1.5
+    },
+    "spin": {
+      "dmg": 15,
+      "reach": 2.25,
+      "arc": 180,
+      "stop": 0.12,
+      "kb": 0.6,
+      "heavy": true,
+      "post": 44,
+      "postK": 1.7
+    }
+  }
+}

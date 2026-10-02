@@ -1,0 +1,17 @@
+{
+  "_source": "calib.js",
+  "rangeMs": [
+    -60,
+    150
+  ],
+  "stepMs": 5,
+  "test": {
+    "beats": 10,
+    "gapMs": 750,
+    "firstDelayMs": 1000,
+    "matchMs": 300,
+    "skipFirst": 2,
+    "minTaps": 4,
+    "stat": "mediana"
+  }
+}

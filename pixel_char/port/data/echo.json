@@ -1,0 +1,27 @@
+{
+  "_source": "enemies/echo/echo.js (literales)",
+  "hp": 120,
+  "stamina": 100,
+  "posture": 100,
+  "prepK": 1.7,
+  "dmgK": 1.3,
+  "wake": 4.5,
+  "homeLeash": 14,
+  "attackRange": 2.4,
+  "chaseStop": 1.75,
+  "replan": 0.35,
+  "heavyChanceFar": 0.7,
+  "heavyChanceNear": 0.25,
+  "farD": 1.75,
+  "chainChance": 0.35,
+  "cool": [
+    0.9,
+    1.6
+  ],
+  "heavyCoolExtra": 0.4,
+  "backOff": {
+    "t": 0.5,
+    "d": 0.8,
+    "below": 1.9
+  }
+}

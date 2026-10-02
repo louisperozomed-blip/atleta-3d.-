@@ -1,0 +1,83 @@
+{
+  "_source": "moves.js W.MOVES",
+  "holdH": 0.4,
+  "holdH2": 1.2,
+  "holdMax": 1.8,
+  "chainGrace": 0.35,
+  "tiredSlow": 1.35,
+  "level2": {
+    "dmg": 1.5,
+    "post": 1.6,
+    "st": 1.55,
+    "stop": 1.35
+  },
+  "beatWin": 0.05,
+  "rhythm": 1.2,
+  "STEPS": {
+    "L": {
+      "anim": "attack1",
+      "st": 6,
+      "name": "ligero",
+      "beat": 0.16
+    },
+    "LL": {
+      "anim": "attack2",
+      "st": 7,
+      "name": "ligero 2",
+      "beat": 0.17
+    },
+    "LLL": {
+      "anim": "attack3",
+      "st": 12,
+      "name": "Combo básico",
+      "end": true,
+      "combo": true
+    },
+    "H": {
+      "anim": "heavy",
+      "st": 18,
+      "name": "fuerte",
+      "charge": true,
+      "beat": 0.24
+    },
+    "LH": {
+      "anim": "heavy",
+      "st": 20,
+      "name": "Quiebraguardia",
+      "charge": true,
+      "guardDrain": 0.65,
+      "postK": 1.25,
+      "end": true,
+      "combo": true
+    },
+    "LLH": {
+      "anim": "spin",
+      "st": 22,
+      "name": "Remate giratorio",
+      "recK": 0.55,
+      "end": true,
+      "combo": true
+    },
+    "HL": {
+      "anim": "attack2",
+      "st": 8,
+      "name": "Corte de salida",
+      "speed": 1.35,
+      "dmgK": 0.9,
+      "end": true,
+      "combo": true
+    },
+    "HH": {
+      "anim": "heavy",
+      "st": 26,
+      "name": "Golpe cargado doble",
+      "charge": true,
+      "speed": 0.8,
+      "dmgK": 1.2,
+      "postK": 2.2,
+      "recK": 0.75,
+      "end": true,
+      "combo": true
+    }
+  }
+}

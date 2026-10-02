@@ -1,0 +1,81 @@
+{
+  "_source": "enemies/fodder/fodder.js W.FODDER + W.FODDER_TOKEN",
+  "zombie": {
+    "label": "Zombi",
+    "height": 1.05,
+    "hits": 3,
+    "speedK": 0.6,
+    "windup": 0.8,
+    "rel": 0.18,
+    "reach": 1.7,
+    "arc": 80,
+    "dmg": 6,
+    "want": 1.15,
+    "cap": 0.5,
+    "engage": 1.65,
+    "see": 7.5,
+    "leash": 12,
+    "radius": 0.36,
+    "stunKB": 0.3,
+    "kbK": 0.9,
+    "cool": 0.6
+  },
+  "dog": {
+    "label": "Perro zombi",
+    "height": 0.6,
+    "hits": 2,
+    "speedK": 1.3,
+    "windup": 0.6,
+    "rel": 0.2,
+    "reach": 1.45,
+    "arc": 75,
+    "dmg": 6,
+    "want": 0.85,
+    "cap": 2,
+    "engage": 2.6,
+    "lunge": true,
+    "see": 9,
+    "leash": 14,
+    "radius": 0.32,
+    "stunKB": 1.5,
+    "kbK": 1,
+    "cool": 0.5
+  },
+  "deadWait": 1.6,
+  "fade": 1.6,
+  "respawnT": 9,
+  "fatigue": {
+    "parry": 50,
+    "exhausted": 2.2,
+    "delay": 6,
+    "decay": 5
+  },
+  "ring": {
+    "r0": {
+      "zombie": 1.05,
+      "dog": 0.85
+    },
+    "w": 0.05,
+    "color": [
+      0.12,
+      0.78,
+      0.95
+    ],
+    "late": 0.25
+  },
+  "scaf": {
+    "down": 4,
+    "up": 3
+  },
+  "ringMode": "auto",
+  "token": {
+    "gap": 0.7
+  },
+  "orbitR": 2.5,
+  "practiceMix": [
+    "zombie",
+    "dog",
+    "zombie",
+    "dog"
+  ]
+}

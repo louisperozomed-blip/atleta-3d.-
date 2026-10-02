@@ -1,0 +1,81 @@
+{
+  "_source": "player.js W.PLAYER_PARAMS + terrain.js + feet.js",
+  "CHAR_H": 1.7,
+  "params": {
+    "walkSpeed": 1.05,
+    "runSpeed": 2.7,
+    "accel": 5,
+    "decel": 4.2,
+    "turnRate": 11,
+    "runDist": 4,
+    "walkBackDist": 2.2,
+    "radius": 0.28,
+    "jumpPrep": 0.07,
+    "jumpAir": 0.62,
+    "jumpLand": 0.15,
+    "jumpHeight": 0.5,
+    "tjPrep": 0.11,
+    "tjAir": 0.4,
+    "tjAirPerU": 0.12,
+    "tjLand": 0.16,
+    "stepSmooth": 10,
+    "stepSmoothFoot": 30
+  },
+  "_units": "walkSpeed/runSpeed/accel/decel/runDist/walkBackDist en ALTURAS (× CHAR_H = u); turnRate rad/s; radius u; tiempos s",
+  "measured": {
+    "walkV_by_sprite_dir_u_s": {
+      "S": 1.25,
+      "SW": 1.039,
+      "W": 0.8,
+      "NW": 1.075,
+      "N": 1.25,
+      "NE": 1.128,
+      "E": 0.85,
+      "SE": 0.8
+    },
+    "runV_u_s": 4.59,
+    "note": "con W.FX.anchor = true (por defecto) la velocidad de marcha NO es walkSpeed × CHAR_H: sale de los pies (feet.js locoParams, cadencia 12 fps) y se recorta a [0.8, 1.25] u/s según la dirección del sprite"
+  },
+  "inertia": {
+    "accelTime": 0.25,
+    "note": "con W.FX.inertia: accel = velocidad de la marcha / 0.25 s; frenado = decel × 1.6"
+  },
+  "gait": {
+    "followRunAbove": 1.2,
+    "followWalkBelow": 0.7,
+    "arriveFollow": 0.18,
+    "arriveTap": 0.004,
+    "units": "alturas"
+  },
+  "animThresholds": {
+    "runUp": "walkV×1.35",
+    "runDown": "walkV×1.18",
+    "walkUp": "0.07 alturas/s",
+    "walkDown": "0.035 alturas/s"
+  },
+  "direction": {
+    "sectors": 8,
+    "hysteresisRad": 0.5323254218582705,
+    "stepMs": 40,
+    "stepMsInAction": 25,
+    "order": [
+      "S",
+      "SW",
+      "W",
+      "NW",
+      "N",
+      "NE",
+      "E",
+      "SE"
+    ]
+  },
+  "stuck": {
+    "noProgressS": 0.45,
+    "progressU": 0.015,
+    "maxReplans": 3
+  },
+  "waypoint": {
+    "advanceR": 0.35,
+    "jumpTakeoffR": 0.12
+  }
+}

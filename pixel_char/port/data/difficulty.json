@@ -1,0 +1,20 @@
+{
+  "_source": "enemies/core.js W.ENEMY_DIFF (deslizadores del panel)",
+  "react": 1,
+  "parry": 0.3,
+  "block": 0.35,
+  "ranges": {
+    "react": [
+      0.5,
+      1.6
+    ],
+    "parry": [
+      0,
+      0.9
+    ],
+    "block": [
+      0,
+      0.9
+    ]
+  }
+}

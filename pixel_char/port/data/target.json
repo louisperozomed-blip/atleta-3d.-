@@ -1,0 +1,24 @@
+{
+  "_source": "target.js W.TARGET",
+  "maxD": 9,
+  "losMax": 1.5,
+  "camK": 0.22,
+  "camMax": 2,
+  "autoSwitch": {
+    "maxD": 9,
+    "nearD": 6
+  },
+  "sightHeight": 1.1,
+  "tallTags": [
+    "tree",
+    "dead",
+    "titan",
+    "arch",
+    "ruin",
+    "wall",
+    "crystal",
+    "beacon",
+    "hand",
+    "heart"
+  ]
+}

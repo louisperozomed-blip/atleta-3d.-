@@ -1,0 +1,224 @@
+{
+  "frame_size": [
+    102,
+    77
+  ],
+  "pivot": [
+    47.879999999999995,
+    70.92
+  ],
+  "directions": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+  ],
+  "anims": [
+    "idle",
+    "walk",
+    "attack",
+    "hit",
+    "death"
+  ],
+  "frames_per_anim": 6,
+  "scale_from_full": 0.36,
+  "standing_height_px": 61.919999999999995,
+  "animations": {
+    "idle": {
+      "ms": [
+        150,
+        150,
+        150,
+        150,
+        150,
+        150
+      ],
+      "activo": [],
+      "fase": [
+        "rec",
+        "rec",
+        "rec",
+        "rec",
+        "rec",
+        "rec"
+      ],
+      "loop": true,
+      "etiquetas": [
+        "NEUTRAL",
+        "INHALE",
+        "PEAK",
+        "EXHALE",
+        "SWAY",
+        "RETURN"
+      ],
+      "total_ms": 900,
+      "start_ms": [
+        0,
+        150,
+        300,
+        450,
+        600,
+        750
+      ]
+    },
+    "walk": {
+      "ms": [
+        95,
+        95,
+        95,
+        95,
+        95,
+        95
+      ],
+      "activo": [],
+      "fase": [
+        "rec",
+        "rec",
+        "rec",
+        "rec",
+        "rec",
+        "rec"
+      ],
+      "loop": true,
+      "etiquetas": [
+        "CONTACT A",
+        "WEIGHT A",
+        "PASS A",
+        "CONTACT B",
+        "WEIGHT B",
+        "PASS B"
+      ],
+      "total_ms": 570,
+      "start_ms": [
+        0,
+        95,
+        190,
+        285,
+        380,
+        475
+      ]
+    },
+    "attack": {
+      "ms": [
+        210,
+        210,
+        180,
+        100,
+        300,
+        500
+      ],
+      "activo": [
+        3
+      ],
+      "fase": [
+        "prep",
+        "prep",
+        "prep",
+        "activo",
+        "rec",
+        "rec"
+      ],
+      "loop": false,
+      "etiquetas": [
+        "CROUCH",
+        "WIND UP",
+        "LUNGE",
+        "BITE",
+        "LAND",
+        "RECOVERY"
+      ],
+      "total_ms": 1500,
+      "start_ms": [
+        0,
+        210,
+        420,
+        600,
+        700,
+        1000
+      ]
+    },
+    "hit": {
+      "ms": [
+        60,
+        80,
+        100,
+        100,
+        110,
+        120
+      ],
+      "activo": [
+        0
+      ],
+      "fase": [
+        "activo",
+        "rec",
+        "rec",
+        "rec",
+        "rec",
+        "rec"
+      ],
+      "loop": false,
+      "etiquetas": [
+        "IMPACT",
+        "RECOIL",
+        "STAGGER",
+        "BRACE",
+        "RECOVER",
+        "READY"
+      ],
+      "total_ms": 570,
+      "start_ms": [
+        0,
+        60,
+        140,
+        240,
+        340,
+        450
+      ]
+    },
+    "death": {
+      "ms": [
+        100,
+        120,
+        150,
+        170,
+        200,
+        700
+      ],
+      "activo": [
+        0
+      ],
+      "fase": [
+        "activo",
+        "rec",
+        "rec",
+        "rec",
+        "rec",
+        "rec"
+      ],
+      "loop": false,
+      "etiquetas": [
+        "HIT",
+        "STAGGER",
+        "BUCKLE",
+        "COLLAPSE",
+        "DOWN",
+        "STILL"
+      ],
+      "total_ms": 1440,
+      "start_ms": [
+        0,
+        100,
+        220,
+        370,
+        540,
+        740
+      ]
+    }
+  },
+  "impact_frame": 3
+}

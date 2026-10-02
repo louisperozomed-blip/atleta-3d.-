@@ -1,0 +1,13 @@
+{
+  "_source": "group.js W.GROUP",
+  "max": 2,
+  "orbitR": 3.6,
+  "pincerP": 0.35,
+  "pincerCool": 4,
+  "multiWin": 0.15,
+  "mpBonus": 15,
+  "slow": [
+    0.15,
+    0.3
+  ]
+}

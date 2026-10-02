@@ -1,0 +1,741 @@
+// ============================================================================================================
+// COPIA PARA EL PORTADO A UNITY — original: pixel_char/world/src/enemies/automaton/automaton.js
+// El Autómata del bosque: IA completa (cadenas, trucos, peligrosos, lectura, reacción, combos, adaptativa).
+// Las llamadas a W.fx / W.sfx / W.combatStar / W.shakeCam / W.combatPop / flashLight son EFECTOS (en Unity:
+// eventos de VFX/SFX), no lógica. Los bloques «[VISUAL OMITIDO]» eran solo de presentación.
+// ============================================================================================================
+// enemies/automaton/automaton.js — el Autómata del bosque (enemigo por defecto).
+//
+// Cuerpo: su propio atlas (idle, walk, run, attack1, attack2, parry, hit, block, dodge, death × 8 direcciones),
+// 1.4 veces la altura del personaje, pies anclados y sombras como el personaje, ojo cian emisivo con una
+// luz puntual que ilumina un poco su entorno (y lo delata en la oscuridad).
+//
+// Comportamiento (un duelista: pesado y amenazante, pero legible y justo):
+//   · patrulla lenta (walk) alrededor de su punto; al ver al jugador (8 u, o si le ataca) se acerca
+//     corriendo (run) por A* y se para a distancia de golpe
+//   · ataca en CADENAS de 2-4 golpes (attack1 = zarpazo, attack2 = barrido amplio) con ritmos distintos
+//     (rápido-rápido-lento, lento-pausa-rápido...). Cada golpe tiene un plan en dos tiempos:
+//       CARGA (el ojo parpadea: aviso) → [RETENCIÓN: ojo fijo encendido, solo en los retrasados] →
+//       SUELTA (destello del ojo + chasquido: el golpe llega en 0.36-0.46 s) → impacto
+//     preparación visible ≥ 350 ms siempre; avisos más evidentes cuanto más fuerte es el golpe
+//   · trucos (como mucho uno por cadena y nunca en dos cadenas seguidas): golpe retrasado (castiga pulsar de
+//     memoria) o finta (corta la carga y cambia de golpe)
+//   · ataques PELIGROSOS (aviso rojo + sonido grave; no se desvían ni se bloquean), cada uno con su pose y su
+//     respuesta: BARRIDO bajo (agachado; se salta, y en el aire se contraataca), ESTOCADA (encogido y lanzado;
+//     esquivar HACIA él en el momento justo = contraataque que le quita mucha postura) y AGARRE (brazos en alto;
+//     se esquiva de lado)
+//   · nunca ataca si estás en el suelo o encajando un golpe; tras cada cadena, ventana de castigo clara (se
+//     queda resoplando: ni ataca ni se defiende)
+//   · defensa: te LEE en vez de tirar dados (modelo de trigramas de tus golpes y su ritmo): si te repites,
+//     alza la guardia (ojo ámbar) un poco antes del impacto previsto y te hace parry (quita postura); si varías el
+//     ritmo, retrasas o fintas, su parry falla y queda expuesto. Reacciona como un humano (200-260 ms): solo
+//     bloquea lo que tarda más que eso. Su conocimiento se reinicia al reaparecer
+//   · esquiva (dodge) de lado cuando está bajo de vida o tras encajar un combo, si le da tiempo
+//   · Combate completo: reconoce tus COMBOS enteros (secuencia L/H + ritmo) con una FAMILIARIDAD por combo que sube
+//     al repetirlo y baja al variar o con el tiempo. Baja = bloquea a veces; media = bloquea los primeros golpes; alta =
+//     desvía el golpe final (o te interrumpe durante la carga si el final es un fuerte). Solo desvía lo que ha
+//     predicho; cuando te ha leído, su ojo parpadea en ámbar. Variar el combo, el ritmo o fintar siempre lo engaña.
+//     En grupo cada uno tiene su modelo, pero comparten el 50 % de lo aprendido. Se reinicia al reaparecer
+//   · su HEAVY (hoja propia: WIND UP, RAISE, HOLD, SLAM): preparación más larga y aviso evidente (retención larga,
+//     ojo naranja, sonido grave); si se lo bloqueas, te rompe la guardia. Entra en sus cadenas y en la rama «lo
+//     bloqueas»
+//   · dificultad adaptativa suave: muertes seguidas → pausas más largas; parries perfectos seguidos → pausas
+//     más cortas y más trucos
+//   · postura: los parries del jugador la llenan rápido (40-50 cada uno); llena = aturdido 3.2 s (frames
+//     STAGGER de hit en bucle lento), expuesto a un remate (×3)
+//   · al perder vida: hit con retroceso; al morir: death, se queda en el suelo y a los 3 s se desvanece
+//     mientras se levantan esporas
+(function () {
+  "use strict";
+  const W = (window.W = window.W || {});
+  const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+  const DIRS = ["S", "SW", "W", "NW", "N", "NE", "E", "SE"];
+  const CFG = (W.AUTOMATON = {
+    height: 1.4,                 // × altura del personaje
+    hp: 260, stamina: 120, staminaRegen: 12, posture: 100,   // stamina: su guardia se agota si se le presiona
+    prepK: 1.9,                  // preparación de los ataques (× más lenta)
+    see: 8, leash: 15, patrolR: 3.2,
+    attacks: {
+      // post = postura que gana al desviárselo (NORMAL; PERFECTO ×1.33): 18-24 y 21-28, + racha en la cadena
+      attack1: { dmg: 18, reach: 2.2, arc: 75, stop: 0.09, kb: 0.45, post: 18 },
+      attack2: { dmg: 26, reach: 2.5, arc: 115, stop: 0.12, kb: 0.7, heavy: true, post: 21 },
+      // peligrosos: no se desvían ni se bloquean; perilous = la respuesta correcta
+      sweep: { dmg: 24, reach: 2.7, arc: 150, stop: 0.12, kb: 0.8, heavy: true, perilous: "jump", post: 0 },
+      thrust: { dmg: 26, reach: 1.75, arc: 35, stop: 0.13, kb: 0.9, heavy: true, perilous: "mikiri", mikiriPost: 42, post: 0 },
+      grab: { dmg: 30, reach: 2.15, arc: 70, stop: 0.15, kb: 1.3, heavy: true, perilous: "side", throw: true, post: 0 },
+      // Duelo 3: su contraataque tras desviarte (hoja counter o attack1 rápido); se puede desviar
+      counter: { dmg: 16, reach: 2.25, arc: 85, stop: 0.09, kb: 0.45, post: 20 },
+      // rompeguardias: si lo bloqueas, te rompe la guardia (se desvía con parry o se esquiva)
+      breaker: { dmg: 28, reach: 2.5, arc: 110, stop: 0.13, kb: 0.8, heavy: true, breaker: true, post: 26 },
+      // Combate completo: su HEAVY (hoja heavy): golpe de mazazo con las dos garras; rompe la guardia si lo bloqueas
+      heavy: { dmg: 32, reach: 2.45, arc: 95, stop: 0.15, kb: 0.95, heavy: true, breaker: true, post: 30 },
+    },
+    // golpes: animación, pose (frames de otras hojas), aviso (1 leve, 2 fuerte, 3 peligroso) y tiempo de SUELTA (s)
+    moves: {
+      attack1: { anim: "attack1", level: 1, rel: 0.36, want: 1.55 },
+      attack2: { anim: "attack2", level: 2, rel: 0.38, want: 1.75 },     // 0.40 → 0.38 (prueba de justicia, etapa 6)
+      sweep: { anim: "attack2", level: 3, rel: 0.46, want: 1.6, cap: 1.3, track: true, crouch: 0.2 },
+      thrust: { anim: "attack1", level: 3, rel: 0.46, want: 0.95, cap: 2.3, seek: 4.4, lungeFrom: "release",
+        show: [["dodge", 0], ["dodge", 1], ["dodge", 2], ["dodge", 3], ["dodge", 4], ["attack1", 5]] },
+      grab: { anim: "attack1", level: 3, rel: 0.46, want: 1.2, cap: 2.4, track: true, seek: 4.4,
+        show: [["block", 0], ["block", 1], ["parry", 1], ["attack1", 3], ["attack1", 4], ["attack1", 5]] },
+      counter: { anim: "counter", level: 1, rel: 0.34, want: 1.5 },
+      // carga larga con el brazo atrás (frame de carga de attack2 sostenido) y ojo ámbar: «voy a romper tu guardia»
+      breaker: { anim: "attack2", level: 2, rel: 0.42, want: 1.75, breaker: true },
+      // HEAVY: preparación más larga (retención mínima de 0,35-0,55 s en el HOLD) y aviso evidente (ojo naranja)
+      heavy: { anim: "heavy", level: 2, rel: 0.4, want: 1.8, breaker: true, hold: [0.35, 0.55] },
+    },
+    wind: { f: 0.12, n: 0.32, s: 0.55, feint: 0.16, c: 0.1 },   // carga según el ritmo (rápido, normal, lento; c = counter)
+    // Duelo 3: counter tras desviarte (empieza a los 120 ms; carga 0,1 s + suelta 0,34 s: se puede desviar) e
+    // intercambio de desvíos: cada desvío perfecto tuyo, otro counter más rápido; su probabilidad de fallar crece
+    counter: { delay: 0.12, vent: 0.5, xchgDelay: 0.06, xchgRel: [0.34, 0.31, 0.28, 0.26], fail: [0.3, 0.5, 0.75, 1] },
+    armorLevel: 2,               // hyper armor en sus golpes de nivel ≥ 2 (barrido amplio y peligrosos)
+    // Duelo 3 · las cadenas se ramifican según tu respuesta a su 1.er golpe (como mucho un truco por cadena):
+    //   lo desvías  → el siguiente golpe va RETRASADO (castiga el parry de memoria; cuenta como el truco)
+    //   lo esquivas → te persigue con la ESTOCADA (peligrosa: esquiva hacia él)
+    //   lo bloqueas → carga un ROMPEGUARDIAS (si lo vuelves a bloquear, te rompe la guardia: desvíalo)
+    //   te alcanza  → sigue la cadena como estaba
+    branch: { parry: "delay", dodge: ["thrust", "n", 0.15], block: ["heavy", "s", 0.25] },   // (Combate completo: su HEAVY)
+    hold: [0.32, 0.5],                                  // retención de un golpe retrasado
+    // cadenas: [golpe, ritmo, pausa desde la recuperación del anterior (s)]
+    chains: [
+      { id: "rrl", name: "rápido-rápido-lento", w: 3, steps: [["attack1", "f", 0], ["attack1", "f", 0.05], ["attack2", "s", 0.2]] },
+      { id: "lpr", name: "lento-pausa-rápido", w: 3, steps: [["attack2", "s", 0], ["attack1", "f", 0.6]] },
+      { id: "dos", name: "zarpazo y barrido", w: 3, steps: [["attack1", "n", 0], ["attack2", "n", 0.1]] },
+      { id: "cuatro", name: "cuatro golpes", w: 2, steps: [["attack1", "f", 0], ["attack1", "n", 0.08], ["attack2", "f", 0.25], ["attack1", "s", 0.05]] },
+      { id: "barrido", name: "zarpazo y barrido bajo", w: 1.2, steps: [["attack1", "n", 0], ["sweep", "n", 0.2]] },
+      { id: "estocada", name: "barrido y estocada", w: 1.2, steps: [["attack2", "n", 0], ["thrust", "n", 0.3]] },
+      { id: "agarre", name: "zarpazo y agarre", w: 1.2, steps: [["attack1", "f", 0], ["grab", "n", 0.25]] },
+      // Combate completo: mezcla ligeros y su HEAVY
+      { id: "pesado", name: "zarpazo y golpe pesado", w: 2, steps: [["attack1", "n", 0], ["heavy", "s", 0.15]] },
+      { id: "pesado2", name: "golpe pesado y zarpazo rápido", w: 1.2, steps: [["heavy", "s", 0], ["attack1", "f", 0.3]] },
+    ],
+    // familiaridad con tus combos: subida al repetir (× lo que falta), bajada de los demás al variar, olvido con el
+    // tiempo (vida media ~28 s), umbrales baja/media/alta y lo que se comparte en grupo
+    fam: { up: 0.25, vary: 0.75, tau: 40, low: 0.2, mid: 0.38, high: 0.55, share: 0.5 },
+    trick: 0.4,                  // probabilidad de un truco (retraso o finta) en una cadena
+    vent: 0.95,                  // ventana de castigo tras cada cadena (resopla: ni ataca ni se defiende)
+    pause: [0.9, 1.6],           // pausa entre cadenas
+    lastRecK: 0.7,               // la recuperación del último golpe de la cadena, más lenta
+    exposed: 0.6,                // su parry falló (le engañaste): expuesto este tiempo (más postura por tus golpes)
+    eyeLight: { color: 0x5fe8ff, intensity: 0.9, distance: 4.5 },
+  });
+  let seed = 4242;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+
+  // ---- cuerpo y personaje ---------------------------------------------------------------------------
+  function spawn(p, A) {
+    const meta = A.emeta;
+    // fps de las animaciones en bucle (idle, walk, run) a partir de la duración de sus frames
+    for (const an of meta.anims) { const m = meta.animations[an]; if (!m.fps) m.fps = Math.round(6000 / m.ms.reduce((x, y) => x + y, 0)); }
+    const body = new W.Player(p.x, p.z);
+    body.radius = 0.42; body.runMul = 0.6;
+    const ch = W.makeCharacter(W.scene, A.etex, meta, null, null,
+      { feet: meta.feet, height: CFG.height * W.CHAR_H, emit: 1, emitCol: [0.35, 0.95, 1.0], locoFps: 11 });
+    body.ch = ch;
+    const f = W.addFighter(new W.Fighter(body, {
+      team: "foe", name: "autómata", hp: CFG.hp, stamina: CFG.stamina, staminaRegen: CFG.staminaRegen, posture: CFG.posture, meta,
+      prepK: CFG.prepK, stunTime: 3.2, stunRate: 2.2, dodgeDist: 2.6, kbK: 0.45, dodgeInv: [1, 3],
+      attackWant: { attack1: 1.55, attack2: 1.75 },
+    }), ch);
+    f.attacks = CFG.attacks; f.radiusHit = 0.5; f.label = "AUTÓMATA";
+    f.home = { x: p.x, z: p.z, heading: p.heading };
+    body.heading = p.heading;
+    // [VISUAL OMITIDO: luz puntual y halo del ojo]
+    f.ai = makeAI(f);
+    f.onPhase = (a, ph) => onPhase(f, a, ph);
+    f.fade = 1; f.deadT = 0;
+    ch.onStep = (e, kind, P) => heavyStep(f, e, kind, P);
+    return f;
+  }
+
+  // [VISUAL OMITIDO: halo del ojo, posición del ojo en pantalla y pisadas pesadas (polvo, esporas, temblor, sonido)]
+  // posición del ojo: solo sirve para colocar el destello del aviso; aquí, el cuerpo
+  function eyeWorld(f) { return { p: { x: f.body.x, y: f.body.y + 1.9, z: f.body.z }, visible: true }; }
+  function heavyStep(f) { f.steps = (f.steps || 0) + 1; }
+
+  // ---- IA -------------------------------------------------------------------------------------------
+  function makeAI(f) {
+    return {
+      enabled: true, state: "patrol", t: 0, replan: 0, cool: 1.2, idleT: 0, warnT: -1, pending: null,
+      lastHits: [], chain: null, chainN: 0, vent: 0, lastTrick: false, forced: null, stanceUntil: 0, pAtks: [],
+      adapt: 0, deaths: 0, perfStreak: 0, sawDeath: false,
+      update(dt) {
+        const b = f.body, pl = W.pf, D = W.ENEMY_DIFF;
+        this.t += dt;
+        if (this.warnT >= 0) this.warnT += dt;
+        if (this.vent > 0) this.vent = Math.max(0, this.vent - dt);
+        this.adaptStep(dt);
+        if (!this.enabled || !f.alive || !pl) return;
+        // tus golpes: cada impacto es una ficha para el modelo (y, con L/H, un paso de tu combo)
+        this.famStep(dt);
+        for (let i = this.pAtks.length - 1; i >= 0; i--) {
+          const a = this.pAtks[i];
+          if (a.comboSeq != null && !a._cseen) this.onComboStart(a);
+          if (a.impactT != null) { this.pAtks.splice(i, 1); if (a.comboSeq != null) this.onComboImpact(a); this.addToken({ attack1: "a1", attack2: "a2", attack3: "a3", heavy: "aH", spin: "aS" }[a.name] || "a1", a.impactT); }
+          else if (pl.act !== a) this.pAtks.splice(i, 1);
+        }
+        // defensa: compromiso por lectura y reacción humana
+        if (!this.training) { this.openerWatch(); this.openerStep(); this.defendStep(); this.reactStep(); }   // en entrenamiento no te lee ni se defiende
+        if (this.stanceUntil && W.ct > this.stanceUntil) { this.stanceUntil = 0; if (f.act && f.act.name === "block") f.guardHeld = false; }
+        // counter tras desviarte (o el siguiente del intercambio de desvíos)
+        if (this.ctr && W.ct >= this.ctr.at) this.counterStep();
+        // cadena en curso: el siguiente golpe sale en la recuperación del anterior (con su pausa)
+        if (this.chain) this.runChain(dt);
+        if (f.act || this.chain) return;
+        const dx = pl.body.x - b.x, dz = pl.body.z - b.z, d = Math.hypot(dx, dz), toP = Math.atan2(dz, dx);
+        const fromHome = Math.hypot(b.x - f.home.x, b.z - f.home.z);
+        const plHome = Math.hypot(pl.body.x - f.home.x, pl.body.z - f.home.z);
+        if (!pl.alive || plHome > CFG.leash + 3) { this.state = fromHome > 1 ? "home" : "patrol"; }
+        else if (this.state === "patrol" || this.state === "home") { if (d < CFG.see || f.hp < f.hpMax) { this.state = "chase"; this.cool = Math.max(this.cool, 0.8); } }
+        if (this.state === "home") {
+          if (fromHome < 0.8) { this.state = "patrol"; b.stop(); return; }
+          this.goTo(f.home.x, f.home.z, "walk"); return;
+        }
+        if (this.state === "patrol") {
+          // paseo lento entre puntos cercanos a su casa, con pausas
+          if (!b.path.length) {
+            this.idleT -= dt;
+            if (this.idleT <= 0) {
+              const a = rand() * Math.PI * 2, r = 1 + rand() * CFG.patrolR;
+              const s = W.findSpot(f.home.x + Math.cos(a) * r, f.home.z + Math.sin(a) * r, W.heightAt(f.home.x, f.home.z));
+              if (s) { const path = W.findPath(b.x, b.z, s.x, s.z, 6000); if (path.length) { b.setPath(path, { noDelay: true }); b.gait = "walk"; } }
+              this.idleT = 1.8 + rand() * 2.2;
+            }
+          } else b.gait = "walk";
+          return;
+        }
+        // persecución y combate
+        if (this.vent <= 0) this.cool -= dt;
+        if (d < 3.6) b.heading += norm(toP - b.heading) * Math.min(1, dt * 5);
+        // si espera tu golpe (te ha leído), no ataca: se queda a defender
+        const waiting = this.commit && W.ct > this.commit.stance - 0.7;
+        // en grupo: como mucho 2 atacan a la vez (group.js); el resto rodea
+        // (el que tiene turno se acerca y ataca; los que no, rodean hasta que lo tengan)
+        const ready = this.cool <= 0 && this.vent <= 0 && !waiting && !this.passive && this.canStrike();
+        const turn = !W.groupActive || !W.groupActive() || W.groupHolds(f) || (ready && W.groupCanAttack(f));
+        if (ready && d <= 2.6 && turn) { b.stop(); b.heading = toP; this.startChain(this.pickChain(d)); return; }
+        if (!turn) {
+          const o = W.groupOrbit(f);
+          if (o) {
+            this.replan -= dt;
+            if (this.replan <= 0 || !b.path.length) { this.replan = 0.5; if (Math.hypot(o.x - b.x, o.z - b.z) > 0.6) { const path = W.findPath(b.x, b.z, o.x, o.z, 6000); if (path.length) { b.setPath(path, { noDelay: true }); b.gait = "walk"; } } else b.stop(); }
+            return;
+          }
+        }
+        if (d > 1.9) {
+          this.replan -= dt;
+          if (this.replan <= 0 || !b.path.length) {
+            this.replan = 0.4;
+            const tx = pl.body.x - Math.cos(toP) * 1.7, tz = pl.body.z - Math.sin(toP) * 1.7;
+            const path = W.findPath(b.x, b.z, tx, tz, 9000);
+            if (path.length) { b.setPath(path, { noDelay: true }); b.gait = d > 4.5 ? "run" : "walk"; }
+          }
+        } else if (b.path.length) b.stop();
+      },
+      goTo(x, z, gait) {
+        const b = f.body;
+        this.replan -= 1 / 60;
+        if (this.replan <= 0 || !b.path.length) { this.replan = 0.6; const p = W.findPath(b.x, b.z, x, z, 12000); if (p.length) { b.setPath(p, { noDelay: true }); b.gait = gait; } }
+      },
+      // ---- cadenas -------------------------------------------------------------------------------------
+      // nunca ataca si estás en el suelo o encajando un golpe
+      canStrike() { const p = W.pf; return !!p && p.alive && !(p.act && (p.act.name === "hit" || p.act.name === "death")); },
+      pauseK() { return 1 - 0.25 * Math.max(-1.2, Math.min(1, this.adapt || 0)); },   // dificultad adaptativa (etapa 4)
+      pickChain(d) {
+        const L = CFG.chains;
+        if (this.forced) { const c = L.find((x) => x.id === this.forced); if (c) return c; }
+        let tot = 0; for (const c of L) tot += c.w;
+        let r = rand() * tot;
+        for (const c of L) { r -= c.w; if (r <= 0) return c; }
+        return L[0];
+      },
+      startChain(def) {
+        // pasos: {m, r, gap, delay, feint}; como mucho un truco por cadena y nunca en dos cadenas seguidas
+        const steps = def.steps.map(([m, r, gap]) => ({ m, r, gap }));
+        let trick = null;
+        const prevTrick = this.lastTrick;
+        const pT = CFG.trick * (1 + 0.5 * Math.max(0, this.adapt || 0));
+        if (!this.lastTrick && !this.noTricks && (this.forcedTrick || rand() < pT)) {
+          const kind = this.forcedTrick || (rand() < 0.5 ? "delay" : "feint");
+          const cand = steps.map((s, i) => i).filter((i) => !CFG.attacks[steps[i].m].perilous);
+          if (cand.length) {
+            const i = cand[Math.floor(rand() * cand.length)];
+            if (kind === "delay") steps[i].delay = CFG.hold[0] + rand() * (CFG.hold[1] - CFG.hold[0]);
+            else steps[i].feint = steps[i].m === "attack1" ? "attack2" : "attack1";
+            trick = { kind, step: i };
+          }
+        }
+        this.lastTrick = !!trick;
+        this.chain = { uid: ++this.chainN, id: def.id, steps, i: 0, readyT: null, trick, t0: this.t, prevTrick };
+        W.combatLog.push({ ev: "chainStart", who: f.name, chain: def.id, uid: this.chain.uid, steps: steps.map((s) => s.m + (s.delay ? "(retrasado)" : "") + (s.feint ? "(finta→" + s.feint + ")" : "")), t: +W.U.uTime.value.toFixed(3) });
+        this.strike(steps[0].m, steps[0].r, steps[0]);
+      },
+      endChain(clean) {
+        const C = this.chain; if (!C) return;
+        this.chain = null; this.pincerAt = null;
+        if (W.groupRelease) W.groupRelease(f);           // suelta su turno de ataque (group.js)
+        this.addToken("E", W.ct);                     // para el modelo: «terminó su cadena»
+        // ventana de castigo: resopla (ni ataca ni se defiende) y luego una pausa antes de la siguiente cadena
+        // (su counter es un solo golpe: resopla menos, pero también hay ventana de castigo)
+        if (clean && f.alive) this.vent = C.id === "counter" || C.id === "intercambio" ? CFG.counter.vent : CFG.vent;
+        this.cool = this.training ? 1.1 : (CFG.pause[0] + rand() * (CFG.pause[1] - CFG.pause[0])) * this.pauseK();
+        W.combatLog.push({ ev: "chainEnd", who: f.name, chain: C.id, uid: C.uid, clean, t: +W.U.uTime.value.toFixed(3) });
+      },
+      runChain(dt) {
+        const C = this.chain, a = f.act;
+        if (!f.alive || f.stunned || !W.pf.alive) return this.endChain(false);
+        if (a && a.name === "hit") { if (!a.recoil) return this.endChain(false); C.readyT = this.t; return; }   // desviado: retrocede y sigue
+        if (a && a.name === "dodge") return;
+        if (a && a.name === "deflected") return this.endChain(false);   // tu parry perfecto le corta la cadena
+        if (a && W.isAtk(a)) {
+          const st = C.steps[C.i], P = a.plan;
+          // finta: al terminar la carga, corta y cambia de golpe
+          if (st.feint && !C.feinted && P && P.feintNow) {
+            C.feinted = true; f.act = null;
+            W.combatLog.push({ ev: "feint", who: f.name, from: st.m, to: st.feint, chain: C.id, t: +W.U.uTime.value.toFixed(3) });
+            f.eyeBlink = 0.09;
+            this.strike(st.feint, "feint", st, true);
+            return;
+          }
+          if (a.f < W.hitF(a) + 1) return;
+          if (C.i + 1 >= C.steps.length) { a.speed = CFG.lastRecK; return; }   // último golpe: recuperación más lenta
+          if (C.readyT == null) C.readyT = this.t;
+        } else if (a) return;
+        if (C.i + 1 >= C.steps.length) { if (!a) this.endChain(true); return; }
+        if (C.readyT == null) C.readyT = this.t;
+        const nx = C.steps[C.i + 1];
+        if (this.t - C.readyT < nx.gap * this.pauseK()) return;
+        if (!this.canStrike()) { if (this.t - C.readyT > 1.2) this.endChain(false); return; }
+        f.act = null; C.i++; C.readyT = null; C.feinted = false;
+        this.strike(nx.m, nx.r, nx);
+      },
+      // un golpe con su plan: CARGA (ojo parpadeando) → RETENCIÓN (si va retrasado) → SUELTA → impacto
+      strike(m, rhythm, step, afterFeint, rel) {
+        const mv = CFG.moves[m], pl = W.pf, b = f.body;
+        const toP = Math.atan2(pl.body.z - b.z, pl.body.x - b.x);
+        b.stop(); b.heading = toP;
+        const plan = { wind: CFG.wind[rhythm] || CFG.wind.n, hold: step && step.delay && !afterFeint ? step.delay : 0, rel: rel || mv.rel, feint: !!(step && step.feint && !afterFeint) };
+        if (mv.hold) plan.hold = Math.max(plan.hold, mv.hold[0] + rand() * (mv.hold[1] - mv.hold[0]));   // HEAVY: aviso largo
+        f.startAttack(mv.anim, { dir: toP, plan, move: m, show: mv.show, crouch: mv.crouch, want: mv.want, cap: mv.cap, seek: mv.seek, lungeFrom: mv.lungeFrom, track: mv.track });
+        // sustituto acelerado (counter sin hoja = attack1 ×1,35): el plan avanza ×speed, así que se estira igual
+        // para que la suelta siga avisando con el mismo tiempo
+        if (f.act && f.act.plan && f.act.speed && f.act.speed !== 1) { f.act.plan.wind *= f.act.speed; f.act.plan.rel *= f.act.speed; f.act.plan.hold *= f.act.speed; }
+        const a = f.act; a.level = mv.level; a.chainId = this.chain ? this.chain.uid : null;
+        a.armor = mv.level >= CFG.armorLevel;          // hyper armor: no se interrumpe (Duelo 3)
+        if (mv.breaker) { a.breaker = true; if (W.combatPop) W.combatPop("¡ROMPEGUARDIAS!", "#ffb050", f); }
+        if (step && step.xchg) a.xchg = step.xchg;
+        this.warnT = 0; this.warnKind = m;
+        // aviso: más evidente cuanto más fuerte es el golpe (rojo en los peligrosos)
+        const e = eyeWorld(f), red = mv.level >= 3;
+        if (W.combatStar) W.combatStar(e.p.x, e.p.y, e.p.z, [0.85, 1.1, 1.4][mv.level - 1], red ? 0xff3a2a : 0x9ff4ff, red ? 0.5 : 0.35);
+        if (W.sfx) W.sfx.combat(red ? "perilous" : mv.level === 2 ? "chargeHeavy" : "charge");
+        if (red && W.combatPop) W.combatPop("¡PELIGRO!", "#ff4a3a", f);
+        W.combatLog.push({ ev: "warn", who: f.name, anim: mv.anim, move: m, level: mv.level, chain: this.chain ? this.chain.id : null,
+          step: this.chain ? this.chain.i : 0, wind: plan.wind, hold: +plan.hold.toFixed(3), rel: plan.rel, prep: +(plan.wind + plan.hold + plan.rel).toFixed(3), t: +W.U.uTime.value.toFixed(3) });
+      },
+      // ---- Duelo 3: counter e intercambio de desvíos --------------------------------------------------------
+      // te ha desviado: tú quedas desequilibrado y él contraataca
+      onParriedYou(p, perfect) {
+        if (!f.alive || this.training) return;
+        if (this.chain) this.endChain(false);
+        this.ctr = { at: W.ct + CFG.counter.delay, n: 1 };
+        W.combatLog.push({ ev: "foeParriedYou", who: f.name, perfect, t: +W.U.uTime.value.toFixed(3) });
+      },
+      counterStep() {
+        const q = this.ctr; this.ctr = null;
+        const a = f.act;
+        if (!f.alive || f.stunned || !W.pf.alive || (a && (a.name === "deflected" || a.name === "death" || (a.name === "hit" && !a.xchgRecoil)))) return;
+        f.act = null; f.guardHeld = false; this.commit = null;
+        const C = CFG.counter, k = Math.min(q.n, C.xchgRel.length) - 1;
+        this.chain = { uid: ++this.chainN, id: q.n > 1 ? "intercambio" : "counter", steps: [{ m: "counter", r: "c", gap: 0, xchg: q.n }], i: 0, readyT: null, t0: this.t };
+        W.combatLog.push({ ev: "chainStart", who: f.name, chain: this.chain.id, uid: this.chain.uid, steps: ["counter"], n: q.n, t: +W.U.uTime.value.toFixed(3) });
+        this.strike("counter", "c", this.chain.steps[0], false, C.xchgRel[k]);
+      },
+      // desviaste su counter: "again" = vuelve a contraatacar; "fail" = falla él (queda desequilibrado)
+      onExchange(perfect, a) {
+        const n = a.xchg || 1, C = CFG.counter;
+        if (this.chain) { const c = this.chain; this.chain = null; W.combatLog.push({ ev: "chainEnd", who: f.name, chain: c.id, uid: c.uid, clean: false, t: +W.U.uTime.value.toFixed(3) }); }
+        if (!perfect) return "end";
+        const pf = C.fail[Math.min(n, C.fail.length) - 1];
+        if (rand() < pf) return "fail";
+        this.ctr = { at: W.ct + C.xchgDelay, n: n + 1 };
+        return "again";
+      },
+      onClash() { if (this.chain) this.chain.readyT = this.t; },
+      // resultado de uno de sus golpes (combat.js): tu respuesta al 1.er golpe de la cadena decide la rama
+      onResult(a, e) {
+        const C = this.chain;
+        if (!C || a.chainId !== C.uid || C.i !== 0 || C.resp) return;
+        const k = { parry: "parry", block: "block", guardbreak: "block", hit: "hit", grab: "hit", evade: "dodge", mikiri: "dodge", clash: "clash" }[e.ev];
+        if (e.ev === "whiff") { const p = W.pf; C.resp = p && p.act && p.act.name === "dodge" ? "dodge" : "miss"; }
+        else if (k && (e.from === f.name || e.ev === "clash")) C.resp = k;
+        if (C.resp) this.branchChain(C);
+      },
+      branchChain(C) {
+        if (this.training || C.id === "counter" || C.id === "intercambio" || C.steps.length < 2 || C.branched) return;
+        const B = CFG.branch[C.resp]; if (!B) return;
+        C.branched = true;
+        const nx = C.steps[1], old = nx.m + (nx.delay ? "(retrasado)" : "");
+        if (B === "delay") {
+          // un solo truco por cadena: si ya lleva uno, sigue igual
+          if (C.trick || C.prevTrick || this.noTricks || CFG.attacks[nx.m].perilous) { W.combatLog.push({ ev: "branch", who: f.name, resp: C.resp, to: "igual (ya lleva truco)", t: +W.U.uTime.value.toFixed(3) }); return; }
+          nx.delay = CFG.hold[0] + rand() * (CFG.hold[1] - CFG.hold[0]); nx.feint = null;
+          C.trick = { kind: "delay", step: 1, branch: true }; this.lastTrick = true;
+        } else {
+          C.steps.splice(1, C.steps.length - 1, { m: B[0], r: B[1], gap: B[2] });
+        }
+        W.combatLog.push({ ev: "branch", who: f.name, chain: C.id, resp: C.resp, from: old, to: C.steps[1].m + (C.steps[1].delay ? "(retrasado)" : ""), t: +W.U.uTime.value.toFixed(3) });
+      },
+      // PINZA (group.js): un zarpazo cuyo impacto cae en «at» (la retención alinea los dos)
+      pincerStrike(at) {
+        const wind = CFG.wind.n, rel = CFG.moves.attack1.rel, hold = Math.max(0, at - W.ct - wind - rel);
+        const step = { m: "attack1", r: "n", gap: 0, delay: hold };
+        this.pincerAt = at; this.cool = 99; this.vent = 0;
+        this.chain = { uid: ++this.chainN, id: "pinza", steps: [step], i: 0, readyT: null, trick: { kind: "pinza" }, t0: this.t };
+        W.combatLog.push({ ev: "chainStart", who: f.name, chain: "pinza", uid: this.chain.uid, steps: ["attack1"], t: +W.U.uTime.value.toFixed(3) });
+        this.strike("attack1", "n", step);
+      },
+      // un golpe suelto (pruebas y compatibilidad)
+      attack(name, dir) { this.chain = { uid: ++this.chainN, id: "suelto", steps: [{ m: name, r: "n", gap: 0 }], i: 0, readyT: null }; this.strike(name, "n", null); },
+      // ---- defensa: te LEE (modelo del jugador), no tira dados -----------------------------------------
+      // Fichas: cada impacto de tu ataque (a1/a2/a3), cada finta tuya (F), el final de su cadena (E) y una pausa
+      // larga (·). Cada ficha lleva el ritmo desde la anterior (q < 0.45 s, m < 1 s, s más). Tabla de trigramas:
+      // (dos fichas anteriores) → siguiente ficha, con su intervalo medio. Si la siguiente es un ataque y la
+      // confianza basta, se compromete a defender en el instante previsto: guardia visible (ojo ámbar) unos ms
+      // antes y parry (o bloqueo, si está menos seguro). Si te repites, te lee; si varías el ritmo, retrasas el
+      // golpe o fintas, falla: su parry se queda en el aire y queda EXPUESTO un momento.
+      // Además reacciona como un humano (200-260 ms): solo a lo que tarda más que eso (golpe de salto, golpes
+      // retenidos) y solo bloqueando.
+      tokens: [], grams: {}, predict: null, commit: null, exposed: 0, react1: 0,
+      bucket(g) { return g < 0.45 ? "q" : g < 1.0 ? "m" : "s"; },
+      resetModel() { this.tokens = []; this.grams = {}; this.predict = null; this.commit = null; this.openers = []; this.openerAt = null; this.lastAtkT = -9; this.pIdle = null;
+        this.fam = {}; this.errs = {}; this.cur = null; this.comboMode = false; this.cpred = null; this.famT = 0; },
+      // Duelo 3 · lee el combo entero: mide cuánto tardas en abrir tu combo desde que quedas libre (acabas tu golpe,
+      // tu guardia o tu tambaleo). Si ese ritmo se repite (las 3 últimas aperturas no varían más de 0,15 s), al
+      // quedar libre otra vez prevé la apertura y alza la guardia para BLOQUEARLA; el 2.º y el 3.º los desvía con
+      // los trigramas de siempre
+      openers: [], openerAt: null, pIdle: null, pWasBusy: false,
+      noteOpener(t) {
+        if (this.pIdle == null || t - this.pIdle > 3) return;
+        const O = this.openers; O.push(t - this.pIdle); if (O.length > 4) O.shift();
+      },
+      openerWatch() {
+        const pl = W.pf, busy = !!pl.act;
+        if (this.pWasBusy && !busy) {
+          this.pIdle = W.ct;
+          const O = this.openers.slice(-3);
+          this.openerAt = null;
+          if (O.length >= 3 && Math.max(...O) - Math.min(...O) < 0.15 && W.ENEMY_DIFF.block > 0) this.openerAt = W.ct + O.reduce((x, y) => x + y, 0) / O.length;
+        }
+        this.pWasBusy = busy;
+      },
+      openerStep() {
+        const at = this.openerAt, now = W.ct;
+        if (at == null) return;
+        if (now > at + 0.2) { this.openerAt = null; return; }
+        if (this.commit || at - now > 0.36 || at - now < 0.17 || !this.freeToDefend() || this.chain) return;
+        this.openerAt = null;
+        this.commit = { kind: "block", at, stance: now, press: 0, conf: 0.8, opener: true, done: false };
+        W.combatLog.push({ ev: "foeReadOpener", ct: +now.toFixed(3), who: f.name, in: +(at - now).toFixed(2), t: +W.U.uTime.value.toFixed(3) });
+      },
+      // nueva ficha (instante en el reloj de combate)
+      addToken(kind, t) {
+        const T = this.tokens, last = T[T.length - 1];
+        if (last && t - last.t > 2.5 && kind !== "·") this.addToken("·", last.t + 2.5);
+        const gap = last ? t - last.t : 9;
+        const key = kind === "E" || kind === "·" ? kind : kind + this.bucket(gap);
+        // trigrama (dos fichas anteriores) y bigrama (la última) → esta ficha, con su intervalo medio
+        const ctxs = [];
+        if (T.length >= 2) ctxs.push(T[T.length - 2].key + "|" + T[T.length - 1].key);
+        if (T.length >= 1) ctxs.push(T[T.length - 1].key);
+        for (const ctx of ctxs) {
+          // memoria reciente: lo anterior pesa cada vez menos (×0.8), así sigue tus cambios de hábito
+          const g = this.grams[ctx] || (this.grams[ctx] = { n: 0, next: {} });
+          for (const k in g.next) g.next[k].n *= 0.8;
+          const nx = g.next[key] || (g.next[key] = { n: 0, gap: 0, seen: 0 });
+          nx.n += 1; nx.seen++; nx.gap += (gap - nx.gap) / Math.min(nx.seen, 3);   // intervalo medio (las últimas)
+          g.n = 0; for (const k in g.next) g.n += g.next[k].n;
+        }
+        T.push({ kind, key, t }); if (T.length > 40) T.shift();
+        // aperturas de tus combos (Duelo 3): el 1.er golpe tras ≥ 0,8 s sin golpear
+        if (/^a/.test(kind)) { if (t - (this.lastAtkT || -9) > 0.8) this.noteOpener(t); this.lastAtkT = t; }
+        // ¿un compromiso pendiente para este instante? (si la ficha llega, ya se ha resuelto o ha fallado)
+        this.forecast(t);
+      },
+      // predicción de la siguiente ficha a partir de las dos últimas
+      forecast(now) {
+        const T = this.tokens; this.predict = null;
+        if (T.length < 1) return;
+        // trigrama si ya lo ha visto al menos 2 veces; si no, el bigrama
+        let ctx = T.length >= 2 ? T[T.length - 2].key + "|" + T[T.length - 1].key : null, g = ctx && this.grams[ctx];
+        if (!g || g.n < 1.7) { ctx = T[T.length - 1].key; g = this.grams[ctx]; }
+        if (!g || g.n < 1.7) return;
+        let best = null; for (const k in g.next) if (!best || g.next[k].n > g.next[best].n) best = k;
+        const nx = g.next[best], conf = nx.n / g.n;
+        this.predict = { key: best, conf, at: now + nx.gap, n: nx.n, ctx };
+        const D = W.ENEMY_DIFF, parryConf = 1 - 0.5 * D.parry, blockConf = 0.9 - 0.6 * D.block;
+        if (this.training) return;                       // en entrenamiento no se defiende (ni se queda esperando)
+        if (this.comboMode) return;                      // con tus combos L/H manda el modelo de combos (más abajo)
+        if (!/^a/.test(best) || nx.seen < 2 || conf < Math.min(parryConf, blockConf)) return;
+        // la apertura de tu combo (tras una pausa: ritmo «s») la bloquea; los golpes encadenados, los desvía
+        const lastK = T[T.length - 1].key, opener = lastK === "E" || lastK === "·" || /s$/.test(best) || nx.gap > 0.8;
+        const kind = conf >= parryConf && !opener ? "parry" : "block";
+        // guardia visible 280-340 ms antes del impacto previsto (≥ 190 ms antes de su parry); el parry, 90 ms antes
+        const lead = 0.28 + rand() * 0.06;
+        this.commit = { kind, at: this.predict.at, stance: this.predict.at - lead, press: this.predict.at - 0.09, conf, key: best, done: false, t0: W.ct };
+        W.combatLog.push({ ev: "foeRead", ct: +W.ct.toFixed(3), who: f.name, key: best, conf: +conf.toFixed(2), kind, in: +(this.predict.at - now).toFixed(2), t: +W.U.uTime.value.toFixed(3) });
+      },
+      // libre para defenderse: sin acción (o en guardia), no atacando, no resoplando
+      freeToDefend() {
+        const a = f.act;
+        if (!f.alive || this.vent > 0 || this.exposed > W.ct || f.stunned) return false;
+        // pesado: se repone del golpe recibido enseguida (desde su 2.º frame) para defender el siguiente
+        return !a || a.name === "block" || a.name === "parry" || (a.name === "hit" && !a.gb && !a.exposed && a.f >= 1) ||
+          (W.isAtk(a) && a.f >= 5 && !this.chain);
+      },
+      defendStep() {
+        const c = this.commit, now = W.ct;
+        if (!c) return;
+        if (now > c.at + 0.3) { this.commit = null; return; }
+        if (!this.freeToDefend()) { if (!f.act || !W.isAtk(f.act)) return; this.commit = null; return; }
+        const b = f.body, pl = W.pf;
+        // te ve tambaleándote (le has dado a su guardia o te ha desviado): no va a llegar ese golpe
+        if (!c.stanceOn && now >= c.stance && pl.act && (pl.act.name === "hit" || pl.act.name === "death")) { this.commit = null; return; }
+        if (!c.stanceOn && now >= c.stance) {
+          // justicia: si ya no da tiempo a enseñar la guardia ≥ 150 ms antes de su parry, solo bloquea
+          if (c.kind === "parry" && now > c.press - 0.15) c.kind = "block";
+          // se ve venir: alza la guardia (ojo ámbar)
+          c.stanceOn = true; b.stop(); b.heading = Math.atan2(pl.body.z - b.z, pl.body.x - b.x);
+          f.guardHeld = true; if (!f.act || f.act.name !== "block") { f.act = null; f.start("block"); f.act.tt = 0.07; }
+          this.stanceUntil = c.at + 0.25;
+          W.combatLog.push({ ev: "foeGuard", ct: +W.ct.toFixed(3), who: f.name, kind: c.kind, t: +W.U.uTime.value.toFixed(3) });
+        }
+        // ya defendió (parry o bloqueo): compromiso cumplido
+        // (solo cuenta una defensa posterior al compromiso: el bloqueo del golpe anterior no es la de este)
+        if ((c.pressed || c.stanceOn) && f.lastDefT != null && f.lastDefT >= Math.max(c.pressT || c.stance, c.t0 != null ? c.t0 + 1e-3 : -9) - 1e-6) { this.commit = null; return; }
+        if (c.kind === "parry" && c.stanceOn && !c.pressed && now >= c.press) {
+          c.pressed = true; c.pressT = now;
+          f.guardHeld = false; f.input("guardDown"); f.input("guardUp");
+          W.combatLog.push({ ev: "foeParryTry", ct: +W.ct.toFixed(3), who: f.name, conf: +c.conf.toFixed(2), t: +W.U.uTime.value.toFixed(3) });
+        }
+        // su parry se quedó en el aire: expuesto un momento
+        if (c.kind === "parry" && c.pressed && !c.hitSeen && now > c.pressT + 0.22) {
+          this.commit = null; this.exposed = now + CFG.exposed;
+          f.act = null; f.start("hit", { kb: 0, kdir: 0, moved: 0, speed: 0.55, exposed: true, recoil: true });
+          W.combatLog.push({ ev: "foeParryWhiff", ct: +W.ct.toFixed(3), who: f.name, t: +W.U.uTime.value.toFixed(3) });
+          if (W.combatPop) W.combatPop("¡EXPUESTO!", "#ffd34a", f);
+        }
+        if (c.kind === "block" && c.stanceOn && now > this.stanceUntil) { f.guardHeld = false; this.commit = null; }
+      },
+      // reacción humana a un ataque que empieza (200-260 ms + variación): solo bloquea lo que tarda más que eso
+      onPlayerAttack(act) {
+        if (!f.alive || this.state === "home") return;
+        const pl = W.pf, b = f.body, D = W.ENEMY_DIFF;
+        if (Math.hypot(pl.body.x - b.x, pl.body.z - b.z) > 3.6) return;
+        this.state = "chase";
+        const rt = this.reactionTime();
+        this.react1 = { act, at: W.ct + rt };
+      },
+      reactionTime() {
+        // dificultad: reacción 200-260 ms (deslizador «Reacción» ×0.5-1.6: más alto = más rápido) ± 25 ms
+        const D = W.ENEMY_DIFF, base = 0.25 - 0.04 * Math.max(0, Math.min(1, (D.react - 0.5) / 1.1));
+        return Math.max(0.2, Math.min(0.26, base + (rand() - 0.5) * 0.04));
+      },
+      reactStep() {
+        const q = this.react1; if (!q || W.ct < q.at) return;
+        this.react1 = null;
+        const pl = W.pf, a = pl.act;
+        if (!a || a !== q.act) return;
+        // una carga del fuerte se ve venir: alza la guardia y aguanta hasta que salga (Combate completo, etapa 3)
+        if (a.charging && !this.chain && this.vent <= 0 && f.alive && !f.stunned) {
+          // te tiene muy leído y tu combo acaba en un fuerte: te interrumpe durante la carga (zarpazo rápido)
+          const P = this.cpred;
+          if (P && P.level === "alta" && P.next === "H" && !this.chain && this.vent <= 0 && Math.hypot(pl.body.x - f.body.x, pl.body.z - f.body.z) < 3.0) {
+            f.act = null; f.guardHeld = false; this.commit = null; this.attack("attack1"); if (f.act && f.act.plan) f.act.plan.wind = CFG.wind.f;
+            W.combatLog.push({ ev: "foeInterrupt", ct: +W.ct.toFixed(3), who: f.name, sig: P.sig, t: +W.U.uTime.value.toFixed(3) });
+            return;
+          }
+          if (W.ENEMY_DIFF.block > 0 && !this.commit && this.freeToDefend() && Math.hypot(pl.body.x - f.body.x, pl.body.z - f.body.z) < 3.4) {
+            f.guardHeld = true; f.act = null; f.start("block"); f.act.tt = 0.07; this.stanceUntil = W.ct + 2.2;
+            this.commit = { kind: "block", at: W.ct + 2.0, stance: W.ct, press: 0, stanceOn: true, conf: 0, reactive: true, charge: true };
+            W.combatLog.push({ ev: "foeBlock", ct: +W.ct.toFixed(3), who: f.name, reactive: true, charge: true, t: +W.U.uTime.value.toFixed(3) });
+          }
+          return;
+        }
+        if (!this.freeToDefend() || this.commit) return;
+        const left = pl.toImpact(); if (left == null) return;
+        // tras encajar un combo o con poca vida: se aparta de lado si le da tiempo
+        this.lastHits = this.lastHits.filter((t) => this.t - t < 2.2);
+        const b = f.body, dir = Math.atan2(pl.body.z - b.z, pl.body.x - b.x);
+        if ((f.hp < f.hpMax * 0.35 || this.lastHits.length >= 2) && left > 0.12 && f.st > 10) {
+          f.act = null; const side = rand() < 0.5 ? 1 : -1;
+          f.startDodge({ dir: dir + side * Math.PI / 2 + Math.PI * 0.15 * side });
+          W.combatLog.push({ ev: "foeDodge", ct: +W.ct.toFixed(3), who: f.name, t: +W.U.uTime.value.toFixed(3) });
+          return;
+        }
+        if (left > 0.05 && W.ENEMY_DIFF.block > 0) {
+          f.guardHeld = true; f.act = null; f.start("block"); f.act.tt = 0.07; this.stanceUntil = W.ct + left + 0.3;
+          this.commit = { kind: "block", at: W.ct + left, stance: W.ct, press: 0, stanceOn: true, conf: 0, reactive: true };
+          W.combatLog.push({ ev: "foeBlock", ct: +W.ct.toFixed(3), who: f.name, reactive: true, t: +W.U.uTime.value.toFixed(3) });
+        }
+      },
+      // ---- Combate completo: familiaridad con tus COMBOS (secuencia L/H + ritmo) -----------------------------------
+      // firma = secuencia + ritmo («r» todo en ritmo, «x» todo fuera, «m» mezclado, «-» un solo golpe)
+      fam: {}, errs: {}, cur: null, comboMode: false, cpred: null,
+      sigOf(C) { const r = C.rh.length ? (C.rh.every((x) => x === "r") ? "r" : C.rh.every((x) => x === "x") ? "x" : "m") : "-"; return C.seq + ":" + r; },
+      // tu golpe del combo empieza (lo ve en el paso siguiente: su secuencia y su ritmo ya están puestos)
+      onComboStart(act) {
+        this.comboMode = true; act._cseen = true;
+        const seq = act.comboSeq;
+        if (seq.length === 1 || !this.cur || !seq.startsWith(this.cur.seq)) { if (this.cur) this.closeCombo(); this.cur = { seq, rh: [], errs: [], last: W.ct }; }
+        else { this.cur.seq = seq; this.cur.last = W.ct; if (act.rhythm) { this.cur.rh.push(act.rhythm.ok ? "r" : "x"); this.cur.errs.push(act.rhythm.err); } }
+        if (act.step && act.step.end) this.closeCombo();
+        else this.predictCombo();
+      },
+      // combo terminado: sube su familiaridad, bajan las de los demás; el grupo se queda con el 50 %
+      closeCombo() {
+        const C = this.cur; if (!C) return; this.cur = null;
+        const F = CFG.fam, sig = this.sigOf(C), f0 = this.fam[sig] || 0;
+        for (const k in this.fam) if (k !== sig) this.fam[k] *= F.vary;
+        const f1 = f0 + F.up * (1 - f0); this.fam[sig] = f1;
+        const E = this.errs[C.seq] || (this.errs[C.seq] = []);
+        C.errs.forEach((e, i) => { E[i] = E[i] == null ? e : E[i] * 0.6 + e * 0.4; });
+        W.combatLog.push({ ev: "comboFam", who: f.name, sig, fam: +f1.toFixed(2), t: +W.U.uTime.value.toFixed(3) });
+        for (const o of W.foes || []) if (o !== f && o.type === "automaton" && o.ai && o.ai.fam) { const g0 = o.ai.fam[sig] || 0; o.ai.fam[sig] = Math.min(1, g0 + F.share * (f1 - f0)); }
+      },
+      famStep(dt) {
+        const k = Math.exp(-dt / CFG.fam.tau); for (const s in this.fam) this.fam[s] *= k;
+        if (this.cur && W.ct - this.cur.last > 1.4 && !(W.pf.act && W.pf.act.comboSeq != null)) this.closeCombo();   // lo dejaste a medias
+      },
+      famLevel(v) { const F = CFG.fam; return v >= F.high ? "alta" : v >= F.mid ? "media" : v >= F.low ? "baja" : null; },
+      // el combo más familiar que empieza como el tuyo
+      predictCombo() {
+        const C = this.cur; this.cpred = null; if (!C) return;
+        let best = null, bf = 0;
+        for (const s in this.fam) { const q = s.split(":")[0]; if (q.length > C.seq.length && q.startsWith(C.seq) && this.fam[s] > bf) { bf = this.fam[s]; best = s; } }
+        if (!best) return;
+        const q = best.split(":")[0];
+        this.cpred = { sig: best, seq: q, fam: bf, next: q[C.seq.length], final: q.length === C.seq.length + 1, level: this.famLevel(bf) };
+        if (this.cpred.level) {
+          f.readBlink = 0.5;                            // te ha leído: el ojo parpadea en ámbar
+          W.combatLog.push({ ev: "comboRead", who: f.name, sig: best, fam: +bf.toFixed(2), level: this.cpred.level, next: this.cpred.next, final: this.cpred.final, t: +W.U.uTime.value.toFixed(3) });
+        }
+      },
+      // tu golpe impactó: prevé el siguiente (su pulso + tu desfase habitual en ese paso + su preparación) y se compromete
+      onComboImpact(act) {
+        const P = this.cpred;
+        if (!P || !P.level || this.training || !this.cur || act.comboSeq !== this.cur.seq || P.next === "H") return;   // (el fuerte: carga imprevisible)
+        // (el compromiso del golpe que acaba de llegar ya está cumplido; si está libre lo mira defendStep al alzar la guardia)
+        const pl = W.pf; if (pl.beat == null || (this.commit && this.commit.at > W.ct + 0.05)) return;
+        const nseq = this.cur.seq + P.next, step = W.MOVES.STEPS[nseq]; if (!step) return;
+        const E = this.errs[P.seq], k = this.cur.seq.length - 1, err = E && E[k] != null ? E[k] : 0;
+        const M = W.CMETA, A = M.animations[step.anim], hf = W.hitFrameOf(M, step.anim);
+        let prep = 0; for (let i = 0; i < hf; i++) prep += A.ms[i] / 1000; prep /= (step.speed || 1);
+        const at = pl.beat + err + prep;
+        // alta: desvía el final y bloquea los demás; media: bloquea; baja: a veces bloquea
+        const kind = P.level === "alta" ? (P.final ? "parry" : "block") : P.level === "media" ? "block" : rand() < P.fam * 1.6 ? "block" : null;
+        if (!kind) return;
+        const lead = 0.28 + rand() * 0.06;
+        this.commit = { kind, at, stance: at - lead, press: at - 0.09, conf: P.fam, key: nseq, done: false, t0: W.ct, combo: true };
+        W.combatLog.push({ ev: "foeReadCombo", ct: +W.ct.toFixed(3), who: f.name, sig: P.sig, level: P.level, kind, next: nseq, in: +(at - W.ct).toFixed(2), t: +W.U.uTime.value.toFixed(3) });
+      },
+      // dificultad adaptativa suave: muertes seguidas → más pausa; parries perfectos seguidos → menos pausa y más trucos
+      adaptStep(dt) {
+        const pl = W.pf; if (!pl) return;
+        if (!pl.alive && !this.sawDeath) { this.sawDeath = true; this.deaths++; this.perfStreak = 0; this.adapt = Math.max(-1.2, this.adapt - 0.35); W.combatLog.push({ ev: "adapt", who: f.name, adapt: +this.adapt.toFixed(2), why: "muerte", t: +W.U.uTime.value.toFixed(3) }); }
+        if (pl.alive) this.sawDeath = false;
+        this.adapt -= Math.sign(this.adapt) * Math.min(Math.abs(this.adapt), 0.004 * dt);     // vuelve despacio a 0
+      },
+      onDeflected(level) {
+        if (level === "perfect") { this.perfStreak++; if (this.perfStreak >= 2) { this.adapt = Math.min(1, this.adapt + 0.12); W.combatLog.push({ ev: "adapt", who: f.name, adapt: +this.adapt.toFixed(2), why: "perfectos", t: +W.U.uTime.value.toFixed(3) }); } }
+        else this.perfStreak = 0;
+      },
+      onPlayerHit() { this.perfStreak = 0; },
+    };
+  }
+
+  // ---- ganchos -----------------------------------------------------------------------------------------
+  function onAct(f, actor, act) {
+    // tus golpes normales (ligeros y fuertes; el riposte y el remate no son hábitos que leer)
+    if (actor === W.pf && W.isAtk(act) && /^(attack|heavy|spin)/.test(act.name) && f.ai) { f.ai.pAtks.push(act); if (f.ai.enabled) f.ai.onPlayerAttack(act); }
+  }
+  function onFrame(f, a) {
+    if (a.name === "hit" && a.f === 0 && f.ai) f.ai.lastHits.push(f.ai.t);
+    if (W.isAtk(a) && a.f === W.hitF(a) - 1 && W.sfx) W.sfx.combat(a.name === "attack2" || (a.level || 0) >= 2 ? "swingHeavy" : "swing");
+    if (a.name.startsWith("attack") && a.f === 3 && a.move === "sweep" && W.fx) {
+      // barrido bajo: tierra a ras de suelo a lo largo del arco
+      const b = f.body;
+      for (let k = -2; k <= 2; k++) { const h = b.heading + k * 0.45, x = b.x + Math.cos(h) * 1.6, z = b.z + Math.sin(h) * 1.6; W.fx.dust(x, W.heightAt(x, z), z, 5, { spd: 1.4, up: 0.5, life: 0.4 }); }
+    }
+    if (a.name === "death" && a.f === 3 && W.sfx) W.sfx.combat("death");
+  }
+  // fases del plan de un golpe: retención (ojo fijo) y suelta (destello + chasquido: llega en rel s)
+  function onPhase(f, a, ph) {
+    const lvl = a.level || 1, red = lvl >= 3;
+    if (ph === "hold") { W.combatLog.push({ ev: "hold", who: f.name, move: a.move, t: +W.U.uTime.value.toFixed(3) }); return; }
+    if (ph === "release") {
+      f.relFlash = 1;
+      const e = eyeWorld(f);
+      if (W.combatStar) W.combatStar(e.p.x, e.p.y, e.p.z, 0.55 + 0.3 * lvl, red ? 0xff5040 : 0xd8fbff, 0.22);
+      if (W.sfx) W.sfx.combat("release", lvl);
+      W.combatLog.push({ ev: "release", who: f.name, move: a.move, level: lvl, rel: a.plan.rel, t: +W.U.uTime.value.toFixed(3) });
+    }
+  }
+  // [VISUAL OMITIDO: color y brillo del ojo según la fase — CARGA parpadea (7 Hz; 9 Hz en los peligrosos), RETENCIÓN fijo,
+  //  SUELTA destello; ámbar = guardia leída / te ha leído; naranja = rompeguardias/heavy; rojo = peligroso; apagado y
+  //  vapor durante la ventana de castigo — y la luz/halo del ojo]
+  function update(f, dt) {
+    // muerte: en el suelo 3 s, luego se desvanece (2,5 s) y queda oculto (hidden) hasta REAPARECER
+    if (!f.alive) {
+      f.deadT += dt;
+      if (f.deadT > 3) { const u = Math.min(1, (f.deadT - 3) / 2.5); f.fade = 1 - u; if (u >= 1 && !f.hidden) f.hidden = true; }
+    } else { f.deadT = 0; f.fade = 1; }
+  }
+  function respawn(f) {
+    f.respawn(f.home.x, f.home.z); f.body.heading = f.home.heading;
+    f.deadT = 0; f.fade = 1; f.hidden = false;
+    if (f.ai) {
+      const ai = f.ai; Object.assign(ai, { state: "patrol", cool: 1.2, warnT: -1, chain: null, vent: 0, lastTrick: false, stanceUntil: 0, react1: null, exposed: 0, pAtks: [], ctr: null });
+      ai.resetModel();                               // su conocimiento de tus hábitos se reinicia al reaparecer
+      if (!W.pf || W.pf.alive) ai.deaths = 0;        // (las muertes seguidas cuentan aunque reaparezca)
+    }
+  }
+  function remove(f) { if (f.eyeLight) { f.eyeLight.intensity = 0; W.scene.remove(f.eyeLight); } if (f.eyeHalo) W.scene.remove(f.eyeHalo); }
+
+  W.registerEnemy("automaton", {
+    label: "Autómata del bosque",
+    spawnPoints() {
+      const p = W.player, pts = [];
+      // 1) el claro junto al titán (a ~11 u del inicio: no ataca nada más empezar)
+      const s1 = W.findSpot(-8, 1, null, 1.6);
+      if (s1) pts.push({ x: s1.x, z: s1.z, heading: Math.atan2(p.z - s1.z, p.x - s1.x), zone: "heart" });
+      // 2) el bosque de raíces y 3) las ruinas del cementerio
+      for (const [zn, dx, dz] of [["roots", 4, 5], ["ruins", 3, -4]]) {
+        const Z = W.ZONES[zn]; if (!Z) continue;
+        const s = W.findSpot(Z.x + dx, Z.z + dz, null, 1.6);
+        if (s) pts.push({ x: s.x, z: s.z, heading: Math.atan2(-s.z, -s.x), zone: zn });
+      }
+      return pts;
+    },
+    spawn(p, A) { return spawn(p, A); },
+    update, onFrame, onAct, respawn, remove,
+  });
+  W.automatonEye = eyeWorld;
+  // tus fintas también son fichas para su modelo
+  const prevFeint = W.onFeint;
+  W.onFeint = function (actor, a) { if (prevFeint) prevFeint(actor, a); if (actor !== W.pf) return; for (const f of W.foes || []) if (f.type === "automaton" && f.ai) f.ai.addToken("F", W.ct); };
+  // texto para el panel de pruebas: qué te está leyendo y la dificultad adaptativa
+  W.automatonInfo = function () {
+    const p = W.pf; if (!p) return "";
+    let e = null, bd = 1e9; for (const f of W.foes || []) { if (f.type !== "automaton" || !f.alive) continue; const d = Math.hypot(f.body.x - p.body.x, f.body.z - p.body.z); if (d < bd) { bd = d; e = f; } }
+    if (!e) return "";
+    const ai = e.ai, pr = ai.predict, k = ai.pauseK();
+    const NAME = { a1: "golpe 1", a2: "golpe 2", a3: "golpe 3", F: "finta", E: "fin de su cadena" }, RIT = { q: "rápido", m: "medio", s: "lento" };
+    const say = (key) => key ? (NAME[key.slice(0, 2)] || NAME[key[0]] || key) + (RIT[key[2]] ? " " + RIT[key[2]] : "") : "";
+    const D = W.ENEMY_DIFF, ms = Math.round(1000 * (0.25 - 0.04 * Math.max(0, Math.min(1, (D.react - 0.5) / 1.1))));
+    return "Te lee: " + (pr ? say(pr.key) + " " + Math.round(pr.conf * 100) + "%" + (ai.commit ? " → " + (ai.commit.kind === "parry" ? "PARRY" : "BLOQUEO") : "") : "aún no") +
+      "<br>Fichas: " + ai.tokens.length + " · reacción ~" + ms + " ms" +
+      "<br>Adaptativa: " + (ai.adapt >= 0 ? "+" : "") + ai.adapt.toFixed(2) + " (pausas ×" + k.toFixed(2) + ", muertes seguidas " + ai.deaths + ")";
+  };
+})();

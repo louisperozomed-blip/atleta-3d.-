@@ -1,0 +1,85 @@
+{
+  "_source": "duel.js W.DUEL",
+  "sheets": {
+    "riposte": "auto",
+    "deathblow": "auto",
+    "deflected": "auto",
+    "counter": "auto",
+    "heavy": "auto",
+    "spin": "auto"
+  },
+  "fallback": {
+    "riposte": {
+      "sheet": "attack1",
+      "speed": 1.4,
+      "trail": 16747050
+    },
+    "deathblow": {
+      "sheet": "attack3",
+      "speed": 1,
+      "fx": true
+    },
+    "deflected": {
+      "sheet": "hit",
+      "bounce": true
+    },
+    "counter": {
+      "sheet": "attack1",
+      "speed": 1.35
+    },
+    "heavy": {
+      "sheet": "attack3",
+      "speed": 1,
+      "glow": true,
+      "foe": {
+        "sheet": "attack2",
+        "speed": 1
+      }
+    },
+    "spin": {
+      "sheet": "attack2",
+      "speed": 1.15,
+      "spin360": true
+    }
+  },
+  "deflectT": 0.7,
+  "ripWin": {
+    "perfect": 0.7,
+    "normal": 0.32
+  },
+  "ripMax": {
+    "perfect": 3,
+    "normal": 1
+  },
+  "restagger": 0.45,
+  "beat": 0.17,
+  "beatWin": 0.08,
+  "hits": [
+    {
+      "dmg": 8,
+      "post": 10,
+      "stop": 0.07,
+      "shake": 0.05
+    },
+    {
+      "dmg": 10,
+      "post": 14,
+      "stop": 0.09,
+      "shake": 0.075
+    },
+    {
+      "dmg": 13,
+      "post": 20,
+      "stop": 0.13,
+      "shake": 0.11
+    }
+  ],
+  "deathblowDmg": 100,
+  "deathblowZoom": 0.16,
+  "recoverCost": 12,
+  "slowmo": [
+    0.12,
+    0.3
+  ],
+  "clashWin": 0.08
+}

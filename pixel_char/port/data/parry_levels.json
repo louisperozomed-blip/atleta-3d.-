@@ -1,0 +1,23 @@
+{
+  "_source": "combat.js W.PARRY_LEVELS",
+  "levels": {
+    "perfect": {
+      "atkPost": 1.33,
+      "defPost": 0,
+      "defPostHeavy": 0
+    },
+    "parry": {
+      "atkPost": 1,
+      "defPost": 7,
+      "defPostHeavy": 10
+    },
+    "block": {
+      "atkPost": 0,
+      "defPost": 18,
+      "defPostHeavy": 26,
+      "st": 22,
+      "stHeavy": 36
+    }
+  },
+  "_notes": "atkPost multiplica el 'post' del ataque; defPost = postura que paga quien defiende (noBreak en parry); st = stamina del bloqueo; la guardia rota cuando st <= 0"
+}

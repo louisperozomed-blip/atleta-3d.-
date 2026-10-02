@@ -1,0 +1,26 @@
+{
+  "_source": "valores literales de controls.js (constantes locales, no expuestas en W)",
+  "TAP_MS": 170,
+  "SWIPE_MS": 260,
+  "SWIPE_PX": 42,
+  "followReplan": 0.2,
+  "followMinMove": 0.4,
+  "followStartPx": 12,
+  "followStartSpeedPxMs": 0.35,
+  "attackFoeRange": 3.2,
+  "attackApproachStop": 1.1,
+  "pendingAttackRange": [
+    2.4,
+    3.4
+  ],
+  "pendingAttackTimeout": 5,
+  "keyboardLead": {
+    "walk": 1,
+    "shiftRun": 3.2
+  },
+  "nearestFoeForKey": {
+    "maxD": 3.4,
+    "maxAng": 2
+  },
+  "foeTapBox": "ancho = alto×0.42+22 px a cada lado, de 18 px sobre la cabeza a 16 px bajo los pies"
+}

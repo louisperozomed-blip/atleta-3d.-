@@ -1,0 +1,46 @@
+{
+  "_source": "terrain.js + nav.js",
+  "N": 80,
+  "tileU": 1,
+  "NAV_RES": 2,
+  "cellU": 0.5,
+  "STEP": 0.5,
+  "MAX_STEP": 0.5,
+  "HEAD_H": 0.49,
+  "JUMP_MAX": 1.0094,
+  "JUMP_COST": 2.2,
+  "obstacleInflate": 0.18,
+  "wallCost": {
+    "ring1": 1.2,
+    "ring2": 0.4
+  },
+  "heuristic": "octile (dx+dz)+(√2−2)·min(dx,dz), ×1.001 al empujar",
+  "maxNodesDefault": 40000,
+  "followMaxNodes": 12000,
+  "lineClear": {
+    "sampleU": 0.2,
+    "band": [
+      -0.12,
+      0,
+      0.12
+    ]
+  },
+  "nearestFreeMaxR": 14,
+  "offMapHeight": 5,
+  "heights": [
+    0.5,
+    1,
+    1.5,
+    2,
+    2.5,
+    3,
+    3.5,
+    4,
+    4.5,
+    5,
+    5.5,
+    6,
+    6.5,
+    7
+  ]
+}

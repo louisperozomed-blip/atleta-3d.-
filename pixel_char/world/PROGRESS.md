@@ -1737,3 +1737,11 @@ Los combos encadenados, el fuerte, el riposte y el remate no cambian (solo el go
 `toImpact()` lo tiene en cuenta (el autómata lee bien el golpe más rápido). Prueba nueva `tests/res_auto.mjs` 8/8.
 Regresión completa (`review/resolucion/regresion.txt`): combate 31/31, autómata 21/21, parry 50/50, duelo 22/22,
 interfaz 10/10, salto 15/15, cc_e1-e7 todas OK, navegación 282/282, relleno 11/11 · 10/10 · 9/9; sin errores JS.
+
+## Paquete de traspaso para Unity (pixel_char/port/)
+Especificación completa de las mecánicas leída del código actual (`MECHANICS_SPEC.md` + PDF), tablas de datos exportadas
+del juego en marcha (`data/*.json`, fases por frame en `data/animations/`), copia del código de lógica sin render
+(`code/` + `INDEX.md`), criterios de aceptación (`TESTS.md`) y notas de portado (`PORTING_NOTES.md`). Diferencias
+encontradas entre la documentación antigua y el código: `MECHANICS_SPEC.md` §17 (velocidad de marcha real 0.8-1.25 u/s;
+el contraataque de 350 ms tras el perfecto ya no se abre tras la primera ventana de riposte; postura del autómata 18-28
+por desvío, no 40-50; `prepK` del autómata sin efecto; cabeceras de controles/fighter desfasadas tras Combate completo).
