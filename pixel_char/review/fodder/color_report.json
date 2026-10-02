@@ -1,0 +1,240 @@
+{
+ "zombie_referencia": {
+  "moss_frac": 0.276,
+  "L50": 127.0,
+  "C50": 39.395
+ },
+ "zombie_attack_1": {
+  "antes": {
+   "moss_frac": 0.279,
+   "L50": 129.0,
+   "C50": 42.012
+  },
+  "despues": {
+   "moss_frac": 0.279,
+   "L50": 129.0,
+   "C50": 42.012
+  }
+ },
+ "zombie_attack_2": {
+  "antes": {
+   "moss_frac": 0.272,
+   "L50": 125.0,
+   "C50": 37.202
+  },
+  "despues": {
+   "moss_frac": 0.272,
+   "L50": 125.0,
+   "C50": 37.202
+  }
+ },
+ "zombie_death_1": {
+  "antes": {
+   "moss_frac": 0.327,
+   "L50": 135.0,
+   "C50": 45.188
+  },
+  "despues": {
+   "moss_frac": 0.272,
+   "L50": 129.0,
+   "C50": 39.051
+  }
+ },
+ "zombie_death_2": {
+  "antes": {
+   "moss_frac": 0.307,
+   "L50": 132.0,
+   "C50": 44.011
+  },
+  "despues": {
+   "moss_frac": 0.271,
+   "L50": 128.0,
+   "C50": 38.949
+  }
+ },
+ "zombie_hit_1": {
+  "antes": {
+   "moss_frac": 0.272,
+   "L50": 130.0,
+   "C50": 43.417
+  },
+  "despues": {
+   "moss_frac": 0.271,
+   "L50": 128.0,
+   "C50": 39.357
+  }
+ },
+ "zombie_hit_2": {
+  "antes": {
+   "moss_frac": 0.297,
+   "L50": 135.0,
+   "C50": 43.012
+  },
+  "despues": {
+   "moss_frac": 0.272,
+   "L50": 129.0,
+   "C50": 39.205
+  }
+ },
+ "zombie_idle_1": {
+  "antes": {
+   "moss_frac": 0.445,
+   "L50": 109.0,
+   "C50": 18.0
+  },
+  "despues": {
+   "moss_frac": 0.288,
+   "L50": 122.0,
+   "C50": 39.0
+  }
+ },
+ "zombie_idle_2": {
+  "antes": {
+   "moss_frac": 0.297,
+   "L50": 112.0,
+   "C50": 23.77
+  },
+  "despues": {
+   "moss_frac": 0.295,
+   "L50": 123.0,
+   "C50": 38.079
+  }
+ },
+ "zombie_walk_1": {
+  "antes": {
+   "moss_frac": 0.316,
+   "L50": 117.0,
+   "C50": 27.166
+  },
+  "despues": {
+   "moss_frac": 0.292,
+   "L50": 124.0,
+   "C50": 38.275
+  }
+ },
+ "zombie_walk_2": {
+  "antes": {
+   "moss_frac": 0.301,
+   "L50": 122.0,
+   "C50": 25.06
+  },
+  "despues": {
+   "moss_frac": 0.288,
+   "L50": 126.0,
+   "C50": 37.736
+  }
+ },
+ "dog_referencia": {
+  "moss_frac": 0.177,
+  "L50": 102.0,
+  "C50": 29.833
+ },
+ "dog_attack_1": {
+  "antes": {
+   "moss_frac": 0.187,
+   "L50": 101.0,
+   "C50": 30.414
+  },
+  "despues": {
+   "moss_frac": 0.187,
+   "L50": 101.0,
+   "C50": 30.414
+  }
+ },
+ "dog_attack_2": {
+  "antes": {
+   "moss_frac": 0.167,
+   "L50": 103.0,
+   "C50": 29.206
+  },
+  "despues": {
+   "moss_frac": 0.167,
+   "L50": 103.0,
+   "C50": 29.206
+  }
+ },
+ "dog_death_2": {
+  "antes": {
+   "moss_frac": 0.128,
+   "L50": 111.0,
+   "C50": 42.059
+  },
+  "despues": {
+   "moss_frac": 0.173,
+   "L50": 104.0,
+   "C50": 30.871
+  }
+ },
+ "dog_hit_1": {
+  "antes": {
+   "moss_frac": 0.168,
+   "L50": 97.0,
+   "C50": 33.601
+  },
+  "despues": {
+   "moss_frac": 0.177,
+   "L50": 101.0,
+   "C50": 29.698
+  }
+ },
+ "dog_hit_2": {
+  "antes": {
+   "moss_frac": 0.141,
+   "L50": 105.0,
+   "C50": 38.184
+  },
+  "despues": {
+   "moss_frac": 0.176,
+   "L50": 103.0,
+   "C50": 30.414
+  }
+ },
+ "dog_idle_1": {
+  "antes": {
+   "moss_frac": 0.513,
+   "L50": 108.0,
+   "C50": 19.235
+  },
+  "despues": {
+   "moss_frac": 0.19,
+   "L50": 103.0,
+   "C50": 30.15
+  }
+ },
+ "dog_idle_2": {
+  "antes": {
+   "moss_frac": 0.351,
+   "L50": 104.0,
+   "C50": 19.925
+  },
+  "despues": {
+   "moss_frac": 0.182,
+   "L50": 102.0,
+   "C50": 29.206
+  }
+ },
+ "dog_walk_1": {
+  "antes": {
+   "moss_frac": 0.172,
+   "L50": 106.0,
+   "C50": 24.597
+  },
+  "despues": {
+   "moss_frac": 0.187,
+   "L50": 103.0,
+   "C50": 29.411
+  }
+ },
+ "dog_walk_2": {
+  "antes": {
+   "moss_frac": 0.252,
+   "L50": 106.0,
+   "C50": 22.472
+  },
+  "despues": {
+   "moss_frac": 0.184,
+   "L50": 103.0,
+   "C50": 29.411
+  }
+ }
+}

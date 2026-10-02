@@ -32,7 +32,7 @@ def main():
     os.makedirs(os.path.dirname(out), exist_ok=True)
     A = os.path.join(ROOT, "assets")
     assets = {
-        "color": webp(os.path.join(A, "color.png"), quality=92, alpha_quality=100),
+        "color": webp(os.path.join(A, "color.png"), quality=88, alpha_quality=96),      # (relleno: 92/100 → 88/96, ~0,15 MB)
         "normal": webp(os.path.join(A, "normal.png"), quality=92),
         "spec": webp(os.path.join(A, "spec.png"), quality=88),
         "meta": json.load(open(os.path.join(A, "atlas.json"))),
@@ -41,18 +41,25 @@ def main():
     if os.path.exists(os.path.join(A, "combat_atlas.json")):
         # (Duelo 3: con riposte y deathblow el atlas crece un 25 %; normales y especular a 80 y el color a 87 para
         #  que la página siga bien por debajo de 16 MB)
-        assets["ccolor"] = webp(os.path.join(A, "combat_color.png"), quality=87, alpha_quality=96)
+        assets["ccolor"] = webp(os.path.join(A, "combat_color.png"), quality=84, alpha_quality=94)   # (relleno: 87/96 → 84/94)
         assets["cnormal"] = webp(os.path.join(A, "combat_normal.png"), NSCALE, quality=85)
         assets["cspec"] = webp(os.path.join(A, "combat_spec.png"), quality=80)
         assets["cmeta"] = json.load(open(os.path.join(A, "combat_atlas.json")))
     # el Autómata del bosque (pixel_char/tools/enemy_maps.py)
     if os.path.exists(os.path.join(A, "enemy_atlas.json")):
-        assets["ecolor"] = webp(os.path.join(A, "enemy_color.png"), quality=84, alpha_quality=92)
+        assets["ecolor"] = webp(os.path.join(A, "enemy_color.png"), quality=80, alpha_quality=88)   # (relleno: 84/92 → 80/88, ~0,4 MB)
         assets["enormal"] = webp(os.path.join(A, "enemy_normal.png"), NSCALE, quality=85)
         assets["espec"] = webp(os.path.join(A, "enemy_spec.png"), quality=78)
         em = json.load(open(os.path.join(A, "enemy_atlas.json")))
         em["anims"] = em.get("anims")
         assets["emeta"] = em
+    # enemigos de RELLENO (pixel_char/tools/fodder_maps.py): zombi y perro zombi, para practicar el parry
+    for k, key in (("zombie", "fz"), ("dog", "fd")):
+        if os.path.exists(os.path.join(A, f"fodder_{k}_atlas.json")):
+            assets[key + "color"] = webp(os.path.join(A, f"fodder_{k}_color.png"), quality=78, alpha_quality=85)
+            assets[key + "normal"] = webp(os.path.join(A, f"fodder_{k}_normal.png"), NSCALE, quality=85)
+            assets[key + "spec"] = webp(os.path.join(A, f"fodder_{k}_spec.png"), NSCALE, quality=78)
+            assets[key + "meta"] = json.load(open(os.path.join(A, f"fodder_{k}_atlas.json")))
     feet = os.path.join(A, "feet.json")
     if os.path.exists(feet):
         F = json.load(open(feet))

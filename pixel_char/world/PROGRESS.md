@@ -1456,3 +1456,61 @@ perfecto se pisan «¡PERFECTO!» y «¡DOBLE PERFECTO!»: lo resuelve el redise
   (`review/combate_completo/E7b_doble_perfecto_sin_solape.png`).
 - Colores de defensa como en la maqueta: PERFECTO dorado, PARRY normal azul, BLOQUEO gris.
 - Pruebas: multi-parry 11/11, parry/riposte 8/8, botón de guardia (móvil y escritorio) correcto.
+
+## Enemigos de relleno: ZOMBI y PERRO ZOMBI (practicar el parry)
+
+Objetivo: bucle corto aviso claro → parry → recompensa inmediata → siguiente. La ventana de parry del jugador
+(200 ms, PERFECTO ~70 ms) y la calibración NO se tocan: la facilidad sale del enemigo y de las ayudas.
+
+### Etapa 1 — Revisión de congruencia y procesado
+
+Hojas (`ref/sheets_fodder/`, JPEG 1536×1024 tal cual llegaron; los duplicados y los RUN, que no se usan, en `alt/`):
+`zombie_{idle,walk,attack,hit,death}_{1,2}` y `dog_{idle,walk,attack,hit,death}_{1,2}` **menos `dog_death_1`, que no
+llegó** (llegaron tres versiones de `dog_death_2`). Duplicados elegidos: zombi hit_2 = la de color y tamaño más
+cercanos a hit_1; zombi death_2 = la que cae hacia la cámara en la fila S (la otra se tumba de lado); perro attack_2 =
+la de color más cercano a attack_1; perro death_2 = la menos saturada (las otras, rojo intenso).
+
+Pipeline (`tools/fodder_*.py`, mismo esquema que el autómata):
+1. `fodder_grid.py`: cuadrícula por los rótulos (filas) y la línea de cabecera (columnas; en el perro «1.» va separado
+   de su palabra). Las figuras claras del perro parecen texto crema: los rótulos se filtran por columna común.
+2. `fodder_extract.py`: aquí la baldosa NO es gris lisa (losa con rejilla, celdas que brillan, setas). Se quita con
+   (i) **plantilla de la losa**: las 24 losas de una hoja son la misma imagen (diferencia mediana 2-3/255), así que su
+   mediana alineada (±3 px por celda, tamaño por columna: en las muertes del zombi las columnas de la derecha son más
+   anchas) es la losa limpia y la figura es lo que se aparta de ella; (ii) donde la plantilla no es fiable (el centro,
+   tapado por la figura en casi todas las celdas), un **modelo de color por hoja** (histograma RGB 32³: losa = la franja
+   más baja de cada celda, figura = la mitad de arriba). Solo dentro del rombo de la losa (ajustado con
+   `extract.fit_tile` y regularizado por fila/columna): el musgo oscuro del cuerpo se queda. Borde con `extract.matte`.
+3. `fodder_color.py`: igualado Lab por cuantiles (tono, croma por familias, luminosidad) hacia la hoja de ATAQUE
+   de cada criatura (es lo que se mira al aprender el parry). Medido (croma mediana): zombi idle 18 → 39, walk 25-27
+   → 38, hit/death 43-44 → 39; perro idle 19-20 → 29-30, walk 22-24 → 29, death 42 → 30 (`review/fodder/color_report.json`).
+4. `fodder_normalize.py`: escala única por criatura (la losa no sirve de regla: semiancho 70 px en idle/walk del zombi,
+   75-78 en attack/hit, 83-98 en death; la figura sí mide lo mismo, 180-195 px de pie el zombi y 157-174 el perro),
+   pivote en el centro de la losa + desfase por fila para apoyar el pie (el perro en el salto de attack y los cuerpos
+   tumbados de death no cuentan para el nivel del pie).
+5. `fodder_maps.py`: normales (normals.py), especular (hueso 0.30-0.45, setas 0.5, musgo 0.05), cabeza por frame
+   (`eye_px`, para el brillo de los ojos del zombi en el WINDUP), pies (formato feet.json), atlas por criatura
+   (`world/assets/fodder_{zombie,dog}_*`) y JSON con fases por frame (`out/fodder/{zombie,dog}.json`).
+   **IMPACT de attack = frame 4 de la hoja (índice 3: IMPACT del zombi, BITE del perro) en las 8 direcciones**
+   (`review/fodder/E1_impacto.png`); el ritmo se ancla a él.
+
+Revisión de congruencia (`review/fodder/E1_direcciones_{zombie,dog}.png`, marcadas (a) naranja / (b) rojo;
+`E1_color_antes_despues.png`):
+
+| Problema | Clase | Arreglo |
+|---|---|---|
+| zombi idle_1 NE, E, SE dibujadas mirando a la izquierda (como NW, W, SW) | a | espejo de NW, W y SW |
+| zombi attack_2 NW de frente-izquierda (se ve la cara), igual que SW | a | espejo de attack NE (de espaldas) |
+| zombi hit_2 W mira a la derecha | a | espejo de hit E |
+| perro death_1 (N, NE, E, SE) no llegó | a | E, SE, NE = espejos de W, SW, NW |
+| … su fila N no se deduce de ninguna | **b** | provisional = NW; **regenerar dog_death_1** |
+| deriva de color fuerte entre hojas (idle gris verdoso, attack/hit cálidos, death del perro rojo) | a | Lab por zonas hacia attack |
+| zombi idle/walk: otro diseño (más delgado, musgo colgante, setas en los hombros) que attack/hit/death | **b** (forma) | el color ya casa; **regenerar idle/walk con el diseño de attack** |
+| tamaño de la losa distinto por hoja y por columna | a | escala por la figura, no por la losa |
+| restos tenues de losa bajo 2-3 cuerpos tumbados (death del zombi, columnas 5-6) | a parcial | casi invisibles a escala de juego y desaparecen con el desvanecimiento |
+| perro death S: tras el primer frame se tumba de lado (hacia la izquierda) | b leve | se usa tal cual |
+
+Escala y peso: el zombi va a 1,05× y el perro a 0,6× la altura del personaje; en el atlas, 82 px de pie el zombi
+(escala 0,42 de la hoja, ~0,8 la densidad del personaje) y 62 px el perro (0,36, ~1×). La página tiene 16 MB de tope
+y estaba en 14,26 MB: los dos atlas nuevos (color q78, normales y especular a media resolución) pesan 2,0 MB, así que
+se recomprimen un poco el autómata (color q84→q80), el combate (q87→q84) y el caminar del personaje (q92→q88).
+Página: **15,62 MB**.
