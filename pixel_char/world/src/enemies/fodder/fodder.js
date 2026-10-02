@@ -161,7 +161,7 @@
       update(dt) {
         const b = f.body, pl = W.pf;
         this.t += dt;
-        if (!f.alive) { this.state = "death"; return; }
+        if (!f.alive) { if (this.state !== "death" && W.fodderReleaseToken) W.fodderReleaseToken(f); this.state = "death"; return; }
         if (!this.enabled) return;
         const ph = phaseOf(f);
         if (ph) { this.state = ph; return; }
@@ -178,7 +178,7 @@
           else { this.wander(dt, false); return; }
         }
         if (fromHome > C.leash && d > C.see) { this.state = "wander"; this.wander(dt, true); return; }
-        if (d < 4) b.heading += norm(toP - b.heading) * Math.min(1, dt * 7);
+        if (d < 4 && !b.path.length) b.heading += norm(toP - b.heading) * Math.min(1, dt * 7);   // (caminando mira hacia donde va)
         // golpe: a su distancia, cuando le toca (grupos: un solo atacante a la vez, ver W.fodderCanAttack)
         if (d <= C.engage && this.cool <= 0 && (!W.fodderCanAttack || W.fodderCanAttack(f))) { this.strike(toP); return; }
         if (W.fodderOrbit && W.fodderOrbit(f, dt)) return;              // grupos: los que esperan rodean
@@ -388,9 +388,182 @@
       label: CFG[kind].label,
       spawnPoints: sites,
       spawn(p) { return spawn(kind, p); },
-      update, onFrame, respawn, remove,
+      update, hiddenUpdate: update, onFrame, respawn, remove,
     });
   }
+  // ---- grupos en ritmo de metrónomo -------------------------------------------------------------------
+  // TOKEN DE ATAQUE ÚNICO: solo uno en WINDUP/ATTACK a la vez. El turno se suelta al acabar su RECOVERY o su STUN
+  // (o al morir) y el siguiente empieza su WINDUP 700 ms después; mientras, ese siguiente ya se coloca a su
+  // distancia y los demás rodean al jugador a 2-3 baldosas, esperando.
+  const TOK = (W.FODDER_TOKEN = { holder: null, next: null, freeAt: -9, gap: 0.7, stamp: -1, log: [] });
+  const engagedFodder = (f) => f && f.fodder && f.alive && !f.hidden && f.ai && f.ai.enabled && (f.ai.state === "chase" || f.ai.state === "orbit" ||
+    f.ai.state === "windup" || f.ai.state === "attack" || f.ai.state === "recovery" || f.ai.state === "stun" || f.ai.state === "hit");
+  W.fodderReleaseToken = function (f) {
+    if (TOK.holder !== f) return;
+    TOK.holder = null; TOK.freeAt = W.ct + TOK.gap;
+    TOK.log.push({ ev: "free", who: f.name, t: +W.ct.toFixed(3) });
+  };
+  function pickNext() {
+    if (TOK.stamp === W.ct) return;
+    TOK.stamp = W.ct;
+    const p = W.pf; let best = null;
+    for (const o of W.foes || []) {
+      if (o === TOK.holder || !engagedFodder(o) || !p) continue;
+      const d = Math.hypot(o.body.x - p.body.x, o.body.z - p.body.z);
+      if (d > 9) continue;
+      const k = (o.ai.lastAtk || -99) + d * 0.01;                // quien lleva más tiempo esperando (y, a igualdad, el más cercano)
+      if (!best || k < best.k) best = { f: o, k };
+    }
+    TOK.next = best ? best.f : null;
+  }
+  W.fodderCanAttack = function (f) {
+    if (TOK.holder === f) return true;
+    if (TOK.holder) {
+      const h = TOK.holder;
+      if (h.alive && !h.hidden && (W.foes || []).indexOf(h) >= 0) return false;
+      W.fodderReleaseToken(h);
+      return false;
+    }
+    if (W.ct < TOK.freeAt) return false;
+    pickNext();
+    if (TOK.next && TOK.next !== f) return false;
+    TOK.holder = f; f.ai.lastAtk = W.ct; TOK.next = null;
+    TOK.log.push({ ev: "take", who: f.name, t: +W.ct.toFixed(3) });
+    if (TOK.log.length > 200) TOK.log.splice(0, 100);
+    return true;
+  };
+  // los que esperan rodean al jugador (devuelve true si este se queda esperando en el corro)
+  W.fodderOrbit = function (f, dt) {
+    const p = W.pf; if (!p) return false;
+    let others = 0;
+    for (const o of W.foes || []) if (o !== f && engagedFodder(o)) others++;
+    if (!others) return false;                                    // solo: va a por ti
+    pickNext();
+    if (TOK.holder === f || (TOK.next === f && !TOK.holder)) return false;
+    if (TOK.next === f && TOK.holder) {
+      // el siguiente: se acerca hasta su distancia y espera allí su turno
+      const d = Math.hypot(f.body.x - p.body.x, f.body.z - p.body.z);
+      if (d <= f.fodder.engage * 1.05) { f.body.stop(); f.body.heading = Math.atan2(p.body.z - f.body.z, p.body.x - f.body.x); f.ai.state = "chase"; return true; }
+      return false;
+    }
+    const b = f.body, ai = f.ai;
+    ai.orbitDir = ai.orbitDir || (rand() < 0.5 ? -1 : 1);
+    const R = 2.5, cur = Math.atan2(b.z - p.body.z, b.x - p.body.x);
+    // separación angular con los demás del corro
+    let push = 0;
+    for (const o of W.foes || []) {
+      if (o === f || !engagedFodder(o)) continue;
+      const ao = Math.atan2(o.body.z - p.body.z, o.body.x - p.body.x), da = norm(cur - ao);
+      if (Math.abs(da) < 1.0) push += (da >= 0 ? 1 : -1) * (1.0 - Math.abs(da));
+    }
+    const ang = cur + ai.orbitDir * 0.35 * dt * 3 + push * 0.25;
+    const tx = p.body.x + Math.cos(ang) * R, tz = p.body.z + Math.sin(ang) * R;
+    if (W.cellFree(tx, tz) && Math.hypot(tx - b.x, tz - b.z) > 0.12) { b.path = [{ x: tx, z: tz }]; b.following = false; b.gait = "walk"; }
+    else {
+      if (!W.cellFree(tx, tz)) ai.orbitDir *= -1;
+      b.stop(); b.heading += norm(Math.atan2(p.body.z - b.z, p.body.x - b.x) - b.heading) * Math.min(1, dt * 6);   // quieto: te mira
+    }
+    ai.state = "orbit";
+    return true;
+  };
+
+  // ---- GRUPO DE PRÁCTICA (panel ⚙ o #enemy=fodder): 4 junto al jugador; cada uno que cae vuelve enseguida -----
+  const PRACTICE_MIX = ["zombie", "dog", "zombie", "dog"];
+  function practiceSpots(n) {
+    const p = W.player, pts = [];
+    for (let i = 0; i < n; i++) {
+      let s = null;
+      for (let k = 0; k < 12 && !s; k++) {
+        const a = (i / n) * Math.PI * 2 + 0.4 + k * 0.5, r = 4.2 + (k % 3) * 0.6;
+        const c = W.findSpot(p.x + Math.cos(a) * r, p.z + Math.sin(a) * r, W.heightAt(p.x, p.z), 0.5);
+        if (c && Math.hypot(c.x - p.x, c.z - p.z) > 3) s = c;
+      }
+      if (s) pts.push({ x: s.x, z: s.z, heading: Math.atan2(p.z - s.z, p.x - s.x), zone: "practice", kind: PRACTICE_MIX[i % PRACTICE_MIX.length] });
+    }
+    return pts;
+  }
+  function practiceUpdate(f, dt) {
+    update(f, dt);
+    // el que cae vuelve a 5 u del jugador (fuera del corro) 1 s después de desvanecerse, ya en guardia
+    if (f.hidden) {
+      f.backT = (f.backT || 0) + dt;
+      if (f.backT > 1.0 && W.pf && W.pf.alive) {
+        f.backT = 0;
+        const p = W.player;
+        for (let k = 0; k < 10; k++) {
+          const a = rand() * Math.PI * 2, s = W.findSpot(p.x + Math.cos(a) * 5, p.z + Math.sin(a) * 5, W.heightAt(p.x, p.z), 0.5);
+          if (s) { f.home = { x: s.x, z: s.z, heading: Math.atan2(p.z - s.z, p.x - s.x) }; break; }
+        }
+        respawn(f); f.ai.alert = true;
+      }
+    } else f.backT = 0;
+  }
+  W.registerEnemy("fodder", {
+    label: "Grupo de práctica",
+    spawnPoints() { return practiceSpots(4); },
+    spawn(p) { const f = spawn(p.kind, p); f.practice = true; f.noAutoRespawn = true; f.ai.alert = true; return f; },
+    update: practiceUpdate, hiddenUpdate: practiceUpdate, onFrame, respawn(f) { respawn(f); f.ai.alert = true; }, remove,
+  });
+  W.spawnPracticeGroup = function () { W.setEnemyType("fodder"); return W.foes; };
+
+  // ---- grupos del mundo: en el cementerio del bosque muerto y en las charcas (el autómata sigue en sus 3 zonas) --
+  // Aparecen cuando te acercas (a 24 u) y se retiran si te alejas mucho (42 u) sin estar peleando.
+  const SITES = [
+    { zone: "ruins", dx: -5, dz: 5, mix: ["zombie", "zombie", "dog"] },
+    { zone: "ponds", dx: -4, dz: 3, mix: ["dog", "dog", "zombie", "zombie"] },
+    { zone: "ponds", dx: 5, dz: -3, mix: ["zombie", "dog"] },
+  ];
+  const STREAM = (W.FODDER_WORLD = { on: true, groups: SITES.map(() => null), near: 24, far: 42 });
+  W.fodderStream = function () {
+    if (!STREAM.on || W.enemyType !== "automaton" || !W.player || !W.ZONES) return;
+    const p = W.player;
+    SITES.forEach((S, i) => {
+      const Z = W.ZONES[S.zone]; if (!Z) return;
+      const cx = Z.x + S.dx, cz = Z.z + S.dz, d = Math.hypot(p.x - cx, p.z - cz);
+      const G = STREAM.groups[i];
+      if (!G && d < STREAM.near) {
+        const list = [];
+        S.mix.forEach((kind, k) => {
+          const a = k / S.mix.length * Math.PI * 2, s = W.findSpot(cx + Math.cos(a) * 1.8, cz + Math.sin(a) * 1.8, null, 0.6);
+          if (!s) return;
+          const f = W.addFoe(kind, { x: s.x, z: s.z, heading: a + Math.PI, zone: S.zone });
+          if (f) { f.worldGroup = i; list.push(f); }
+        });
+        STREAM.groups[i] = list;
+        W.combatLog.push({ ev: "fodderGroup", zone: S.zone, n: list.length, t: W.U ? +W.U.uTime.value.toFixed(3) : 0 });
+      } else if (G && d > STREAM.far && !G.some((f) => engagedFodder(f))) {
+        for (const f of G) if (W.removeFoe) W.removeFoe(f);
+        STREAM.groups[i] = null;
+      }
+    });
+  };
+  W.fodderStreamReset = function () { STREAM.groups = SITES.map(() => null); };
+
+  // ---- contador en pantalla: parries seguidos, % de PERFECTOS y nivel del anillo ---------------------------
+  let cnt = null;
+  W.fodderHud = function () {
+    const p = W.pf; if (!p) return;
+    let near = null, bd = 1e9;
+    for (const f of W.foes || []) { if (!f.fodder || !f.alive || f.hidden) continue; const d = Math.hypot(f.body.x - p.body.x, f.body.z - p.body.z); if (d < bd) { bd = d; near = f; } }
+    const on = !!near && (bd < 10 || W.enemyType === "fodder");
+    if (!cnt) {
+      const w = document.getElementById("wrap"); if (!w) return;
+      cnt = document.createElement("div"); cnt.id = "fodHud"; cnt.setAttribute("aria-live", "polite");
+      w.appendChild(cnt);
+      const css = document.createElement("style");
+      css.textContent = `#fodHud{position:absolute;left:calc(12px + env(safe-area-inset-left,0px));top:calc(112px + env(safe-area-inset-top,0px));font-size:8px;line-height:1.7;
+        color:#cfe9ef;background:rgba(8,14,20,.62);border:1px solid rgba(120,220,240,.35);padding:5px 8px;pointer-events:none;z-index:4;display:none;white-space:nowrap}
+        #fodHud b{color:#8ff0ff;font-weight:normal}#fodHud .pf{color:#ffd34a}`;
+      document.head.appendChild(css);
+    }
+    if (cnt._on !== on) { cnt._on = on; cnt.style.display = on ? "block" : "none"; }
+    if (!on) return;
+    const pc = STATS.parries ? Math.round(100 * STATS.perfect / STATS.parries) : 0;
+    const lv = (k) => ringLevel(k);
+    const html = `PARRIES SEGUIDOS <b>${STATS.streak}</b><br>PERFECTOS <span class="pf">${pc} %</span> <span style="opacity:.7">(${STATS.perfect}/${STATS.parries})</span><br>ANILLO zombi <b>${lv("zombie")}</b> · perro <b>${lv("dog")}</b>`;
+    if (cnt._h !== html) { cnt._h = html; cnt.innerHTML = html; }
+  };
+
   // ---- panel ⚙: «Anillo de timing» Auto / Siempre / Nunca ----------------------------------------------
   W.initFodderUI = function (pn) {
     const row = document.createElement("label");
@@ -398,6 +571,9 @@
     pn.insertBefore(row, pn.querySelector("#tResp"));
     const sel = row.querySelector("select"); sel.value = CFG.ringMode;
     sel.addEventListener("change", () => W.setFodderRingMode(sel.value));
+    const b = document.createElement("button"); b.id = "tFod"; b.textContent = "Grupo de práctica";
+    pn.insertBefore(b, pn.querySelector("#tResp"));
+    b.addEventListener("click", () => W.spawnPracticeGroup());
   };
   W.spawnFodder = spawn;
   W.fodderRespawn = respawn;

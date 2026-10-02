@@ -1575,3 +1575,26 @@ activada». Panel ⚙ → «Anillo»: Auto (por defecto) / Siempre / Nunca (se r
 - Golpe recibido: 6 de daño (un tercio del zarpazo del autómata). Ningún golpe suyo es peligroso: sin aviso rojo.
 
 Prueba `tests/fodder_e3.mjs`: **10/10** (`review/fodder/E3_results.json`, captura `E3_anillo_zombi.png`).
+
+### Etapa 4 — Grupos en ritmo de metrónomo y modo práctica
+
+- **TOKEN DE ATAQUE ÚNICO** (`W.FODDER_TOKEN`): solo un relleno en WINDUP/ATTACK a la vez. El turno se suelta al
+  acabar su RECOVERY o su STUN (o al morir) y el siguiente empieza su WINDUP **700 ms** después (medido: 700-717 ms,
+  un frame de margen). Mientras tanto ese siguiente (el que lleva más tiempo esperando) ya se coloca a su distancia,
+  y los demás rodean al jugador a 2-3 baldosas (mediana 2,4 u) mirándole cuando se paran. Resultado con un jugador
+  que desvía cada golpe: un golpe cada ~2,7 s (WINDUP + STUN + 0,7 s), constante, como un metrónomo; nunca 2 a la vez.
+- **Grupo de práctica**: botón del panel ⚙ y selector «Grupo de práctica» (`#enemy=fodder`,
+  `W.setEnemyType("fodder")` o `W.spawnPracticeGroup()`): 2 zombis y 2 perros junto al jugador; el que cae vuelve a
+  ~5 u un segundo después de desvanecerse, ya en guardia (el bucle no se para).
+- **Contador en pantalla** (arriba a la izquierda, bajo tus barras, solo con relleno cerca): parries seguidos,
+  % de PERFECTOS (con la cuenta) y el nivel del anillo de cada tipo.
+- **Selector** del panel: «Zombi», «Perro zombi» y «Grupo de práctica» (`#enemy=zombie|dog|fodder`; consola
+  `W.setEnemyType("zombie"|"dog"|"fodder")`). El tipo por defecto sigue siendo el autómata.
+- **Grupos del mundo** (con el autómata, que sigue en sus 3 zonas): 2 zombis + 1 perro
+  en el cementerio del bosque muerto, y 4 (2+2) y 2 (1+1) en las charcas. Aparecen al acercarte (24 u) y se retiran si
+  te alejas mucho (42 u) sin estar peleando: al empezar en el claro no hay ninguno, así que nada cambia para el
+  autómata (21/21).
+- **Modo entrenamiento** («Entrenar» → «RELLENO · ms antes del impacto y nivel»): tras cada golpe, «PARRY · 120 ms
+  antes · nivel 1» (el nivel del anillo con el que lo hiciste).
+
+Prueba `tests/fodder_e4.mjs`: **10/10** (`review/fodder/E4_results.json`, captura `E4_grupo_practica.png`).

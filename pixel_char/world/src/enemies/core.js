@@ -32,6 +32,7 @@
   W.spawnEnemies = function (type) {
     type = type || W.enemyType;
     while (foes.length) removeFoe(foes.pop());
+    if (W.fodderStreamReset) W.fodderStreamReset();
     if (type === "none") { W.enemyType = type; W.foe = null; return foes; }     // sin enemigos (pruebas del mundo)
     if (!TYPES[type]) type = Object.keys(TYPES)[0];
     W.enemyType = type;
@@ -49,16 +50,18 @@
   };
   W.setEnemyType = function (t) { return W.spawnEnemies(t); };
   // grupos (group.js): quitar todos y añadir uno de un tipo en un punto
-  W.clearFoes = function () { while (foes.length) removeFoe(foes.pop()); W.foe = null; };
+  W.removeFoe = function (f) { const i = foes.indexOf(f); if (i >= 0) foes.splice(i, 1); removeFoe(f); if (W.foe === f) W.foe = foes[0] || null; };
+  W.clearFoes = function () { if (W.fodderStreamReset) W.fodderStreamReset(); while (foes.length) removeFoe(foes.pop()); W.foe = null; };
   W.addFoe = function (type, p) {
     const def = TYPES[type]; if (!def) return null;
     const f = def.spawn(p, W.assets); f.type = type; f.zone = p.zone; foes.push(f); if (!W.foe) W.foe = f; return f;
   };
 
   W.updateFoes = function (dt, theta, thetaT) {
+    if (W.fodderStream) W.fodderStream();          // grupos de relleno del mundo (aparecen al acercarte)
     for (const f of foes) {
       const def = TYPES[f.type];
-      if (f.hidden) continue;
+      if (f.hidden) { if (def.hiddenUpdate) def.hiddenUpdate(f, dt); continue; }   // (el relleno vuelve solo)
       if (f.ai && dt > 0) f.ai.update(dt);           // cada IA mira su propio "enabled"
       f.update(dt);
       f.body.update(dt);
@@ -68,6 +71,7 @@
     // panel: lo que te está leyendo el autómata y la dificultad adaptativa (cada 0.25 s)
     const ti = document.getElementById("tInfo");
     if (ti && W.automatonInfo && !document.getElementById("tpanel").hidden) { W._tiT = (W._tiT || 0) + dt; if (W._tiT > 0.25) { W._tiT = 0; ti.innerHTML = W.automatonInfo(); } }
+    if (W.fodderHud) W.fodderHud();                 // contador de la práctica de parry (relleno)
     // botón REAPARECER: se ilumina si algún enemigo o el jugador han muerto
     const rb = document.getElementById("respawn");
     if (rb) {

@@ -10,7 +10,7 @@
   const W = (window.W = window.W || {});
   const T = (W.TRAINING = { on: false, id: "", reps: 0 });
   const EXTRA = [["dos+delay", "zarpazo y barrido · retrasado"], ["dos+feint", "zarpazo y barrido · finta"], ["rrl+delay", "rápido-rápido-lento · retrasado"],
-    ["riposte", "RIPOSTE · desvía y contraataca (ritmo del 3.º)"]];
+    ["riposte", "RIPOSTE · desvía y contraataca (ritmo del 3.º)"], ["fodder", "RELLENO · ms antes del impacto y nivel"]];
   const HINT = { sweep: "BARRIDO → salta", thrust: "ESTOCADA → esquiva hacia él", grab: "AGARRE → esquiva de lado" };
 
   // ---- modo entrenamiento -----------------------------------------------------------------------------
@@ -66,7 +66,10 @@
   }
   W.onDefenseInfo = function (info) {
     if (!T.on) return;
-    const r = W.timingText(info); if (r) show(r[0], r[1]);
+    const r = W.timingText(info); if (!r) return;
+    // relleno: también el nivel del anillo con el que lo has hecho (2 = anillo completo, 1 = últimos 250 ms, 0 = sin anillo)
+    if (info.fodder && W.fodderRingLevel) r[0] += " · nivel " + W.fodderRingLevel(info.fodder);
+    show(r[0], r[1]);
   };
   W.onLatePress = function (late) { if (T.on) show("TARDE · " + Math.round(late * 1000) + " ms", "#ff6a4a"); };
   // ritmo del 3.er golpe del riposte (duel.js)

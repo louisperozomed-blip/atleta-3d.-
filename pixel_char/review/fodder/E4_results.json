@@ -1,0 +1,170 @@
+{
+ "results": [
+  {
+   "name": "#enemy=fodder: grupo de práctica de 4 (zombis y perros) junto al jugador",
+   "ok": true,
+   "info": {
+    "type": "fodder",
+    "n": 4,
+    "kinds": "dog,dog,zombie,zombie",
+    "d": [
+     4.2,
+     4.9,
+     4.2,
+     4.1
+    ]
+   }
+  },
+  {
+   "name": "TOKEN ÚNICO: nunca hay 2 enemigos en WINDUP/ATTACK a la vez",
+   "ok": true,
+   "info": {
+    "maxAtk": 1,
+    "windups": 10,
+    "stuns": 9,
+    "gaps": [
+     716,
+     717,
+     700,
+     700,
+     700,
+     717,
+     716,
+     717,
+     717
+    ],
+    "gmed": 716,
+    "orbit": {
+     "p10": 1.35,
+     "p25": 2.12,
+     "p50": 2.41,
+     "p90": 2.88
+    }
+   }
+  },
+  {
+   "name": "el siguiente empieza su WINDUP 700 ms después de que el anterior termine RECOVERY/STUN (metrónomo)",
+   "ok": true,
+   "info": {
+    "maxAtk": 1,
+    "windups": 10,
+    "stuns": 9,
+    "gaps": [
+     716,
+     717,
+     700,
+     700,
+     700,
+     717,
+     716,
+     717,
+     717
+    ],
+    "gmed": 716,
+    "orbit": {
+     "p10": 1.35,
+     "p25": 2.12,
+     "p50": 2.41,
+     "p90": 2.88
+    }
+   }
+  },
+  {
+   "name": "los demás rodean a 2-3 baldosas y esperan",
+   "ok": true,
+   "info": {
+    "p10": 1.35,
+    "p25": 2.12,
+    "p50": 2.41,
+    "p90": 2.88
+   }
+  },
+  {
+   "name": "contador en pantalla: parries seguidos, % de PERFECTOS y nivel del anillo",
+   "ok": true,
+   "info": {
+    "on": true,
+    "txt": "PARRIES SEGUIDOS 9PERFECTOS 0 % (0/9)ANILLO zombi 1 · perro 1"
+   }
+  },
+  {
+   "name": "grupo de práctica: el que cae vuelve a ~5 u un segundo después de desvanecerse",
+   "ok": true,
+   "info": {
+    "back": true,
+    "ms": 983,
+    "d": 3.9,
+    "alert": "idle"
+   }
+  },
+  {
+   "name": "selector: «Zombi», «Perro zombi» y «Grupo de práctica»; botón del panel; W.setEnemyType",
+   "ok": true,
+   "info": {
+    "opts": [
+     "echo",
+     "automaton",
+     "zombie",
+     "dog",
+     "fodder"
+    ],
+    "z": [
+     "zombie",
+     "zombie",
+     "zombie"
+    ],
+    "d": [
+     "dog",
+     "dog",
+     "dog"
+    ],
+    "btn": true,
+    "g": {
+     "type": "fodder",
+     "n": 4
+    },
+    "a": {
+     "type": "automaton",
+     "n": 3,
+     "zones": "heart,roots,ruins"
+    }
+   }
+  },
+  {
+   "name": "mundo: grupos mezclados de 2-4 en el cementerio y en las charcas (al acercarte); el autómata sigue en sus 3 zonas",
+   "ok": true,
+   "info": {
+    "ruins": [
+     "zombie",
+     "zombie",
+     "dog"
+    ],
+    "ponds": [
+     "dog",
+     "dog",
+     "zombie",
+     "zombie",
+     "zombie",
+     "dog"
+    ],
+    "lejos": 9,
+    "automatas": "heart,roots,ruins"
+   }
+  },
+  {
+   "name": "modo entrenamiento: ms antes del impacto y el nivel conseguido contra el relleno",
+   "ok": true,
+   "info": {
+    "txt": "PARRY · 120 ms antes · nivel 1"
+   }
+  },
+  {
+   "name": "nunca se pide una animación inexistente",
+   "ok": true,
+   "info": {
+    "miss": []
+   }
+  }
+ ],
+ "errors": []
+}

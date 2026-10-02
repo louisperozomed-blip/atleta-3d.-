@@ -298,7 +298,7 @@
         def = "open";
       } else if (toPlayer) {
         if (def === "open") W.lastFoeImpact.open = true;
-        if (W.onDefenseInfo) W.onDefenseInfo({ def, early: t.lastEarly, guardT: t.lastGuardT, impactT: a.impactT, move: a.move || a.name });
+        if (W.onDefenseInfo) W.onDefenseInfo({ def, early: t.lastEarly, guardT: t.lastGuardT, impactT: a.impactT, move: a.move || a.name, fodder: att.fodder ? att.kind : null });
       }
       if (def === "evade") {
         log({ ev: "evade", who: t.name, anim: a.name });
