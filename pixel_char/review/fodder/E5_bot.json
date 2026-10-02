@@ -1,0 +1,63 @@
+{
+ "N": 150,
+ "out": {
+  "zombie_nivel2": {
+   "n": 150,
+   "desviables": 100,
+   "desviados": 100,
+   "perfectos": 68,
+   "golpeado": 0,
+   "bloqueo": 0
+  },
+  "zombie_nivel1": {
+   "n": 150,
+   "desviables": 100,
+   "desviados": 100,
+   "perfectos": 66,
+   "golpeado": 0,
+   "bloqueo": 0
+  },
+  "zombie_nivel0": {
+   "n": 150,
+   "desviables": 100,
+   "desviados": 97.3,
+   "perfectos": 54,
+   "golpeado": 2.7,
+   "bloqueo": 0
+  },
+  "dog_nivel2": {
+   "n": 150,
+   "desviables": 100,
+   "desviados": 100,
+   "perfectos": 69.3,
+   "golpeado": 0,
+   "bloqueo": 0
+  },
+  "dog_nivel1": {
+   "n": 150,
+   "desviables": 100,
+   "desviados": 99.3,
+   "perfectos": 62,
+   "golpeado": 0.7,
+   "bloqueo": 0
+  },
+  "dog_nivel0": {
+   "n": 150,
+   "desviables": 100,
+   "desviados": 98,
+   "perfectos": 56.7,
+   "golpeado": 2,
+   "bloqueo": 0
+  },
+  "automata": {
+   "n": 150,
+   "desviados": 96.7,
+   "perfectos": 9.3,
+   "golpeado": 0,
+   "attack1_perfectos": 12,
+   "attack2_perfectos": 6.7
+  }
+ },
+ "ok": true,
+ "errors": []
+}

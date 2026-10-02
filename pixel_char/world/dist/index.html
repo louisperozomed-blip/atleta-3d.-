@@ -6925,7 +6925,7 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
         const fromHome = Math.hypot(b.x - f.home.x, b.z - f.home.z);
         if (!pl || !pl.alive || this.passive) { this.state = fromHome > 1.5 ? "wander" : "idle"; this.wander(dt, fromHome > 1.5); return; }
         if (this.state === "idle" || this.state === "wander") {
-          if (d < C.see || f.hp < f.hpMax || this.alert) this.state = "chase";
+          if ((d < C.see || f.hp < f.hpMax || this.alert) && !(this.giveUpT && W.ct - this.giveUpT < 6)) this.state = "chase";
           else { this.wander(dt, false); return; }
         }
         if (fromHome > C.leash && d > C.see) { this.state = "wander"; this.wander(dt, true); return; }
@@ -6937,8 +6937,13 @@ canvas{position:absolute;inset:0;width:100%!important;height:100%!important;disp
           this.replan -= dt;
           if (this.replan <= 0 || !b.path.length) {
             this.replan = 0.4;
-            const r = C.engage * 0.75, tx = pl.body.x - Math.cos(toP) * r, tz = pl.body.z - Math.sin(toP) * r;
-            const path = W.findPath(b.x, b.z, tx, tz, 9000);
+            // hacia ti (se para a su distancia, abajo); si tu celda no se alcanza, hacia un punto libre a tu lado
+            let path = W.findPath(b.x, b.z, pl.body.x, pl.body.z, 14000);
+            if (!path.length) { const s = W.findSpot(pl.body.x - Math.cos(toP) * C.engage * 0.75, pl.body.z - Math.sin(toP) * C.engage * 0.75, null, 0.3); if (s) path = W.findPath(b.x, b.z, s.x, s.z, 14000); }
+            // ¿llega? (A* devuelve el trozo hasta lo más cercano si estás en un saliente: el relleno no salta)
+            const end = path[path.length - 1], reach = end && Math.hypot(end.x - pl.body.x, end.z - pl.body.z) <= C.engage + 0.6;
+            this.unreach = reach ? 0 : (this.unreach || 0) + 0.4;
+            if (this.unreach > 4) { this.state = "wander"; this.alert = false; this.unreach = 0; this.giveUpT = W.ct; return; }   // se rinde y vuelve
             if (path.length) { b.setPath(path, { noDelay: true }); b.gait = "walk"; }
             else this.stuck = (this.stuck || 0) + 1;
           }
