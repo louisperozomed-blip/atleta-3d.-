@@ -37,6 +37,7 @@
     }
     get H() { return W.CHAR_H; }
     get walkV() {
+      if (this.walkVFn) return this.walkVFn();            // enemigos de relleno: su propia velocidad
       let v = P.walkSpeed;
       // pies anclados: la velocidad de marcha sale de los pies (u/s por dirección)
       const chr = this.ch || W.character;

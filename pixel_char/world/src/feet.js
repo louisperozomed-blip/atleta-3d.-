@@ -35,7 +35,7 @@
       for (let i = 0; i < 6; i++) if (c[i]) { let k = 1; while (!c[(i + k) % 6] && k < 6) k++; gap = Math.max(gap, k); }
       const T = gap / fps;
       const v = F.art * fps / 6 + 0.64 * MAXW.walk * tex / F.f / T;
-      return { v: Math.min(1.25, Math.max(0.8, v)), fps, weights: [1, 1, 1, 1, 1, 1].map((x) => x / 6), contact: c, maxw: MAXW.walk };
+      return { v: ch && ch.vFree ? v : Math.min(1.25, Math.max(0.8, v)), fps, weights: [1, 1, 1, 1, 1, 1].map((x) => x / 6), contact: c, maxw: MAXW.walk };
     }
     // run: contactos cortos (el pie solo está en el suelo un instante), vuelo más largo
     const w = c.map((k) => (k ? 0.55 : 1.1)), sw = w.reduce((a, b) => a + b, 0);

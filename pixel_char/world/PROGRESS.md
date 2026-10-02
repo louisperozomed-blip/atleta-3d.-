@@ -1514,3 +1514,32 @@ Escala y peso: el zombi va a 1,05× y el perro a 0,6× la altura del personaje; 
 y estaba en 14,26 MB: los dos atlas nuevos (color q78, normales y especular a media resolución) pesan 2,0 MB, así que
 se recomprimen un poco el autómata (color q84→q80), el combate (q87→q84) y el caminar del personaje (q92→q88).
 Página: **15,62 MB**.
+
+### Etapa 2 — Controlador genérico de relleno
+
+`src/enemies/fodder/fodder.js` (nuevo; la IA del autómata no se toca). Dirigido por datos: `W.FODDER.zombie` y
+`W.FODDER.dog` (altura, golpes de vida, velocidad respecto a tu caminar, WINDUP, alcance, arco, daño, distancia de
+ataque, visión, correa, radio, retroceso). Usa la misma máquina de combate que los demás (`W.Fighter`): su golpe se
+desvía, se bloquea o te alcanza igual que cualquier otro, y la resolución del golpe (arco) ocurre SOLO en el frame
+IMPACT (el índice 3 de su hoja), como en todo el juego.
+
+- Estados (`f.ai.state`): `idle → wander → chase (A*) → windup → attack → recovery → (stun | hit | death)`.
+  windup/attack/recovery salen del propio golpe: antes del IMPACT, en el IMPACT y después.
+- Un solo golpe, siempre con el MISMO ritmo por tipo: el plan del golpe (`fighter.js`: CARGA → SUELTA) se fija a
+  WINDUP − SUELTA y SUELTA, así que del inicio al IMPACT hay exactamente 800 ms (zombi) y 600 ms (perro). Medido en
+  el juego: **800 y 600 ms**; recuperación (del IMPACT al final) **1,01 s y 0,92 s** (la de su hoja: 120+330+550 y
+  100+300+500 ms). Sin lectura, sin fintas, sin retrasos, sin cadenas.
+- STUN: frames de hit (IMPACT, RECOIL y STAGGER congelado: `f.stunPose`, gancho nuevo en `fighter.js`), temblor del
+  sprite (`f.jitter`, gancho nuevo en `character.js`) y un tinte leve (destello bajo). Muerte: death + el mismo
+  desvanecimiento con esporas que el autómata (en el suelo 1,6 s, se desvanece en 1,6 s; reaparece en su sitio a los
+  9 s si no estás encima).
+- Nunca pide animaciones que no tiene: `character.js` no elige run ni jump si el atlas no las tiene (el perro corre
+  con su walk acelerado: cadencia 22 fps frente a 10 del zombi, calculada para que los pies no patinen a su
+  velocidad: zombi 0,6× y perro 1,3× tu caminar, `body.walkVFn`) y, si algo llegara a pedir una que no existe, se
+  anota en `W.animMiss` (las pruebas lo vigilan; en la de humo: vacío).
+- Peso: pies anclados y sombras como los demás personajes (sus `feet` del atlas), luz del mundo sobre el sprite
+  (normales + especular), pisadas por terreno: el zombi arrastra (polvo bajo y lento, huella marcada, roce grave),
+  el perro pisa ligero (poco polvo, huella leve, un toque seco).
+- Daño de su golpe: 6 (un tercio del zarpazo del autómata, 18). Vida en golpes: zombi 3, perro 2.
+- Selector del panel: «Zombi» y «Perro zombi» (`#enemy=zombie`, `#enemy=dog`, `W.setEnemyType("zombie"|"dog")`):
+  aparecen en los tres sitios del autómata. El autómata sigue siendo el tipo por defecto (autómata 21/21).

@@ -398,7 +398,7 @@
       b.path.length = 0; b.speed = 0;
       a.t += dt;
       if (a.name === "stun") {
-        a.f = 2 + (Math.floor(a.t * this.stunRate) % 2);   // tambaleo (frames STAGGER de hit)
+        a.f = this.stunPose ? this.stunPose(a.t) : 2 + (Math.floor(a.t * this.stunRate) % 2);   // tambaleo (frames STAGGER de hit; el relleno, su pose)
         if (a.t >= a.dur) { this.post = this.postMax * 0.35; this.act = null; }
         return;
       }

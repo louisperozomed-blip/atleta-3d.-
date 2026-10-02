@@ -374,7 +374,10 @@
           else if (st.anim === "walk") anim = p.speed > runUp ? "run" : (p.speed > walkDown ? "walk" : "idle");
           else anim = p.speed > runUp ? "run" : (p.speed > walkUp ? "walk" : "idle");
           if (anim === "idle" && p.path.length && p.speed > 0.01 * H) anim = "walk";
+          // atlas sin run (relleno): siempre walk (acelerado si hace falta)
+          if (anim === "run" && ANIMS.indexOf("run") < 0) anim = "walk";
         }
+        if (anim === "jump" && ANIMS.indexOf("jump") < 0) anim = "idle";
         if (anim !== st.anim) {
           // inercia: al pararse, 1-2 frames de asentamiento (frame de contacto + el cuerpo se hunde)
           if (anim === "idle" && (st.anim === "walk" || st.anim === "run") && W.FX.inertia) {
@@ -459,6 +462,13 @@
         g.drawImage(stickerImg, r[0] * AW, r[1] * AH, FW, FH, a[0] * dpr - PVX * s, a[1] * dpr - PVY * s, FW * s, FH * s);
       },
       place(p, camTheta, anim, f) {
+        // nunca se pinta una animación que el atlas no tiene (relleno: solo idle, walk, attack, hit, death); si
+        // llegara a pedirse, queda anotada (W.animMiss) y se usa la más cercana
+        if (ANIMS.indexOf(anim) < 0 && CANIMS.indexOf(anim) < 0) {
+          (W.animMiss = W.animMiss || []).push((opts.name || "?") + ":" + anim);
+          anim = ({ run: "walk", jump: "idle", stun: "hit", parry: "idle", block: "idle", dodge: "walk", deflected: "hit" })[anim] || "idle";
+          if (ANIMS.indexOf(anim) < 0) anim = ANIMS[0];
+        }
         const S = useSet(CANIMS.indexOf(anim) >= 0 ? "combat" : "base");
         const FW = S.FW, FH = S.FH, PVX = S.PVX, PVY = S.PVY;
         const r = this.frameRect(anim, st.dir, f);
@@ -507,6 +517,7 @@
         mesh.scale.set(w, h, 1);
         const rx = Math.cos(camTheta), rz = -Math.sin(camTheta);
         const ox = -PVX / FW * w, oy = -(FH - PVY) / FH * h;   // esquina inferior izquierda respecto al pivote
+        if (p.fighter && p.fighter.jitter) sway += p.fighter.jitter;   // temblor (relleno aturdido)
         // pie exactamente sobre la superficie: el píxel opaco más bajo de los frames apoyados va a la línea del suelo
         let corr = 0;
         uniforms.uQuant.value = W.FX.matter ? 1 : 0; uniforms.uOutline.value = W.FX.matter ? 1 : 0;

@@ -155,6 +155,9 @@
       const lv = surface || 1, f0 = [0, 1500, 1100, 700][lv] || 1300;
       tone(c, t, "square", f0, f0 * 0.7, 0.07 + 0.03 * lv, 0.06); noiseHit(c, t, "highpass", 4000, 2000, 0.8, 0.12 + 0.04 * lv, 0.05);
     } else if (kind === "stomp") { tone(c, t, "sine", 70, 38, 0.3 * (surface || 1), 0.16); noiseHit(c, t, "lowpass", 600, 150, 0.7, 0.18 * (surface || 1), 0.12); }
+    // relleno: el zombi arrastra los pies (roce grave), el perro pisa ligero
+    else if (kind === "dragStep") { noiseHit(c, t, "lowpass", 700, 180, 0.8, 0.12 * (surface || 1), 0.22); tone(c, t, "sine", 62, 44, 0.06 * (surface || 1), 0.12); }
+    else if (kind === "pawStep") { noiseHit(c, t, "bandpass", 1800, 900, 1.4, 0.05 * (surface || 1), 0.05); }
   };
   // Ambiente: viento (ruido filtrado que respira), goteo (gotas al azar en las charcas y bajo las copas),
   // zumbido eléctrico lejano junto a las máquinas (50 Hz + armónicos, con cortes). Volúmenes suavizados.
